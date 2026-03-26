@@ -1,0 +1,154 @@
+---
+name: using-long-task
+description: "Use when starting any session in a long-task project - routes to the correct phase skill based on project state"
+---
+
+<EXTREMELY-IMPORTANT>
+You are in a long-task multi-session project. You MUST invoke the correct phase skill BEFORE any response or action — including clarifying questions.
+
+IF A PHASE SKILL APPLIES, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+
+This is not negotiable. This is not optional. You cannot rationalize your way out of this.
+</EXTREMELY-IMPORTANT>
+
+## How to Access Skills
+
+Use the `Skill` tool to invoke skills by name (e.g., `long-task:long-task-work`). When invoked, the skill content is loaded and presented to you — follow it directly. Never use the Read tool on skill files.
+
+## Phase Detection
+
+Check project state and invoke the corresponding skill:
+
+```dot
+digraph phase_detection {
+    "Session Start" [shape=doublecircle];
+    "bugfix-request.json exists?" [shape=diamond];
+    "increment-request.json exists?" [shape=diamond];
+    "feature-list.json exists?" [shape=diamond];
+    "All active features passing?" [shape=diamond];
+    "Design doc (*-design.md) in docs/plans/?" [shape=diamond];
+    "ATS doc (*-ats.md) in docs/plans/?" [shape=diamond];
+    "UCD doc (*-ucd.md) in docs/plans/?" [shape=diamond];
+    "SRS doc (*-srs.md) in docs/plans/?" [shape=diamond];
+    "Invoke long-task:long-task-hotfix" [shape=box style=filled fillcolor=orange];
+    "Invoke long-task:long-task-increment" [shape=box style=filled fillcolor=plum];
+    "Invoke long-task:long-task-requirements" [shape=box style=filled fillcolor=lightyellow];
+    "Invoke long-task:long-task-ucd" [shape=box style=filled fillcolor=lightorange];
+    "Invoke long-task:long-task-design" [shape=box style=filled fillcolor=lightblue];
+    "Invoke long-task:long-task-ats" [shape=box style=filled fillcolor=lightskyblue];
+    "Invoke long-task:long-task-init" [shape=box style=filled fillcolor=lightyellow];
+    "Invoke long-task:long-task-work" [shape=box style=filled fillcolor=lightgreen];
+    "Invoke long-task:long-task-st" [shape=box style=filled fillcolor=lightcoral];
+
+    "Session Start" -> "bugfix-request.json exists?";
+    "bugfix-request.json exists?" -> "Invoke long-task:long-task-hotfix" [label="yes"];
+    "bugfix-request.json exists?" -> "increment-request.json exists?" [label="no"];
+    "increment-request.json exists?" -> "Invoke long-task:long-task-increment" [label="yes"];
+    "increment-request.json exists?" -> "feature-list.json exists?" [label="no"];
+    "feature-list.json exists?" -> "All active features passing?" [label="yes"];
+    "All active features passing?" -> "Invoke long-task:long-task-st" [label="yes"];
+    "All active features passing?" -> "Invoke long-task:long-task-work" [label="no"];
+    "feature-list.json exists?" -> "ATS doc (*-ats.md) in docs/plans/?" [label="no"];
+    "ATS doc (*-ats.md) in docs/plans/?" -> "Invoke long-task:long-task-init" [label="yes"];
+    "ATS doc (*-ats.md) in docs/plans/?" -> "Design doc (*-design.md) in docs/plans/?" [label="no"];
+    "Design doc (*-design.md) in docs/plans/?" -> "Invoke long-task:long-task-ats" [label="yes"];
+    "Design doc (*-design.md) in docs/plans/?" -> "UCD doc (*-ucd.md) in docs/plans/?" [label="no"];
+    "UCD doc (*-ucd.md) in docs/plans/?" -> "Invoke long-task:long-task-design" [label="yes"];
+    "UCD doc (*-ucd.md) in docs/plans/?" -> "SRS doc (*-srs.md) in docs/plans/?" [label="no"];
+    "SRS doc (*-srs.md) in docs/plans/?" -> "Invoke long-task:long-task-ucd" [label="yes"];
+    "SRS doc (*-srs.md) in docs/plans/?" -> "Invoke long-task:long-task-requirements" [label="no"];
+}
+```
+
+**Detection rules:**
+0. Check `bugfix-request.json` in project root → if exists → `long-task-hotfix` **(HIGHEST priority)**
+   Note: If both `bugfix-request.json` AND `increment-request.json` exist, hotfix runs first; `increment-request.json` is preserved and processed next session.
+1. Check `increment-request.json` in project root → if exists → `long-task-increment`
+2. Check `feature-list.json` in project root → if exists:
+   - Run `python scripts/check_st_readiness.py feature-list.json` — if exit 0 (all active features passing, excludes deprecated) → `long-task-st`
+   - Otherwise (some active features failing) → `long-task-work`
+3. Check `docs/plans/*-ats.md` → if any match → `long-task-init` (ATS done, proceed to init)
+4. Check `docs/plans/*-design.md` → if any match → `long-task-ats` (Design done, proceed to ATS)
+5. Check `docs/plans/*-ucd.md` → if any match → `long-task-design` (UCD done, proceed to design)
+6. Check `docs/plans/*-srs.md` → if any match → `long-task-ucd` (SRS done, UCD next; if no UI features the UCD skill auto-skips to design)
+7. Otherwise → `long-task-requirements`
+
+## Skill Catalog
+
+### Phase Skills (invoke ONE based on detection above)
+| Skill | Phase | When |
+|-------|-------|------|
+| `long-task:long-task-hotfix` | Hotfix | bugfix-request.json exists (HIGHEST priority) |
+| `long-task:long-task-increment` | Phase 1.5 | increment-request.json exists |
+| `long-task:long-task-requirements` | Phase 0a | No SRS, no design doc, no feature-list.json |
+| `long-task:long-task-ucd` | Phase 0b | SRS exists, no UCD doc, no design doc, no feature-list.json |
+| `long-task:long-task-design` | Phase 0c | SRS + UCD exist (or no UI features), no design doc, no feature-list.json |
+| `long-task:long-task-ats` | Phase 0d | Design doc exists, no ATS doc, no feature-list.json |
+| `long-task:long-task-init` | Phase 1 | ATS doc exists (or auto-skipped for tiny projects), no feature-list.json |
+| `long-task:long-task-work` | Phase 2 | feature-list.json exists, some active features failing |
+| `long-task:long-task-st` | Phase 3 | feature-list.json exists, ALL active features passing |
+
+### Discipline Skills (invoked by long-task-work as sub-skills — do NOT invoke directly)
+| Skill | Purpose |
+|-------|---------|
+| `long-task:long-task-feature-design` | Feature Detailed Design — interface contracts, algorithm pseudocode, state diagrams, boundary matrices, test inventory (bridges system design → TDD) |
+| `long-task:long-task-feature-st` | Black-Box Feature Acceptance Testing — self-managed start/cleanup lifecycle, Chrome DevTools MCP execution, ISO/IEC/IEEE 29119 test case documentation (per-feature, after Quality Gates) |
+| `long-task:long-task-tdd` | TDD Red-Green-Refactor |
+| `long-task:long-task-quality` | Coverage Gate + Mutation Gate |
+
+### Meta Skills (invoked conditionally by phase skills — do NOT invoke directly)
+| Skill | Purpose |
+|-------|---------|
+| `long-task:long-task-finalize` | Post-ST Documentation — scenario-based usage examples generation + RELEASE_NOTES/task-progress finalization (after ST Go verdict) |
+| `long-task:long-task-retrospective` | Skill Self-Evolution — consolidate retrospective records and upload to REST API (after ST Go verdict, if authorized) |
+
+## Key Files (shared contract)
+
+| File | Role |
+|------|------|
+| `docs/plans/*-srs.md` | Approved SRS — the WHAT |
+| `docs/plans/*-deferred.md` | Deferred requirements backlog — next-round pickup via increment |
+| `docs/plans/*-ucd.md` | Approved UCD style guide — the LOOK (UI projects only) |
+| `docs/plans/*-design.md` | Approved design — the HOW |
+| `docs/plans/*-ats.md` | Approved ATS — the TEST STRATEGY (requirement→scenario mapping) |
+| `feature-list.json` | Task inventory — the central shared state |
+| `task-progress.md` | `## Current State` header (progress) + session-by-session log |
+| `long-task-guide.md` | Project-specific Worker guide |
+| `RELEASE_NOTES.md` | Living changelog |
+| `docs/test-cases/feature-*.md` | Per-feature ST test case documents (ISO/IEC/IEEE 29119) |
+| `docs/plans/*-st-report.md` | System testing report — Go/No-Go verdict |
+| `bugfix-request.json` | Signal file — triggers hotfix session (deleted after processing) |
+| `increment-request.json` | Signal file — triggers incremental requirements (deleted after processing) |
+| `docs/retrospectives/*.md` | Skill improvement records (collected during Worker sessions, uploaded after ST) |
+
+## Red Flags
+
+These thoughts mean STOP — you're rationalizing:
+
+| Thought | Reality |
+|---------|---------|
+| "Let me just look at the code first" | Invoke phase skill first. It tells you HOW to orient. |
+| "I know which feature to work on" | Worker skill has Orient step. Follow it. |
+| "This feature is simple, skip TDD" | long-task-tdd is non-negotiable. |
+| "Tests pass, I can mark it done" | long-task-quality gates MUST pass first. |
+| "I remember the workflow" | Skills evolve. Load current version via Skill tool. |
+| "I need more context first" | Skill check comes BEFORE exploration. |
+| "I'll just do this one thing first" | Check BEFORE doing anything. |
+| "Requirements are obvious, skip to design" | long-task-requirements captures what you'd miss. |
+| "Test categories can be decided during feature-st" | Ad-hoc assignment leads to SEC/PERF gaps. Run ATS first. |
+| "ATS is overkill for this project" | Check Scaling Guide — tiny projects auto-skip ATS. |
+| "The SRS already implies the design" | SRS = WHAT, design = HOW. Both are needed. |
+| "UI styles can be decided during coding" | Ad-hoc styling causes inconsistency. Run UCD first. |
+| "This UI is too simple for a style guide" | Even simple UIs need tokens. UCD can be lightweight. |
+| "All features pass, we can ship" | Feature tests ≠ system tests. Run ST phase first. |
+| "System testing is overkill" | Integration bugs, NFR failures, and workflow gaps hide until ST. |
+| "I'll just add features to the JSON directly" | Invoke the `long-task-increment` skill for tracked, audited changes. |
+| "The requirement change is small, no need for impact analysis" | Increment skill catches hidden dependencies. |
+| "I'll just fix this quick bug directly" | Invoke `long-task-hotfix` — bug gets tracked in feature-list.json as category=bugfix and fixed via the full Worker pipeline. |
+| "I'll generate examples during Worker" | Examples are post-ST via long-task-finalize. |
+
+## Skill Priority
+
+1. **Phase skill first** — determines the entire session workflow
+2. **Discipline skills second** — invoked by Worker in strict order (tdd → quality → st-case → review)
+3. **On error** — follow systematic-debugging approach in `skills/long-task-work/references/systematic-debugging.md` before any fix
