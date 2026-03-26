@@ -1,0 +1,59 @@
+# SDD Contract Template
+
+Use this file when a project needs an explicit mapping between SDD logical artifacts and the team's existing deliverables.
+
+```markdown
+# SDD Contract
+
+## Project
+
+- Name: <project-name>
+- Status: Draft | Active
+- Owner: <team-or-person>
+
+## Artifact Mapping
+
+| Logical Artifact | Actual Path | Approval Signal | Required |
+|---|---|---|---|
+| Requirement spec | `docs/specs/<file>.md` | `Status: Approved` | Yes |
+| Design doc | `docs/designs/<file>.md` | `Status: Approved` | Yes |
+| Task plan | `docs/tasks/<file>.md` | `Status: Approved` or tasks-review PASS | Yes |
+| Progress log | `task-progress.md` | N/A | Yes |
+| Release notes | `RELEASE_NOTES.md` | N/A | Recommended |
+| Review records | `docs/reviews/` | PASS / REVISE / BLOCKED | Recommended |
+| Verification records | `docs/verification/` | command output summary | Recommended |
+
+## State Files
+
+| Purpose | Path | Notes |
+|---|---|---|
+| Workflow state | `workflow-state.json` | Main phase routing source |
+| Change requests | `change-request.json` | Optional signal file |
+| Hotfix requests | `hotfix-request.json` | Optional signal file |
+
+## Phase Rules
+
+1. No design before approved requirement spec
+2. No task planning before approved design
+3. No implementation before approved task plan
+4. No completion claim without regression and completion gates
+
+## Approved Means
+
+Use these signals in this project:
+
+- `Status: Approved`
+- review record with `PASS`
+- state file phase marker
+
+## Notes
+
+- List any project-specific exceptions here
+- Document any artifact naming deviations here
+```
+
+## Usage Notes
+
+- Keep the contract short and stable
+- Update it only when artifact paths or approval rules change
+- Prefer mapping existing documents over introducing duplicate deliverables
