@@ -1,0 +1,88 @@
+{
+  "skill_name": "sdd-workflow-starter",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我们准备做一个内部发布审批系统。第一期只支持员工提交发布申请、直属主管审批、审批通过后通知申请人。先帮我开始推进这件事，后面会按你说的流程走。",
+      "expected_output": "先命中 sdd-workflow-starter，判断当前没有 approved spec，并把会话路由到 sdd-work-specify，而不是直接进入设计或实现。",
+      "files": [],
+      "expectations": [
+        "优先使用 sdd-workflow-starter 做阶段判断",
+        "明确说明缺少 approved requirement spec 或等价证据",
+        "将下一步路由到 sdd-work-specify",
+        "不直接输出系统架构、任务拆分或代码实现"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "继续这个发布审批系统。需求规格已经确认过了，下一步该怎么走就怎么走。",
+      "expected_output": "在存在 approved spec、但不存在 approved design 的前提下，先命中 sdd-workflow-starter，然后路由到 sdd-work-design。",
+      "files": [],
+      "expectations": [
+        "优先使用 sdd-workflow-starter 做阶段判断",
+        "读取或要求确认 approved spec 的存在",
+        "将下一步路由到 sdd-work-design",
+        "不重复回到 requirements，也不直接进入 task planning 或 implementation"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "继续这个项目。按照已经确认好的任务计划，先做当前该做的那一项，不要自己扩 scope。",
+      "expected_output": "在 spec、design、task plan 都已批准的前提下，先命中 sdd-workflow-starter，然后路由到 sdd-work-implement，并明确后续 review/gate 顺序。",
+      "files": [],
+      "expectations": [
+        "优先使用 sdd-workflow-starter 做阶段判断",
+        "将下一步路由到 sdd-work-implement",
+        "强调一次只处理一个 active task",
+        "明确实现后需要经过 sdd-test-review、sdd-code-review、sdd-regression-gate、sdd-completion-gate"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "需求有变化。审批通过以后，除了通知申请人，还要自动抄送项目经理。你按正确流程处理，不要直接偷偷改代码。",
+      "expected_output": "在存在 change-request.json 或等价变更信号时，先命中 sdd-workflow-starter，再路由到 sdd-work-increment，做 impact analysis，而不是直接实现。",
+      "files": [],
+      "expectations": [
+        "优先使用 sdd-workflow-starter 做阶段判断",
+        "识别这是需求变更而不是普通实现请求",
+        "将下一步路由到 sdd-work-increment",
+        "强调要先更新 spec/design/task artifacts，而不是直接写代码"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "线上有个紧急问题：审批通过以后没发通知，这个今天必须修。你按热修复流程来，但不要省略验证。",
+      "expected_output": "在存在 hotfix-request.json 或等价热修复信号时，先命中 sdd-workflow-starter，再路由到 sdd-work-hotfix，并保留复现、回归和完成验证门禁。",
+      "files": [],
+      "expectations": [
+        "优先使用 sdd-workflow-starter 做阶段判断",
+        "识别这是紧急缺陷修复而不是普通实现请求",
+        "将下一步路由到 sdd-work-hotfix",
+        "强调先复现再修复，并且后续仍需 regression 和 completion gating"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "你解释一下什么是规范驱动开发，别开始给我做项目。",
+      "expected_output": "不要误触发完整主链，不应在没有项目推进意图时强行进入 sdd-work-specify 或创建交付件。",
+      "files": [],
+      "expectations": [
+        "不应把纯概念解释请求当作项目交付请求",
+        "不应强行进入 sdd-work-specify",
+        "不应开始生成规格、设计、任务计划或代码"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "我已经写好设计文档了，你只帮我做设计审查，不要改内容。",
+      "expected_output": "尽量直接进入 sdd-design-review，而不是重走 work-design 或进入实现阶段。",
+      "files": [],
+      "expectations": [
+        "识别用户明确要求的是 review 而不是重做设计",
+        "优先路由到 sdd-design-review",
+        "不应重复进入 sdd-work-design",
+        "不应开始 task planning 或 implementation"
+      ]
+    }
+  ]
+}

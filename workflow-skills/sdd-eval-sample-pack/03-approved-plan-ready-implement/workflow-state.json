@@ -1,0 +1,17 @@
+{
+  "project": "release-approval",
+  "topic": "request submission first slice",
+  "phase": "implement",
+  "approved_artifacts": {
+    "requirement_spec": true,
+    "design_doc": true,
+    "task_plan": true
+  },
+  "current_task": {
+    "id": "TASK-001",
+    "title": "Write failing test for request submission",
+    "status": "in_progress"
+  },
+  "next_skill": "sdd-work-implement",
+  "last_updated": "2026-03-27"
+}

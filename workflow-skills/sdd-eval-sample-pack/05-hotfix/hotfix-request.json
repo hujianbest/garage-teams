@@ -1,0 +1,15 @@
+{
+  "severity": "critical",
+  "reported_at": "2026-03-27",
+  "reported_by": "operations-team",
+  "summary": "审批通过后没有发送通知",
+  "expected_behavior": "审批通过立即通知申请人",
+  "actual_behavior": "审批通过成功，但没有通知消息",
+  "impact": "申请人无法及时收到发布审批结果，影响发布流转",
+  "known_reproduction": [
+    "提交一个发布审批申请",
+    "由直属主管批准该申请",
+    "观察申请状态已变更为通过",
+    "确认申请人没有收到通知"
+  ]
+}
