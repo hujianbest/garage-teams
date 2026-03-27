@@ -1,47 +1,47 @@
-# MDC Workflow Starter Evals
+# 工作流入口评测
 
-This directory contains eval prompts for `mdc-workflow-starter`.
+这个目录包含 `mdc-workflow-starter` 的评测 prompts。
 
-## Purpose
+## 目的
 
-These evals are designed to test routing quality, not implementation quality.
+这些评测用于验证路由质量，而不是实现质量。
 
-They check whether the starter skill:
+它们主要检查入口 skill 是否：
 
-- triggers first
-- reads the right routing evidence
-- chooses the correct downstream MDC skill
-- avoids phase skipping
+- 被优先触发
+- 读取了正确的路由证据
+- 选择了正确的下游 skill
+- 没有发生阶段跳步
 
-## Important
+## 重要说明
 
-Several evals depend on project state, not just the prompt text.
+有些 eval 依赖项目状态，而不只是 prompt 文本本身。
 
-Before running an eval, prepare the required artifact situation described in:
+运行前，请先准备好以下文档中描述的工件状态：
 
 - `workflow-skills/mdc-skills-eval-prompts.md`
 
-Examples:
+例如：
 
-- approved spec exists, but approved design does not
-- the prompt clearly indicates a requirement change
-- the prompt clearly indicates an urgent hotfix
+- 已有 approved spec，但没有 approved design
+- prompt 明确表达需求变更
+- prompt 明确表达紧急热修复
 
-If the preconditions are missing, the routing result may be different for the right reason.
+如果前置条件缺失，路由结果不同也可能是合理的。
 
-## Eval Structure
+## Eval 结构
 
-- `id`: stable identifier
-- `prompt`: realistic user prompt
-- `expected_output`: human-readable expected routing outcome
-- `files`: empty for now, because these evals rely on project artifact state rather than bundled files
-- `expectations`: review checklist for grading
+- `id`：稳定标识
+- `prompt`：贴近真实场景的用户请求
+- `expected_output`：便于人工核对的期望路由结果
+- `files`：当前为空，因为这些 eval 依赖项目工件状态，而不是打包文件
+- `expectations`：评分时使用的检查清单
 
-## Suggested Grading Focus
+## 建议评分关注点
 
-When grading these evals, check:
+评分时重点看：
 
-1. Was `mdc-workflow-starter` used first?
-2. Did the answer cite routing evidence?
-3. Was the downstream skill correct?
-4. Did the answer avoid premature design, tasks, or code work?
+1. 是否先使用了 `mdc-workflow-starter`
+2. 回答是否引用了路由证据
+3. 下游 skill 是否正确
+4. 是否避免了过早进入设计、任务或代码实现
