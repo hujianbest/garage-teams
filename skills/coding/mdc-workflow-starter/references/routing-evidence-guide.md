@@ -53,14 +53,21 @@
 
 如果批准状态不明确，应回路由到上游评审 skill，而不是直接假设已批准。
 
+补充判断：
+
+- 规格评审通过但缺少真人确认，不算已批准，应继续按需求阶段处理
+- 设计评审通过但缺少真人确认，不算已批准，应继续按设计阶段处理
+
 ## 主链流程
 
 ```text
 mdc-workflow-starter
 -> mdc-specify
 -> mdc-spec-review
+-> 规格真人确认
 -> mdc-design
 -> mdc-design-review
+-> 设计真人确认
 -> mdc-tasks
 -> mdc-tasks-review
 -> mdc-implement

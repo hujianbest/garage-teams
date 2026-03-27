@@ -87,7 +87,9 @@ flowchart TD
 
     subgraph qualityLayer [质量防护层]
         specReview[mdc-spec-review]
+        specConfirm[规格真人确认]
         designReview[mdc-design-review]
+        designConfirm[设计真人确认]
         tasksReview[mdc-tasks-review]
         bugPatterns[mdc-bug-patterns]
         testReview[mdc-test-review]
@@ -99,9 +101,13 @@ flowchart TD
 
     starter --> workSpecify
     workSpecify --> specReview
-    specReview --> workDesign
+    specReview -->|通过| specConfirm
+    specReview -->|需修改/阻塞| workSpecify
+    specConfirm --> workDesign
     workDesign --> designReview
-    designReview --> workTasks
+    designReview -->|通过| designConfirm
+    designReview -->|需修改/阻塞| workDesign
+    designConfirm --> workTasks
     workTasks --> tasksReview
     tasksReview --> workImplement
     workImplement --> bugPatterns
@@ -259,8 +265,9 @@ flowchart TD
 3. 明确范围、非范围、角色、约束、验收标准
 4. 输出需求规格草稿
 5. 提交 `mdc-spec-review` 进行评审
-6. 若评审返回“通过”，与真人对话确认；若真人提出意见，则继续回改规格
-7. 只有在真人确认通过后，才能进入设计
+6. 若评审返回“需修改”或“阻塞”，基于评审结果直接回到 `mdc-specify`，与用户确认必要修订后继续完善规格
+7. 若评审返回“通过”，再进入真人确认；若真人提出意见，则继续回改规格
+8. 只有在真人确认通过后，才能进入设计
 
 **禁止**
 
@@ -285,8 +292,9 @@ flowchart TD
 3. 至少提出 2 个方案并说明取舍
 4. 输出架构、模块、数据流、接口、测试策略、依赖选择等设计草稿
 5. 提交 `mdc-design-review` 进行评审
-6. 若评审返回“通过”，与真人对话确认；若真人提出意见，则继续回改设计
-7. 只有在真人确认通过后，才能进入任务规划
+6. 若评审返回“需修改”或“阻塞”，基于评审结果直接回到 `mdc-design`，与用户确认必要修订后继续完善设计
+7. 若评审返回“通过”，再进入真人确认；若真人提出意见，则继续回改设计
+8. 只有在真人确认通过后，才能进入任务规划
 
 **禁止**
 
@@ -428,7 +436,9 @@ flowchart TD
 
 审查需求规格是否完整、无歧义、可验证、边界清晰，并为真人确认提供依据。
 
-若评审返回“通过”，下一步不是直接进入设计，而是先提交真人确认；如果真人提出修改意见，则回到规格继续修订。
+若评审返回“通过”，下一步不是直接进入设计，而是先提交真人确认。
+
+若评审返回“需修改”或“阻塞”，下一步不是等待真人批准，而是直接回到 `mdc-specify`，基于评审结论继续修订规格。
 
 **检查维度**
 
@@ -445,7 +455,9 @@ flowchart TD
 
 审查设计是否能支撑规格，是否考虑约束、NFR、依赖与可实现性，并为真人确认提供依据。
 
-若评审返回“通过”，下一步不是直接进入任务规划，而是先提交真人确认；如果真人提出修改意见，则回到设计继续修订。
+若评审返回“通过”，下一步不是直接进入任务规划，而是先提交真人确认。
+
+若评审返回“需修改”或“阻塞”，下一步不是等待真人批准，而是直接回到 `mdc-design`，基于评审结论继续修订设计。
 
 **检查维度**
 
@@ -579,8 +591,10 @@ flowchart TD
     starter[mdc-workflow-starter]
     specify[mdc-specify]
     specReview[mdc-spec-review]
+    specConfirm[规格真人确认]
     design[mdc-design]
     designReview[mdc-design-review]
+    designConfirm[设计真人确认]
     tasks[mdc-tasks]
     tasksReview[mdc-tasks-review]
     implement[mdc-implement]
@@ -594,9 +608,13 @@ flowchart TD
 
     starter --> specify
     specify --> specReview
-    specReview --> design
+    specReview -->|通过| specConfirm
+    specReview -->|需修改/阻塞| specify
+    specConfirm --> design
     design --> designReview
-    designReview --> tasks
+    designReview -->|通过| designConfirm
+    designReview -->|需修改/阻塞| design
+    designConfirm --> tasks
     tasks --> tasksReview
     tasksReview --> implement
     implement --> bugPatterns
