@@ -15,8 +15,8 @@
 
 | 逻辑工件 | 实际路径 | 批准信号 | 是否必需 |
 |---|---|---|---|
-| 需求规格 | `docs/specs/<file>.md` | `状态: 已批准`，兼容 `Status: Approved` | 是 |
-| 设计文档 | `docs/designs/<file>.md` | `状态: 已批准`，兼容 `Status: Approved` | 是 |
+| 需求规格 | `docs/specs/<file>.md` | `状态: 已批准`，兼容 `Status: Approved`，且已完成真人确认 | 是 |
+| 设计文档 | `docs/designs/<file>.md` | `状态: 已批准`，兼容 `Status: Approved`，且已完成真人确认 | 是 |
 | 任务计划 | `docs/tasks/<file>.md` | `状态: 已批准`，兼容 `Status: Approved` 或 tasks-review `通过` / `PASS` | 是 |
 | 进度记录 | `task-progress.md` | 无 | 是 |
 | 发布说明 | `RELEASE_NOTES.md` | 无 | 建议 |
@@ -48,6 +48,8 @@
 - 带有 `通过` 结论的评审记录
 - 兼容旧写法：带有 `PASS` 结论的评审记录
 - 进度或验证记录中的阶段标记
+
+对规格和设计而言，还应有真人确认已经完成的证据。
 
 ## 备注
 
