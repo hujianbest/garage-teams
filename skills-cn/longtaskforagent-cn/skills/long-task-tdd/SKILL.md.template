@@ -1,0 +1,239 @@
+---
+name: long-task-tdd
+description: "在长任务项目中通过 TDD 实现特性时使用——强制执行红-绿-重构周期"
+---
+
+# 长任务场景的测试驱动开发
+
+先写测试，看其失败，再写最少代码通过，最后重构。
+
+**违反规则的字面，就是违反规则的精神。**
+
+## 铁律
+
+```
+NO IMPLEMENTATION CODE WITHOUT A FAILING TEST FIRST
+```
+
+先写实现再写测试？删掉实现，重来。无例外。
+- 不要留作「参考」
+- 不要在写测试时「改编」它
+- 不要去看它
+- 删除就是删除
+
+## 红-绿-重构周期
+
+```dot
+digraph tdd {
+    "TDD Red: Write Failing Tests" [shape=box style=filled fillcolor=lightsalmon];
+    "TDD Green: Minimal Implementation" [shape=box style=filled fillcolor=lightgreen];
+    "TDD Refactor: Clean Up" [shape=box style=filled fillcolor=lightblue];
+
+    "TDD Red: Write Failing Tests" -> "TDD Green: Minimal Implementation";
+    "TDD Green: Minimal Implementation" -> "TDD Refactor: Clean Up";
+}
+```
+
+## 步骤 1：TDD Red —— 编写失败测试
+
+为 Feature Design 测试清单（§7）**每一行**编写测试。测试**必须失败**（特性尚未实现）。
+
+### 规约输入
+
+测试由三个主要来源驱动：
+- **Feature Design 测试清单**（`docs/features/YYYY-MM-DD-<feature-name>.md` §7）—— 主来源；每行映射到一个或多个测试用例
+- **SRS 需求节**（`{srs_section}`）—— 完整 FR-xxx，含 Given/When/Then、边界与错误路径（经特性 `srs_trace`）
+- **特性详细设计**（`docs/features/YYYY-MM-DD-<feature-name>.md`）—— 接口契约（§3）、算法伪代码与边界矩阵（§5）
+
+特性详细设计中的测试清单表是 TDD Red 的**首要来源**。TDD 规则（Rule 1–6）扩展并细化该集合。SRS 验收标准（来自 `srs_trace` 对应需求）提供补充上下文。ST 测试用例文档在 TDD **之后**生成，用于验收验证（Worker 步骤 10）。
+
+### 测试场景规则（硬性要求）
+
+**Rule 1：类别覆盖** —— 须覆盖所有适用类别：
+
+| Category | What to test | Example |
+|----------|-------------|---------|
+| **Happy path** | Normal operation, valid inputs | Valid login returns token |
+| **Error handling** | Known failures, invalid inputs | Invalid password returns 401 |
+| **Boundary / edge** | Limits, empty, max, zero | Empty string; max-length password |
+| **Security** | Injection, authorization | SQL injection in username |
+
+某类别不适用时，在注释中明确说明：
+```python
+# Security: N/A — internal utility with no user-facing input
+```
+
+**Rule 2：负例比例 ≥ 40%**
+
+```
+negative_test_count / total_test_count >= 0.40
+```
+
+「负例」指期望异常、错误、失败状态、边界/极端输入、未授权访问或畸形数据的测试。
+
+**Rule 3：断言质量 —— 低价值断言 ≤ 20%**
+
+```
+low_value_count / total_assertion_count <= 0.20
+```
+
+低价值断言模式（避免）：
+- 未检查内容的 `assert x is not None`
+- 未检查行为的 `assert isinstance(x, SomeType)`
+- 未校验元素的 `assert len(x) > 0`
+- 未检查值的 `assert "key" in dict`
+- 仅 `assert bool(x)` / 真值判断
+- 仅导入测试（`from module import X; assert X is not None`）
+
+**Rule 4：「错误实现」挑战**
+
+对每条测试问：「哪种错误实现会被这条测试抓住？」
+
+若「几乎任何错误实现都能过」→ 用更具体断言重写。
+
+**与特性详细设计的衔接：** 特性详细设计 §5.3 边界矩阵与 §5.4 错误表提供预分析的边界值与错误条件。应用 Rule 4 时以此为输入。
+
+设想 2–3 种貌似合理的错误实现：
+- 返回硬编码值而非计算结果
+- 两个字段对调
+- 差一错误
+- 跳过某校验步骤
+- 返回陈旧/缓存数据
+
+对每种错误实现，测试会**失败**吗？若多数为否 → 重写。
+
+**Rule 5：测试分层规则 —— 必须含真实测试场景**
+
+每个特性的自动化测试**必须**覆盖两层。二者均强制：
+
+| Layer | Purpose | Mock policy | Minimum |
+|-------|---------|-------------|---------|
+| **Unit (UT)** | Individual functions/classes | Mock only at system boundaries (external HTTP, third-party APIs, file system, clock); use real or in-memory implementations for internal logic | ≥ 1 test exercising core logic with real internal dependencies (no mocking internal components) |
+| **Integration** | Components working against real infrastructure | NO mock for the primary dependency — use real test DB, real running service, or real file system | ≥ 1 test per feature that touches external systems |
+
+**集成测试例外** —— 若特性绝对无外部依赖（纯计算、无 IO、无 DB、无网络）：
+- 在测试文件中明确声明：
+  ```python
+  # [no integration test] — pure function, no external I/O
+  ```
+
+**按层打标签**：
+```python
+# [unit] — uses in-memory store
+def test_user_validation_logic():
+    ...
+
+# [integration] — uses real test database
+def test_user_persisted_to_db():
+    ...
+```
+
+参考：`testing-anti-patterns.md` 反模式 #1 与 #3。
+
+**TDD Red 中写测试的强制顺序：**
+1. 分析 Feature Design 测试清单 + `{srs_section}`（经 `srs_trace`）+ `{design_section}`，识别外部依赖
+2. **先写真实测试**（见 Rule 5a）
+3. 再写常规 UT（主路径 / 错误 / 边界 / 安全）
+4. 运行全部测试 → 确认**全部失败**
+
+**Rule 5a：真实测试独立区块（强制）**
+
+凡有外部依赖的特性，**必须**在测试文件中有可识别的真实测试。标记机制见 `long-task-guide.md` Real Test Convention，须满足：
+
+| Invariant | Description |
+|-----------|-------------|
+| **Discoverable** | Real tests MUST be findable by `feature-list.json` `real_test.marker_pattern` via `check_real_tests.py` |
+| **Isolatable** | Real tests MUST be runnable independently from regular UTs (via marker filter, folder separation, or naming convention) |
+| **No mock on primary dep** | Real test body MUST NOT mock the primary external dependency it verifies; `real_test.mock_patterns` defines detectable mock keywords |
+| **High-value assertions** | MUST NOT merely verify "no exception"; MUST assert actual return values, state changes, data persistence |
+| **Test infrastructure** | Use project test environment (.env.test, test DB, localhost test server) — never production resources |
+
+**每类外部依赖至少 1 条真实测试：**
+
+| Dependency type | Real test verifies |
+|-----------------|-------------------|
+| Config / secrets | Can read values from real config file / env vars |
+| Database / store | Can connect to real test DB, perform read/write |
+| File system | Can read/write real files (beyond trivial tmp_path) |
+| HTTP / network | Can send request to real test server and get response |
+| Third-party SDK | Can call sandbox / test environment API |
+
+**纯函数豁免**：若无外部依赖，在测试文件注释中声明，Gate 0 期间由 `{design_section}` 确认。
+
+**验证**：`python scripts/check_real_tests.py feature-list.json` —— 机械扫描 + grep。
+
+参考：`testing-anti-patterns.md` 反模式 #15。
+
+**Rule 6：UI 专用规则**（当 `"ui": true`）
+
+- **UI 前置条件（首条 `[devtools]` 前）：**  
+  任何 {{ cap_ui_platform }} 测试前，确认应用可达：
+  1. 若开发服务器未运行则启动 —— 读 `env-guide.md`，用启动命令并捕获输出：
+     ```bash
+     [start command from env-guide.md] > /tmp/svc-<slug>-start.log 2>&1 &
+     sleep 3
+     head -30 /tmp/svc-<slug>-start.log   # extract PID and port
+     ```
+     在 `task-progress.md` 记录 PID。若本会话已记录 PID，先跑健康检查 —— 已在运行则不必重启。
+  2. 使用 `{{ cap_ui_navigate }}` 打开特性的 `ui_entry` URL（或默认 localhost URL）
+  3. 若连接被拒绝或页面错误（ERR_CONNECTION_REFUSED 等）→ 应用未运行。**不要**继续 UI 测试。诊断并修复启动。绝不跳过 UI 验证。
+- 每条 `[devtools]` 步骤须使用 EXPECT/REJECT 格式：
+  ```
+  [devtools] <page-path> | EXPECT: <positive criteria> | REJECT: <negative criteria>
+  ```
+- 通过 `{{ cap_ui_eval }}()` 执行自动化错误检测脚本
+- `{{ cap_ui_console }}(types=["error"])` 须返回 0 条错误（除非 `[expect-console-error: <pattern>]`）
+
+完整检测脚本与集成顺序见 `references/ui-error-detection.md`。
+
+### 写完测试后
+
+运行测试套件。**全部测试必须失败。** 若有测试通过 → 重写。
+
+**运行测试**：按 `long-task-guide.md` 激活环境 → 直接运行测试命令。若工具缺失或环境未激活：诊断根因，必要时 `init.sh`，仍失败则上报用户。**绝不跳过。**
+
+**进入 Green 前：**  
+运行 `python scripts/check_real_tests.py feature-list.json --feature {id}` 并确认：
+1. 真实测试数量 > 0（或已声明纯函数豁免）
+2. 无 mock 警告（或 LLM 已复核确认非主依赖）
+若 FAIL → **停**，先补真实测试。
+
+## 步骤 2：TDD Green —— 最少实现
+
+**仅**编写使测试通过所需的最少代码。
+
+子代理模式：使用 `skills/long-task-tdd/prompts/implementer-prompt.md` 派发：
+- 提供**完整**任务正文
+- 包含 tech_stack、test、coverage、mutation 命令
+- 退出条件：全部通过、无回归
+
+**规则：**
+- 从测试出发全新实现 —— 绝不引用铁律下已删除的旧代码
+- 一次测一条
+- 不要过早优化或加额外功能
+
+**启动输出要求** —— 服务器/后台服务须在启动日志中输出绑定端口、PID、就绪信号；实现绑定前先写 TDD Red 验证这些字段。便于 `head -30` 提取。
+
+**env-guide.md 同步** —— 同主 `SKILL.md` 四条规则。
+
+## 步骤 3：TDD Refactor
+
+在保持测试绿色的前提下整理；每次改动后运行测试；不增加新功能。
+
+## 测试反模式（前五）
+
+1. **测 mock 行为** —— 验证真实代码，非 mock 配置。
+2. **测实现细节** —— 测行为/输出。
+3. **不可能失败的测试** —— 断言须可证伪。
+4. **刷覆盖率** —— 无断言跑路径。覆盖率 ≠ 质量。
+5. **低价值断言** —— 最多占总断言 20%。
+
+完整 15 条：`skills/long-task-tdd/testing-anti-patterns.md`。
+
+## 集成
+
+**由谁调用：** long-task-work（步骤 6–8）  
+**派发：** `skills/long-task-tdd/prompts/implementer-prompt.md`  
+**前提：** Work 步骤 4 的特性详细设计（`long-task:long-task-feature-design`）  
+**产出：** 通过测试 + 实现代码  
+**链接至：** long-task-quality（Work 步骤 9）
