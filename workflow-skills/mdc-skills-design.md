@@ -195,18 +195,19 @@ flowchart TD
 | Verification Record | `docs/verification/` | 记录测试、回归、完成验证证据 |
 | Release Notes | `RELEASE_NOTES.md` | 记录用户可见交付变化 |
 
-### 6.3 推荐的状态与信号工件
+### 6.3 推荐的阶段证据工件
 
-借鉴 `longtaskforagent`，建议保留少量状态/信号文件：
+借鉴 `longtaskforagent`，建议保留少量、稳定、可读的阶段证据工件，而不是依赖根目录 JSON 信号文件：
 
-| 文件 | 用途 |
+| 工件 | 用途 |
 |---|---|
-| `workflow-state.json` | 当前主阶段、上次完成节点、当前 topic、活动任务状态 |
-| `change-request.json` | 需求变更触发器 |
-| `hotfix-request.json` | 热修复触发器 |
-| `task-index.json` | 可选；结构化任务索引，避免纯 Markdown 任务列表被随意篡改 |
+| 需求、设计、任务文档中的审批状态 | 判断主链是否已进入下一阶段 |
+| `task-progress.md` | 记录当前主阶段、最近进展、活动任务与下一步建议 |
+| `docs/reviews/` | 记录各类 review / gate 的结论 |
+| `docs/verification/` | 记录测试、回归、完成验证证据 |
+| `RELEASE_NOTES.md` | 记录用户可见变化，辅助判断是否已完成收尾 |
 
-如果团队不希望新增 JSON 文件，也至少应保证 `mdc-workflow-starter` 能从既有交付件路径中稳定推断阶段。
+如果团队已有自己的项目状态页、变更单、缺陷单或任务系统，也应优先映射这些既有工件，而不是额外引入新的 JSON 触发器。
 
 ## 7. 推荐的完整 skill 地图
 
@@ -222,9 +223,9 @@ flowchart TD
 **输入**
 
 - `mdc-contract`
-- `workflow-state.json` 或等价状态文件
 - 既有交付件路径
-- `change-request.json` / `hotfix-request.json`（若存在）
+- 当前用户请求
+- 进度记录、评审记录、验证记录、发布说明等阶段证据工件
 
 **输出**
 
@@ -362,8 +363,8 @@ flowchart TD
 
 **触发条件**
 
-- 存在 `change-request.json`
 - 用户明确提出“在既有规格上增加/修改要求”
+- 现有工件已经表明发生了实质性需求或范围变化
 
 **动作**
 
@@ -390,8 +391,8 @@ flowchart TD
 
 **触发条件**
 
-- 存在 `hotfix-request.json`
 - 用户明确提出紧急缺陷修复
+- 现有工件、线上反馈或验证结果已表明当前属于热修复场景
 
 **动作**
 
@@ -600,8 +601,8 @@ flowchart TD
 ```mermaid
 flowchart TD
     starter[mdc-workflow-starter]
-    changeReq[changeRequestJson]
-    hotfixReq[hotfixRequestJson]
+    changeReq[变更请求]
+    hotfixReq[热修复请求]
     increment[mdc-increment]
     hotfix[mdc-hotfix]
     tasks[mdc-tasks]
@@ -621,8 +622,8 @@ flowchart TD
 
 建议按如下优先级判断当前阶段：
 
-1. 若存在 `hotfix-request.json`，优先进入 `mdc-hotfix`
-2. 否则若存在 `change-request.json`，进入 `mdc-increment`
+1. 若用户请求或现有工件明确表明当前是热修复场景，优先进入 `mdc-hotfix`
+2. 否则若用户请求或现有工件明确表明发生需求变更，进入 `mdc-increment`
 3. 若没有已批准规格，进入 `mdc-specify`
 4. 若规格已批准但无已批准设计，进入 `mdc-design`
 5. 若设计已批准但无任务计划，进入 `mdc-tasks`
@@ -636,7 +637,7 @@ flowchart TD
 
 - `Status: Draft / Approved`
 - 审查结论记录
-- `workflow-state.json` 中的阶段标记
+- 进度记录、任务状态或验证记录中的阶段标记
 
 ## 10. 无 subagent 约束下的执行策略
 

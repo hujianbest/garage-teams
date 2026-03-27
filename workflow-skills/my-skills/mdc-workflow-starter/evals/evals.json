@@ -40,7 +40,7 @@
     {
       "id": 4,
       "prompt": "需求有变化。审批通过以后，除了通知申请人，还要自动抄送项目经理。你按正确流程处理，不要直接偷偷改代码。",
-      "expected_output": "在存在 change-request.json 或等价变更信号时，先命中 sdd-workflow-starter，再路由到 sdd-work-increment，做 impact analysis，而不是直接实现。",
+      "expected_output": "在用户明确提出需求变更或存在等价变更证据时，先命中 sdd-workflow-starter，再路由到 sdd-work-increment，做 impact analysis，而不是直接实现。",
       "files": [],
       "expectations": [
         "优先使用 sdd-workflow-starter 做阶段判断",
@@ -52,7 +52,7 @@
     {
       "id": 5,
       "prompt": "线上有个紧急问题：审批通过以后没发通知，这个今天必须修。你按热修复流程来，但不要省略验证。",
-      "expected_output": "在存在 hotfix-request.json 或等价热修复信号时，先命中 sdd-workflow-starter，再路由到 sdd-work-hotfix，并保留复现、回归和完成验证门禁。",
+      "expected_output": "在用户明确提出紧急缺陷修复或存在等价热修复证据时，先命中 sdd-workflow-starter，再路由到 sdd-work-hotfix，并保留复现、回归和完成验证门禁。",
       "files": [],
       "expectations": [
         "优先使用 sdd-workflow-starter 做阶段判断",

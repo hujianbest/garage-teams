@@ -1,6 +1,6 @@
-# My Skills 名称与职责清单
+# MDC Skill Catalog
 
-这个文档用于统一查看 `my-skills` 下各个 skill 的当前名称与职责。
+这个文档用于统一查看 `my-skills` 下各个 skill 的当前名称、目录与职责。
 
 你可以直接修改“拟改名”这一列；改完后告诉我，我会基于你修改后的命名继续调整对应 skill 内容。
 

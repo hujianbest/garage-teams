@@ -24,8 +24,8 @@ Before running an eval, prepare the required artifact situation described in:
 Examples:
 
 - approved spec exists, but approved design does not
-- `change-request.json` exists
-- `hotfix-request.json` exists
+- the prompt clearly indicates a requirement change
+- the prompt clearly indicates an urgent hotfix
 
 If the preconditions are missing, the routing result may be different for the right reason.
 

@@ -1,6 +1,6 @@
-# SDD Entry Guide
+# MDC Routing Evidence Guide
 
-Use this guide when a project adopts the SDD skills set but has not yet standardized its artifact layout or state files.
+Use this guide when a project adopts the MDC skills set but has not yet standardized its artifact layout or routing evidence.
 
 ## Recommended Artifact Layout
 
@@ -16,25 +16,26 @@ Use these paths by default unless the project already has approved equivalents:
 | Review records | `docs/reviews/` | Optional but recommended |
 | Verification records | `docs/verification/` | Optional but recommended |
 
-## Minimum State Files
+## Minimum Routing Evidence
 
-Use these root-level files for routing:
+Prefer existing project artifacts over introducing dedicated root-level JSON signal files.
 
-- `workflow-state.json`
-- `change-request.json`
-- `hotfix-request.json`
+Recommended routing evidence:
 
-If the project already has equivalent files, map them in the SDD contract instead of duplicating them.
+- requirement spec, design doc, and task plan approval state
+- progress log such as `task-progress.md`
+- review records under `docs/reviews/`
+- verification records under `docs/verification/`
+- explicit user request indicating a change request or hotfix
 
 ## Recommended Routing Inputs
 
 At session start, `sdd-workflow-starter` should inspect only:
 
-1. `workflow-state.json`
-2. `change-request.json`
-3. `hotfix-request.json`
-4. the SDD contract
-5. the existence and approval state of spec/design/task artifacts
+1. the MDC contract
+2. the existence and approval state of spec/design/task artifacts
+3. progress, review, and verification records
+4. the user's current request
 
 Avoid broad code exploration before phase routing is complete.
 
@@ -44,7 +45,7 @@ Prefer explicit approval markers such as:
 
 - `Status: Approved`
 - a review section with a pass verdict
-- a phase marker in `workflow-state.json`
+- a phase marker in a progress or verification record
 
 If approval is ambiguous, route to the upstream review skill rather than assuming approval.
 
@@ -68,7 +69,7 @@ workflow-starter
 
 ## Side Flows
 
-- `change-request.json` -> `sdd-work-increment`
-- `hotfix-request.json` -> `sdd-work-hotfix`
+- explicit change request -> `mdc-increment`
+- explicit hotfix request -> `mdc-hotfix`
 
 Both side flows must return the project to the correct review or implementation phase instead of bypassing the mainline discipline.

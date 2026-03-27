@@ -1,9 +1,9 @@
-# SDD Contract Template
+# MDC Contract Template
 
-Use this file when a project needs an explicit mapping between SDD logical artifacts and the team's existing deliverables.
+Use this file when a project needs an explicit mapping between MDC logical artifacts and the team's existing deliverables.
 
 ```markdown
-# SDD Contract
+# MDC Contract
 
 ## Project
 
@@ -23,13 +23,14 @@ Use this file when a project needs an explicit mapping between SDD logical artif
 | Review records | `docs/reviews/` | PASS / REVISE / BLOCKED | Recommended |
 | Verification records | `docs/verification/` | command output summary | Recommended |
 
-## State Files
+## Routing Evidence
 
 | Purpose | Path | Notes |
 |---|---|---|
-| Workflow state | `workflow-state.json` | Main phase routing source |
-| Change requests | `change-request.json` | Optional signal file |
-| Hotfix requests | `hotfix-request.json` | Optional signal file |
+| Progress / current status | `task-progress.md` or equivalent | Main routing evidence source |
+| Review records | `docs/reviews/` | Phase approval evidence |
+| Verification records | `docs/verification/` | Regression / completion evidence |
+| Release notes | `RELEASE_NOTES.md` | User-visible completion evidence |
 
 ## Phase Rules
 
@@ -44,7 +45,7 @@ Use these signals in this project:
 
 - `Status: Approved`
 - review record with `PASS`
-- state file phase marker
+- progress or verification record phase marker
 
 ## Notes
 
