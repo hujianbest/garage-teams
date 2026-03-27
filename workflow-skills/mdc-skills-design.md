@@ -1,8 +1,8 @@
-# SDD Skills 团队作业流设计方案
+# MDC Skills 团队作业流设计方案
 
 ## 1. 文档目的
 
-本文定义一套基于规范驱动开发（SDD, Specification-Driven Development）的团队技能体系，用于约束 Agent 在软件开发中的工作顺序、交付件、评审门禁与完成标准。
+本文定义一套基于规范驱动开发的 MDC 团队技能体系，用于约束 Agent 在软件开发中的工作顺序、交付件、评审门禁与完成标准。
 
 这套方案吸收两类参考：
 
@@ -15,7 +15,7 @@
 
 ### 2.1 目标
 
-这套 SDD skills 体系应满足以下目标：
+这套 MDC skills 体系应满足以下目标：
 
 1. 让 Agent 先做规格、再做设计、再做任务分解、最后做实现，避免直接跳进编码。
 2. 让每个阶段都有明确输入、输出、准入条件、退出条件与禁止动作。
@@ -58,7 +58,7 @@
 
 ## 4. 总体设计原则
 
-1. **先路由，后执行**：每次会话由 `workflow-starter` 先判断当前阶段，再决定进入哪个 skill。
+1. **先路由，后执行**：每次会话由 `mdc-workflow-starter` 先判断当前阶段，再决定进入哪个 skill。
 2. **规格先于设计，设计先于任务，任务先于实现**：任何跳步都必须被视为违规。
 3. **工件驱动，不靠记忆**：状态必须落在仓库文件中，而不是停留在对话里。
 4. **强门禁而非软建议**：关键阶段用必须、禁止、仅允许下游等表述，减少 Agent 自由发挥空间。
@@ -73,26 +73,26 @@
 
 ```mermaid
 flowchart TD
-    starter[workflowStarter]
+    starter[mdc-workflow-starter]
 
     subgraph executionLayer [任务执行层]
-        workSpecify[workSpecify]
-        workDesign[workDesign]
-        workTasks[workTasks]
-        workImplement[workImplement]
-        workIncrement[workIncrement]
-        workHotfix[workHotfix]
-        workFinalize[workFinalize]
+        workSpecify[mdc-specify]
+        workDesign[mdc-design]
+        workTasks[mdc-tasks]
+        workImplement[mdc-implement]
+        workIncrement[mdc-increment]
+        workHotfix[mdc-hotfix]
+        workFinalize[mdc-finalize]
     end
 
     subgraph qualityLayer [质量防护层]
-        specReview[specReview]
-        designReview[designReview]
-        tasksReview[tasksReview]
-        testReview[testReview]
-        codeReview[codeReview]
-        regressionGate[regressionGate]
-        completionGate[completionGate]
+        specReview[mdc-spec-review]
+        designReview[mdc-design-review]
+        tasksReview[mdc-tasks-review]
+        testReview[mdc-test-review]
+        codeReview[mdc-code-review]
+        regressionGate[mdc-regression-gate]
+        completionGate[mdc-completion-gate]
     end
 
     starter --> workSpecify
@@ -112,56 +112,56 @@ flowchart TD
     starter --> workHotfix
 ```
 
-### 5.1 第一层：`workflow-starter`
+### 5.1 第一层：`mdc-workflow-starter`
 
 职责不是干活，而是：
 
-- 读取当前项目的 SDD 状态
+- 读取当前项目的 MDC 状态
 - 判断当前处于哪个阶段
 - 决定进入主链、变更支线或热修复支线
 - 阻止 Agent 在错误阶段直接写代码
 
-它相当于 `using-superpowers` 和 `using-long-task` 的组合版，但目标更聚焦于 SDD。
+它相当于 `using-superpowers` 和 `using-long-task` 的组合版，但目标更聚焦于 MDC 团队流程约束。
 
 ### 5.2 第二层：任务执行流
 
 这是实际产生交付件的主链与支线：
 
-- `work-specify`
-- `work-design`
-- `work-tasks`
-- `work-implement`
-- `work-increment`
-- `work-hotfix`
-- `work-finalize`
+- `mdc-specify`
+- `mdc-design`
+- `mdc-tasks`
+- `mdc-implement`
+- `mdc-increment`
+- `mdc-hotfix`
+- `mdc-finalize`
 
 ### 5.3 第三层：质量防护层
 
 这是阶段之间的独立检查层：
 
-- `spec-review`
-- `design-review`
-- `tasks-review`
-- `test-review`
-- `code-review`
-- `regression-gate`
-- `completion-gate`
+- `mdc-spec-review`
+- `mdc-design-review`
+- `mdc-tasks-review`
+- `mdc-test-review`
+- `mdc-code-review`
+- `mdc-regression-gate`
+- `mdc-completion-gate`
 
 说明：
 
-- 你原始草案中的 `cod-review` 建议统一更名为 `code-review`。
-- `spec-review` 是必须补上的，否则 `work-specify` 的输出没有正式冻结门。
-- `tasks-review` 也是建议补上的，否则任务分解可能直接把坏设计带进实现。
+- 你原始草案中的 `cod-review` 建议统一更名为 `mdc-code-review`。
+- `mdc-spec-review` 是必须补上的，否则 `mdc-specify` 的输出没有正式冻结门。
+- `mdc-tasks-review` 也是建议补上的，否则任务分解可能直接把坏设计带进实现。
 
 ## 6. 交付件契约与兼容层
 
 ### 6.1 为什么需要“逻辑工件”和“实际文件路径”分离
 
-团队往往已有既定交付件名称，例如 PRD、SRS、概要设计、详细设计、任务清单、测试报告、发布说明。如果 SDD skills 直接写死文件名，会造成与现有规范冲突。
+团队往往已有既定交付件名称，例如 PRD、SRS、概要设计、详细设计、任务清单、测试报告、发布说明。如果 MDC skills 直接写死文件名，会造成与现有规范冲突。
 
 因此建议引入一个轻量映射工件：
 
-- `docs/process/sdd-contract.md` 或 `docs/process/sdd-contract.json`
+- `docs/process/mdc-contract.md` 或 `docs/process/mdc-contract.json`
 
 它的作用是定义：
 
@@ -194,13 +194,13 @@ flowchart TD
 | `hotfix-request.json` | 热修复触发器 |
 | `task-index.json` | 可选；结构化任务索引，避免纯 Markdown 任务列表被随意篡改 |
 
-如果团队不希望新增 JSON 文件，也至少应保证 `workflow-starter` 能从既有交付件路径中稳定推断阶段。
+如果团队不希望新增 JSON 文件，也至少应保证 `mdc-workflow-starter` 能从既有交付件路径中稳定推断阶段。
 
 ## 7. 推荐的完整 skill 地图
 
 ## 7.1 编排层
 
-### `workflow-starter`
+### `mdc-workflow-starter`
 
 **触发时机**
 
@@ -209,7 +209,7 @@ flowchart TD
 
 **输入**
 
-- `sdd-contract`
+- `mdc-contract`
 - `workflow-state.json` 或等价状态文件
 - 既有交付件路径
 - `change-request.json` / `hotfix-request.json`（若存在）
@@ -228,7 +228,7 @@ flowchart TD
 
 ## 7.2 主链执行层
 
-### `work-specify`
+### `mdc-specify`
 
 **目标**
 
@@ -245,14 +245,14 @@ flowchart TD
 2. 分轮澄清需求，优先用结构化问题
 3. 明确范围、非范围、角色、约束、验收标准
 4. 输出规格文档草案
-5. 进入 `spec-review`
+5. 进入 `mdc-spec-review`
 
 **禁止**
 
 - 未冻结规格前写实现代码
 - 用设计决策污染需求规格
 
-### `work-design`
+### `mdc-design`
 
 **目标**
 
@@ -269,14 +269,14 @@ flowchart TD
 2. 提炼设计驱动因素：约束、NFR、接口、技术边界
 3. 至少提出 2 个方案并说明取舍
 4. 输出架构、模块、数据流、接口、测试策略、依赖选择
-5. 进入 `design-review`
+5. 进入 `mdc-design-review`
 
 **禁止**
 
 - 把实现细节写成任务执行清单
 - 未批准设计就进入任务拆分或编码
 
-### `work-tasks`
+### `mdc-tasks`
 
 **目标**
 
@@ -294,7 +294,7 @@ flowchart TD
 3. 任务拆到“可验证、可提交、可回退”的粒度
 4. 明确每个任务的 DoD、测试方式、前置依赖
 5. 输出任务计划文档
-6. 进入 `tasks-review`
+6. 进入 `mdc-tasks-review`
 
 **建议粒度**
 
@@ -306,7 +306,7 @@ flowchart TD
 - 运行通过
 - 更新进度与记录
 
-### `work-implement`
+### `mdc-implement`
 
 **目标**
 
@@ -324,7 +324,7 @@ flowchart TD
 2. 选择当前唯一活动任务
 3. 按 TDD 执行 Red -> Green -> Refactor
 4. 产出或更新 UT/集成测试
-5. 进入 `test-review` 和 `code-review`
+5. 进入 `mdc-test-review` 和 `mdc-code-review`
 6. 运行回归检查与完成验证
 
 **关键规则**
@@ -333,7 +333,7 @@ flowchart TD
 - 未完成当前任务，不切换到下一个任务
 - 没有 fresh verification evidence，不宣称完成
 
-### `work-increment`
+### `mdc-increment`
 
 **目标**
 
@@ -353,9 +353,9 @@ flowchart TD
 1. 读取当前规格、设计、任务计划与变更请求
 2. 做影响分析
 3. 更新规格与设计受影响部分
-4. 如有必要，回到 `work-tasks`
+4. 如有必要，回到 `mdc-tasks`
 
-### `work-hotfix`
+### `mdc-hotfix`
 
 **目标**
 
@@ -378,7 +378,7 @@ flowchart TD
 3. 执行回归与完成验证
 4. 同步回写规格/设计/任务文档中受影响的部分
 
-### `work-finalize`
+### `mdc-finalize`
 
 **目标**
 
@@ -393,7 +393,7 @@ flowchart TD
 
 ## 7.3 质量防护层
 
-### `spec-review`
+### `mdc-spec-review`
 
 **作用**
 
@@ -407,7 +407,7 @@ flowchart TD
 - 是否存在模糊词
 - 是否存在明显遗漏的负向场景
 
-### `design-review`
+### `mdc-design-review`
 
 **作用**
 
@@ -421,7 +421,7 @@ flowchart TD
 - 测试策略是否存在
 - 是否存在过度设计或关键设计缺口
 
-### `tasks-review`
+### `mdc-tasks-review`
 
 **作用**
 
@@ -434,7 +434,7 @@ flowchart TD
 - 每个任务是否有明确 DoD
 - 是否为实现阶段准备了测试和验证动作
 
-### `test-review`
+### `mdc-test-review`
 
 **作用**
 
@@ -453,7 +453,7 @@ flowchart TD
 - 命名是否清晰
 - 是否覆盖边界与错误路径
 
-### `code-review`
+### `mdc-code-review`
 
 **作用**
 
@@ -467,7 +467,7 @@ flowchart TD
 - 错误处理
 - 是否偏离设计
 
-### `regression-gate`
+### `mdc-regression-gate`
 
 **作用**
 
@@ -479,7 +479,7 @@ flowchart TD
 - 全量测试或受影响测试
 - 构建/类型检查/静态检查
 
-### `completion-gate`
+### `mdc-completion-gate`
 
 **作用**
 
@@ -507,19 +507,19 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    starter[workflowStarter]
-    specify[workSpecify]
-    specReview[specReview]
-    design[workDesign]
-    designReview[designReview]
-    tasks[workTasks]
-    tasksReview[tasksReview]
-    implement[workImplement]
-    testReview[testReview]
-    codeReview[codeReview]
-    regressionGate[regressionGate]
-    completionGate[completionGate]
-    finalize[workFinalize]
+    starter[mdc-workflow-starter]
+    specify[mdc-specify]
+    specReview[mdc-spec-review]
+    design[mdc-design]
+    designReview[mdc-design-review]
+    tasks[mdc-tasks]
+    tasksReview[mdc-tasks-review]
+    implement[mdc-implement]
+    testReview[mdc-test-review]
+    codeReview[mdc-code-review]
+    regressionGate[mdc-regression-gate]
+    completionGate[mdc-completion-gate]
+    finalize[mdc-finalize]
 
     starter --> specify
     specify --> specReview
@@ -539,13 +539,13 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    starter[workflowStarter]
+    starter[mdc-workflow-starter]
     changeReq[changeRequestJson]
     hotfixReq[hotfixRequestJson]
-    increment[workIncrement]
-    hotfix[workHotfix]
-    tasks[workTasks]
-    implement[workImplement]
+    increment[mdc-increment]
+    hotfix[mdc-hotfix]
+    tasks[mdc-tasks]
+    implement[mdc-implement]
 
     starter --> changeReq
     starter --> hotfixReq
@@ -555,18 +555,18 @@ flowchart TD
     hotfix --> implement
 ```
 
-## 9. `workflow-starter` 的推荐路由规则
+## 9. `mdc-workflow-starter` 的推荐路由规则
 
 建议按如下优先级判断当前阶段：
 
-1. 若存在 `hotfix-request.json`，优先进入 `work-hotfix`
-2. 否则若存在 `change-request.json`，进入 `work-increment`
-3. 若没有已批准规格，进入 `work-specify`
-4. 若规格已批准但无已批准设计，进入 `work-design`
-5. 若设计已批准但无任务计划，进入 `work-tasks`
-6. 若任务计划存在且仍有未完成任务，进入 `work-implement`
-7. 若实现已完成但缺回归或完成验证证据，进入 `regression-gate` / `completion-gate`
-8. 若验证已完成但交付记录未整理，进入 `work-finalize`
+1. 若存在 `hotfix-request.json`，优先进入 `mdc-hotfix`
+2. 否则若存在 `change-request.json`，进入 `mdc-increment`
+3. 若没有已批准规格，进入 `mdc-specify`
+4. 若规格已批准但无已批准设计，进入 `mdc-design`
+5. 若设计已批准但无任务计划，进入 `mdc-tasks`
+6. 若任务计划存在且仍有未完成任务，进入 `mdc-implement`
+7. 若实现已完成但缺回归或完成验证证据，进入 `mdc-regression-gate` / `mdc-completion-gate`
+8. 若验证已完成但交付记录未整理，进入 `mdc-finalize`
 
 这里的“已批准”建议不要只靠对话表述，至少要在交付件中体现状态，例如：
 
@@ -603,13 +603,13 @@ flowchart TD
 
 | 阶段 | 必更工件 |
 |---|---|
-| `work-specify` | 规格文档、规格审查记录 |
-| `work-design` | 设计文档、设计审查记录 |
-| `work-tasks` | 任务计划、任务审查记录 |
-| `work-implement` | 代码、测试、进度日志 |
-| `test-review` / `code-review` | 审查记录、问题清单 |
-| `regression-gate` / `completion-gate` | 验证证据、通过/未通过结论 |
-| `work-finalize` | `task-progress.md`、`RELEASE_NOTES.md`、交付总结 |
+| `mdc-specify` | 规格文档、规格审查记录 |
+| `mdc-design` | 设计文档、设计审查记录 |
+| `mdc-tasks` | 任务计划、任务审查记录 |
+| `mdc-implement` | 代码、测试、进度日志 |
+| `mdc-test-review` / `mdc-code-review` | 审查记录、问题清单 |
+| `mdc-regression-gate` / `mdc-completion-gate` | 验证证据、通过/未通过结论 |
+| `mdc-finalize` | `task-progress.md`、`RELEASE_NOTES.md`、交付总结 |
 
 ### 11.2 推荐的最小记录格式
 
@@ -627,37 +627,37 @@ flowchart TD
 
 你原始设想是：
 
-- 第一层：`workflow-starter`
-- 第二层：`work-specify`、`work-design`、`work-tasks`、`work-implement`
-- 第三层：`design-review`、`cod-review`、`test-review`
+- 第一层：`mdc-workflow-starter`
+- 第二层：`mdc-specify`、`mdc-design`、`mdc-tasks`、`mdc-implement`
+- 第三层：`mdc-design-review`、`mdc-code-review`、`mdc-test-review`
 
 补全后的建议版本是：
 
 ### 第一层：流程编排
 
-- `workflow-starter`
+- `mdc-workflow-starter`
 
 ### 第二层：任务执行流
 
-- `work-specify`
-- `work-design`
-- `work-tasks`
-- `work-implement`
-- `work-increment`
-- `work-hotfix`
-- `work-finalize`
+- `mdc-specify`
+- `mdc-design`
+- `mdc-tasks`
+- `mdc-implement`
+- `mdc-increment`
+- `mdc-hotfix`
+- `mdc-finalize`
 
 ### 第三层：质量防护
 
-- `spec-review`
-- `design-review`
-- `tasks-review`
-- `test-review`
-- `code-review`
-- `regression-gate`
-- `completion-gate`
+- `mdc-spec-review`
+- `mdc-design-review`
+- `mdc-tasks-review`
+- `mdc-test-review`
+- `mdc-code-review`
+- `mdc-regression-gate`
+- `mdc-completion-gate`
 
-这是一个比初稿更完整、但仍然可控的体系。它没有引入 subagent，也没有过早引入太多自动化脚本，但已经具备了一条完整的 SDD 主线、两条支线、以及必要的阶段门禁。
+这是一个比初稿更完整、但仍然可控的体系。它没有引入 subagent，也没有过早引入太多自动化脚本，但已经具备了一条完整的 MDC 主线、两条支线、以及必要的阶段门禁。
 
 ## 13. 建议暂不继承的部分
 
@@ -677,32 +677,32 @@ flowchart TD
 
 ```text
 .cursor/skills/
-  sdd-workflow-starter/
-  sdd-work-specify/
-  sdd-spec-review/
-  sdd-work-design/
-  sdd-design-review/
-  sdd-work-tasks/
-  sdd-tasks-review/
-  sdd-work-implement/
-  sdd-test-review/
-  sdd-code-review/
-  sdd-regression-gate/
-  sdd-completion-gate/
-  sdd-work-increment/
-  sdd-work-hotfix/
-  sdd-work-finalize/
+  mdc-workflow-starter/
+  mdc-specify/
+  mdc-spec-review/
+  mdc-design/
+  mdc-design-review/
+  mdc-tasks/
+  mdc-tasks-review/
+  mdc-implement/
+  mdc-test-review/
+  mdc-code-review/
+  mdc-regression-gate/
+  mdc-completion-gate/
+  mdc-increment/
+  mdc-hotfix/
+  mdc-finalize/
 ```
 
 ### 14.2 推荐实现顺序
 
-1. `sdd-workflow-starter`
-2. `sdd-work-specify` + `sdd-spec-review`
-3. `sdd-work-design` + `sdd-design-review`
-4. `sdd-work-tasks` + `sdd-tasks-review`
-5. `sdd-work-implement` + `sdd-test-review` + `sdd-code-review`
-6. `sdd-regression-gate` + `sdd-completion-gate`
-7. `sdd-work-increment` + `sdd-work-hotfix` + `sdd-work-finalize`
+1. `mdc-workflow-starter`
+2. `mdc-specify` + `mdc-spec-review`
+3. `mdc-design` + `mdc-design-review`
+4. `mdc-tasks` + `mdc-tasks-review`
+5. `mdc-implement` + `mdc-test-review` + `mdc-code-review`
+6. `mdc-regression-gate` + `mdc-completion-gate`
+7. `mdc-increment` + `mdc-hotfix` + `mdc-finalize`
 
 ### 14.3 每个 skill 的编写原则
 
@@ -716,6 +716,6 @@ flowchart TD
 
 ## 15. 结论
 
-这套 SDD skills 体系的核心，不是“让 Agent 更会写代码”，而是“让 Agent 先按团队认可的开发节奏工作”。它继承了 `superpowers` 的强约束意识，也吸收了 `longtaskforagent` 的交付件驱动与阶段路由，但刻意去掉了 subagent，以换取更简单、更可控、更适合团队先落地试用的版本。
+这套 MDC skills 体系的核心，不是“让 Agent 更会写代码”，而是“让 Agent 先按团队认可的开发节奏工作”。它继承了 `superpowers` 的强约束意识，也吸收了 `longtaskforagent` 的交付件驱动与阶段路由，但刻意去掉了 subagent，以换取更简单、更可控、更适合团队先落地试用的版本。
 
 如果后续要实现，这份方案已经可以直接作为蓝图使用：你可以按本文的 skill 地图、门禁规则、交付件契约和实现顺序，一步步把它变成项目内的实际 skills 目录与 `SKILL.md` 文件。
