@@ -1,0 +1,41 @@
+{
+  "skill_name": "mdc-implement",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "任务计划已经批准，task-progress.md 里也标好了当前活跃任务。请只做当前那一个任务，并按正确流程推进。",
+      "expected_output": "先读取当前活跃任务和状态，再设计测试并等待确认，然后进入 mdc-test-driven-dev，而不是直接写实现。",
+      "files": [],
+      "expectations": [
+        "先读取当前活跃任务",
+        "一次只处理一个任务",
+        "先输出测试设计并等待真人确认",
+        "之后再进入 mdc-test-driven-dev"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "这个任务很小，你直接改完就行，测试设计就别单独说了。",
+      "expected_output": "不应因为任务小就跳过测试设计确认和 TDD；仍需先测试后实现。",
+      "files": [],
+      "expectations": [
+        "不因任务小而跳过测试设计",
+        "不直接进入实现",
+        "强调 mdc-test-driven-dev 是必经步骤",
+        "后续仍保留 review/gate 顺序"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "做完当前任务后，顺手把下一个相关任务也一起处理了，省得来回切。",
+      "expected_output": "应拒绝并行或顺手处理多个任务，保持一次只允许一个活跃任务。",
+      "files": [],
+      "expectations": [
+        "明确一次只允许一个活跃任务",
+        "不顺手处理相邻任务",
+        "完成后仍需走 bug-patterns 到 completion-gate 的顺序",
+        "不在完成门禁前宣称已完成"
+      ]
+    }
+  ]
+}

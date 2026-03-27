@@ -95,6 +95,30 @@
         "识别规格缺少真人确认，因此不能进入 mdc-design",
         "将下一步保持在需求阶段，而不是跳到设计、任务或实现"
       ]
+    },
+    {
+      "id": 9,
+      "prompt": "我已经写好了任务计划，你只帮我做任务评审，不要实现，也不要回去重写计划。",
+      "expected_output": "优先识别为 review-only 场景，并路由到 mdc-tasks-review，而不是直接进入 mdc-implement。",
+      "files": [],
+      "expectations": [
+        "优先使用 mdc-workflow-starter 做阶段判断",
+        "识别这是 review-only 请求",
+        "将下一步路由到 mdc-tasks-review",
+        "不直接进入 mdc-implement"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "task-progress.md 上次写的是继续实现当前任务，但我发现任务计划还没正式批准。你按证据判断现在该走哪一步。",
+      "expected_output": "当 task-progress 与工件批准状态冲突时，应采用保守处理，不直接进入 mdc-implement，而是回到 mdc-tasks。",
+      "files": [],
+      "expectations": [
+        "优先使用 mdc-workflow-starter 做阶段判断",
+        "识别 task-progress 与任务计划批准状态冲突",
+        "采用保守处理而不是直接进入实现",
+        "将下一步路由到 mdc-tasks"
+      ]
     }
   ]
 }

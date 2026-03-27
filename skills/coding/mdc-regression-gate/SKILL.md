@@ -13,6 +13,14 @@ description: 在代码评审之后、最终完成宣告之前，对已实现的 
 
 仅仅当前新任务测试通过，并不足以说明没有引入回归。
 
+## 适用时机
+
+优先用于以下场景：
+
+- 当前任务已完成主要实现与前置评审
+- 当前改动影响了相邻模块、共享能力或集成点
+- 准备从当前任务进入最终完成判定
+
 ## 输入
 
 使用以下输入：
@@ -20,6 +28,37 @@ description: 在代码评审之后、最终完成宣告之前，对已实现的 
 - 当前实现的任务
 - 任务计划中的验证要求
 - 项目常规验证命令
+
+## 记录要求
+
+回归门禁完成后，默认将本次验证写入：
+
+- `docs/verification/regression-<task>.md`
+
+如项目已有等价路径，可按 `mdc-contract` 映射路径保存。
+
+若项目尚未形成固定 verification 记录格式，默认使用：
+
+- `skills/coding/templates/verification-record-template.md`
+
+如果结论为 `通过`，应同步更新：
+
+- `task-progress.md` 中相关回归状态
+- `task-progress.md` 的 Next Skill 为 `mdc-completion-gate`
+
+如果结论为 `需修改`，应同步更新：
+
+- 当前任务仍需回到实现
+- `task-progress.md` 的 Next Skill 为 `mdc-implement`
+
+如果结论为 `阻塞`，应同步更新：
+
+- `task-progress.md` 中相关回归状态与阻塞原因
+- `task-progress.md` 的 Next Skill 暂时保持为 `mdc-regression-gate`
+
+若项目尚未形成固定进度记录格式，默认使用：
+
+- `skills/coding/templates/task-progress-template.md`
 
 ## 工作流
 
@@ -71,7 +110,11 @@ description: 在代码评审之后、最终完成宣告之前，对已实现的 
 
 ## 下一步
 
-`mdc-completion-gate` | `mdc-implement`
+`mdc-completion-gate` | `mdc-implement` | `补齐阻塞条件后重试 mdc-regression-gate`
+
+## 记录位置
+
+- `docs/verification/regression-<task>.md` 或映射路径
 ```
 
 ## 判定规则
@@ -91,4 +134,4 @@ description: 在代码评审之后、最终完成宣告之前，对已实现的 
 
 ## 完成条件
 
-只有在基于最新证据给出明确门禁结论和唯一下一步后，这个 skill 才算完成。
+只有在基于最新证据给出明确门禁结论、记录位置和唯一下一步后，这个 skill 才算完成。

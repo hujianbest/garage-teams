@@ -1,7 +1,35 @@
 ---
 name: mdc-test-driven-dev
-description: 使用 GoogleTest 进行 C++ 测试驱动开发。当用户要编写 C++ 代码、实现新功能、修复 Bug、重构 C++ 项目时，请务必使用此技能——即使用户没有明确提到 TDD 或测试。只要涉及 C++ 实现代码的编写，就应先写测试再写实现。同样适用于用户提到 gtest、gmock、ctest、CMake 测试、C++ 单元测试等场景。
+description: 作为 MDC 系列的统一 TDD 入口使用。在 `mdc-implement` 或 `mdc-hotfix` 进入测试驱动开发时先调用本 skill，再按语言或项目类型路由到具体实现。当前默认覆盖 C++/GoogleTest 场景；若项目不是 C++，需显式说明当前未覆盖，而不是假定存在其他实现。
 ---
+
+# MDC 测试驱动开发入口
+
+## 入口职责
+
+这个 skill 是 `mdc-implement` 和 `mdc-hotfix` 调用的统一 TDD 入口。
+
+职责如下：
+
+1. 识别当前项目语言或测试栈
+2. 路由到具体的 TDD 实现方式
+3. 如果当前语言未覆盖，明确报告缺口，而不是假定可以继续
+
+## 当前路由规则
+
+- 若项目是 C++ / GoogleTest / CMake 测试栈，按本文后续规则执行
+- 若项目不是 C++，明确说明当前 `mdc-test-driven-dev` 仅已覆盖 C++，需要后续补对应语言实现
+
+当前仓库中的这份内容同时承担：
+
+- `mdc` 系列级 TDD 入口
+- C++ / GoogleTest 的具体 TDD 指南
+
+## 与 MDC 主链的关系
+
+- `mdc-implement` 进入测试驱动实现时先调用本 skill
+- `mdc-hotfix` 进入复现与最小修复时也先调用本 skill
+- 本 skill 不负责替代后续的 `mdc-bug-patterns`、`mdc-test-review`、`mdc-code-review`、`mdc-regression-gate`、`mdc-completion-gate`
 
 # C++ 测试驱动开发（TDD with GoogleTest）
 
