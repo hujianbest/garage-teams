@@ -1,0 +1,574 @@
+# MDC 系列 Skills
+
+## 简介
+
+`skills/coding/` 下的 `mdc-*` 系列是一套面向软件交付流程的 workflow skills。
+
+它的目标不是让 Agent “更自由地写代码”，而是让 Agent 在软件开发任务里先按正确顺序工作：
+
+- 先路由，再行动
+- 先规格，再设计，再任务，再实现
+- 实现阶段遵守 TDD 与评审顺序
+- 没有 fresh verification evidence，不宣称完成
+
+这套体系主要参考了两类方法：
+
+- `superpowers`：借鉴强工作流约束、TDD 铁律、完成前验证门禁
+- `longtaskforagent`：借鉴 phase routing、工件驱动、跨会话状态恢复、支线流程
+
+同时，`mdc` 明确保留一个边界：
+
+- **不依赖 subagent 编排**
+
+也就是说，`mdc` 追求的是一套**轻量但强约束**的软件交付 skills，而不是一个重型、多代理工程操作系统。
+
+## 适用场景
+
+当用户请求属于以下任一场景时，应优先进入 `mdc` 流程：
+
+- 开始一个新需求、功能或项目
+- 用户说“继续”“推进”“开始做”“先处理这个”
+- 需要澄清需求、做设计、拆任务、实现代码
+- 需要做规格评审、设计评审、任务评审、测试评审、代码评审、追溯性评审
+- 需求发生变更，需要走增量流程
+- 出现紧急缺陷，需要走热修复流程
+
+对于这类请求，`mdc-workflow-starter` 是系列统一入口。
+
+## 设计目标
+
+`mdc` 的核心目标是：
+
+1. 用流程约束替代“想到哪做到哪”的编码方式。
+2. 用工件和记录承接状态，而不是依赖对话记忆。
+3. 把质量防护独立成层，而不是在最后“顺手检查一下”。
+4. 在不引入 subagent 的前提下，保留评审、回退、验证、收尾闭环。
+
+## 非目标
+
+当前 `mdc` 不追求：
+
+- 多代理并行编排
+- 完整复制 `longtaskforagent` 的 ATS / Feature-ST / System-ST 重流程
+- 依赖大量信号文件或中央状态机
+- 替代 CI/CD、代码托管平台或正式人工审批制度
+
+## 系列结构
+
+`mdc` 目前可以理解为 3 层结构。
+
+```mermaid
+flowchart TD
+    starter[mdc-workflow-starter]
+
+    subgraph executionLayer [任务执行层]
+        workSpecify[mdc-specify]
+        workDesign[mdc-design]
+        workTasks[mdc-tasks]
+        workImplement[mdc-implement]
+        workIncrement[mdc-increment]
+        workHotfix[mdc-hotfix]
+        workFinalize[mdc-finalize]
+    end
+
+    subgraph qualityLayer [质量防护层]
+        specReview[mdc-spec-review]
+        specConfirm[规格真人确认]
+        designReview[mdc-design-review]
+        designConfirm[设计真人确认]
+        tasksReview[mdc-tasks-review]
+        bugPatterns[mdc-bug-patterns]
+        testReview[mdc-test-review]
+        codeReview[mdc-code-review]
+        traceabilityReview[mdc-traceability-review]
+        regressionGate[mdc-regression-gate]
+        completionGate[mdc-completion-gate]
+    end
+
+    starter --> workSpecify
+    workSpecify --> specReview
+    specReview -->|通过| specConfirm
+    specReview -->|需修改/阻塞| workSpecify
+    specConfirm --> workDesign
+    workDesign --> designReview
+    designReview -->|通过| designConfirm
+    designReview -->|需修改/阻塞| workDesign
+    designConfirm --> workTasks
+    workTasks --> tasksReview
+    tasksReview --> workImplement
+    workImplement --> bugPatterns
+    bugPatterns --> testReview
+    testReview --> codeReview
+    codeReview --> traceabilityReview
+    traceabilityReview --> regressionGate
+    regressionGate --> completionGate
+    completionGate --> workFinalize
+
+    starter --> workIncrement
+    starter --> workHotfix
+```
+
+### 1. 编排层
+
+- `mdc-workflow-starter`
+
+职责：
+
+- 读取阶段证据
+- 判断当前所处阶段
+- 决定唯一正确的下一步 skill
+- 阻止乱序推进
+
+### 2. 执行层
+
+- `mdc-specify`
+- `mdc-design`
+- `mdc-tasks`
+- `mdc-implement`
+- `mdc-increment`
+- `mdc-hotfix`
+- `mdc-finalize`
+
+职责：
+
+- 产出规格、设计、任务、实现和收尾结果
+- 在主链和支线中推进实际工作
+
+### 3. 质量防护层
+
+- `mdc-spec-review`
+- `mdc-design-review`
+- `mdc-tasks-review`
+- `mdc-bug-patterns`
+- `mdc-test-review`
+- `mdc-code-review`
+- `mdc-traceability-review`
+- `mdc-regression-gate`
+- `mdc-completion-gate`
+
+职责：
+
+- 审查上游产出是否足够好
+- 在进入下游前给出 `通过` / `需修改` / `阻塞` 结论
+- 将 review / verification 结果落盘并同步状态
+
+## Skill 索引
+
+下表用于快速定位每个 `mdc-*` skill 的职责与常见使用时机。
+
+| Skill | 层级 | 主要职责 | 典型触发时机 |
+|---|---|---|---|
+| `mdc-workflow-starter` | 编排层 | 判断当前阶段并路由到唯一正确的下一步 skill | 新需求开始、用户说“继续”、review-only、变更、热修 |
+| `mdc-specify` | 执行层 | 产出需求规格草稿 | 没有已批准规格，或规格仍需修订 |
+| `mdc-spec-review` | 质量层 | 审查规格是否完整、清晰、可验证 | 规格草稿已完成，准备进入真人确认前 |
+| `mdc-design` | 执行层 | 基于已批准规格产出设计草稿 | 规格已批准，但设计尚未批准 |
+| `mdc-design-review` | 质量层 | 审查设计是否覆盖规格并具备可实现性 | 设计草稿已完成，准备进入真人确认前 |
+| `mdc-tasks` | 执行层 | 将设计翻译为可执行任务计划 | 设计已批准，但任务计划尚未批准 |
+| `mdc-tasks-review` | 质量层 | 审查任务计划粒度、依赖、DoD 与验证安排 | 任务计划草稿已完成，准备进入实现前 |
+| `mdc-implement` | 执行层 | 按唯一活跃任务执行实现，并串起 TDD 与质量链 | 任务计划已批准，且仍有未完成任务 |
+| `mdc-test-driven-dev` | 执行层支持 | 作为统一 TDD 入口，按语言或项目类型路由具体 TDD 实现 | `mdc-implement` 或 `mdc-hotfix` 进入 TDD 时 |
+| `mdc-bug-patterns` | 质量层 | 对当前改动做缺陷模式专项排查 | 当前任务完成最小实现，准备进入正式评审链 |
+| `mdc-test-review` | 质量层 | 审查测试是否真正验证行为 | 缺陷模式排查之后，代码评审之前 |
+| `mdc-code-review` | 质量层 | 审查实现正确性、可维护性与设计一致性 | 测试评审通过后 |
+| `mdc-traceability-review` | 质量层 | 检查规格、设计、任务、实现、测试、验证链路是否一致 | 代码评审后，回归门禁前 |
+| `mdc-regression-gate` | 质量层 | 确认改动没有破坏相关行为或集成面 | 追溯性评审后，完成门禁前 |
+| `mdc-completion-gate` | 质量层 | 用最新验证证据决定是否允许宣称完成 | 准备更新完成状态、切换任务、输出交付说明前 |
+| `mdc-increment` | 执行层支线 | 处理需求追加、范围调整与变更影响同步 | 用户提出新增、删改需求，或现有工件表明范围变化 |
+| `mdc-hotfix` | 执行层支线 | 处理紧急缺陷修复，并要求先复现再修 | 用户提出紧急缺陷修复，或现有证据表明处于热修复场景 |
+| `mdc-finalize` | 执行层 | 收尾当前工作周期，更新状态、发布说明和证据索引 | 完成门禁通过后，准备结束当前周期时 |
+
+## 主链工作流
+
+默认主链如下：
+
+```text
+mdc-workflow-starter
+-> mdc-specify
+-> mdc-spec-review
+-> 规格真人确认
+-> mdc-design
+-> mdc-design-review
+-> 设计真人确认
+-> mdc-tasks
+-> mdc-tasks-review
+-> mdc-implement
+-> mdc-bug-patterns
+-> mdc-test-review
+-> mdc-code-review
+-> mdc-traceability-review
+-> mdc-regression-gate
+-> mdc-completion-gate
+-> mdc-finalize
+```
+
+这条链路体现了 `mdc` 最核心的约束：
+
+- 未批准规格前，不进入设计
+- 未批准设计前，不进入任务
+- 未批准任务前，不进入实现
+- 未完成质量链与门禁前，不宣称完成
+
+## 支线工作流
+
+### 增量变更
+
+当已有规格、设计、任务已经存在，但用户提出新增、删改或范围调整时：
+
+```text
+mdc-workflow-starter
+-> mdc-increment
+-> 回流到 mdc-tasks / mdc-implement / 相关 review
+```
+
+### 热修复
+
+当出现紧急缺陷修复场景时：
+
+```text
+mdc-workflow-starter
+-> mdc-hotfix
+-> mdc-implement
+-> 质量层
+-> mdc-finalize
+```
+
+热修复不是“先改再补流程”，而是走一条压缩但仍受约束的支线。
+
+## 工件与状态
+
+`mdc` 采用轻量工件驱动，而不是完全依赖会话记忆。
+
+推荐的最小工件集合包括：
+
+- 需求规格：`docs/specs/`
+- 设计文档：`docs/designs/`
+- 任务计划：`docs/tasks/`
+- 进度记录：`task-progress.md`
+- 评审记录：`docs/reviews/`
+- 验证记录：`docs/verification/`
+- 发布说明：`RELEASE_NOTES.md`
+
+如果项目已有自己的等价工件，可以通过 `mdc-contract` 映射，而不必强行改名。
+
+相关模板与参考资料位于：
+
+- `mdc-workflow-starter/references/mdc-contract-template.md`
+- `mdc-workflow-starter/references/routing-evidence-guide.md`
+- `templates/task-progress-template.md`
+- `templates/review-record-template.md`
+- `templates/verification-record-template.md`
+
+## 使用原则
+
+### 1. 先路由，后动作
+
+对 `mdc` 系列而言，以下都算“动作”：
+
+- 澄清
+- 探索
+- 读代码
+- review
+- 设计
+- 任务拆解
+- 实现
+
+动作之前，应先通过 `mdc-workflow-starter` 完成阶段判断。
+
+### 2. 证据优先于印象
+
+不要只根据聊天上下文判断阶段。
+
+优先依据：
+
+- 工件是否存在
+- 是否有批准状态
+- 是否有真人确认痕迹
+- `task-progress.md`、review 记录、verification 记录是否支持当前阶段
+
+如果证据冲突，按更保守的上游阶段处理。
+
+### 3. TDD 是实现流内部的一部分
+
+`mdc-implement` 不允许把测试放到实现之后“顺手补”。
+
+默认顺序是：
+
+```text
+测试用例设计
+-> 真人确认测试设计
+-> mdc-test-driven-dev
+-> bug patterns
+-> test review
+-> code review
+-> traceability review
+-> regression gate
+-> completion gate
+```
+
+### 4. 完成必须可验证
+
+`mdc-completion-gate` 是末端硬门禁。
+
+在以下动作之前必须通过它：
+
+- 宣称完成
+- 更新状态为已完成
+- 切换到下一个任务
+- 输出带完成含义的交付说明
+
+## 快速上手示例
+
+下面给一个最小使用路径，适合第一次在项目里尝试 `mdc`。
+
+### 场景 1：开始一个新功能
+
+用户请求：
+
+```text
+给现有系统加一个导出 CSV 的功能
+```
+
+建议使用顺序：
+
+1. 先进入 `mdc-workflow-starter`
+2. 若没有已批准规格，进入 `mdc-specify`
+3. 规格草稿完成后，进入 `mdc-spec-review`
+4. 真人确认规格后，进入 `mdc-design`
+5. 设计草稿完成后，进入 `mdc-design-review`
+6. 真人确认设计后，进入 `mdc-tasks`
+7. 任务计划通过 `mdc-tasks-review` 后，进入 `mdc-implement`
+8. 实现完成后，按顺序走质量层和门禁
+9. 最后进入 `mdc-finalize`
+
+最小建议工件：
+
+- `docs/specs/<topic>.md`
+- `docs/designs/<topic>.md`
+- `docs/tasks/<topic>.md`
+- `task-progress.md`
+
+### 场景 2：用户只说“继续”
+
+用户请求：
+
+```text
+继续
+```
+
+此时不要默认进入实现。
+
+正确做法：
+
+1. 先进入 `mdc-workflow-starter`
+2. 检查规格、设计、任务是否已批准
+3. 检查 `task-progress.md`
+4. 检查是否还缺 review / gate 证据
+5. 根据证据决定下一步是 `mdc-implement`、某个 review skill、某个 gate，还是 `mdc-finalize`
+
+### 场景 3：修一个紧急缺陷
+
+用户请求：
+
+```text
+线上导出接口报 500，先修这个
+```
+
+建议使用顺序：
+
+1. 先进入 `mdc-workflow-starter`
+2. 路由到 `mdc-hotfix`
+3. 先复现问题，再做最小修复
+4. 修复后仍要经过质量层和门禁
+5. 最后进入 `mdc-finalize`
+
+### 场景 4：项目已经有自己的状态文件
+
+如果项目已经有等价状态文件，不一定必须新建 `task-progress.md`。
+
+但应满足同等信息承载能力，至少能表示：
+
+- 当前阶段
+- 当前活跃任务
+- 下一步 skill
+- 已批准工件
+- 待处理 review / gate
+
+如果没有这类等价工件，建议直接采用 `templates/task-progress-template.md`。
+
+## 当前实现状态
+
+目前仓库里的 `mdc` 已经不是纯设计稿，而是有一套可工作的实现：
+
+- `mdc-workflow-starter` 已成为系列统一入口门
+- 主链和两条支线已落地
+- `task-progress` / review / verification 模板已补齐
+- 质量层已统一到记录路径、模板引用和状态语义
+- `mdc-implement -> mdc-test-driven-dev` 的入口依赖已闭合
+- 主链关键节点已有一轮基础 eval 文件
+
+但仍有几个已知边界：
+
+- `mdc-test-driven-dev` 当前具体实现主要覆盖 C++ / GoogleTest 场景
+- eval 文件已补到关键节点，但还未形成完整“运行并迭代”的闭环
+- 当前没有引入 `feature-list.json` 那种重型中央状态文件
+
+## 目录说明
+
+`skills/coding/` 下当前主要内容可按功能理解为：
+
+- `mdc-*/SKILL.md`
+  - 各个 workflow skill 的主体定义
+- `mdc-workflow-starter/references/`
+  - 路由证据、最小工件契约等参考资料
+- `templates/`
+  - `task-progress`、review、verification 的推荐模板
+- `*/evals/`
+  - 部分关键 skill 的基础评测用例
+- `coding-skills-design.md`
+  - 这套体系的原始设计蓝图与设计依据
+
+## 建议阅读顺序
+
+如果你是第一次接触这套体系，推荐按以下顺序阅读：
+
+1. `README.md`
+2. `coding-skills-design.md`
+3. `mdc-workflow-starter/SKILL.md`
+4. `mdc-specify` / `mdc-design` / `mdc-tasks` / `mdc-implement`
+5. 质量层相关 `mdc-*-review` 与 `mdc-*-gate`
+6. `templates/` 与 `references/`
+
+如果你是准备实际使用，优先读：
+
+1. `mdc-workflow-starter/SKILL.md`
+2. `mdc-workflow-starter/references/mdc-contract-template.md`
+3. `templates/task-progress-template.md`
+
+## 与设计稿的关系
+
+`coding-skills-design.md` 是这套体系的设计蓝图。
+
+本 README 的角色不同：
+
+- 设计稿回答“为什么要这样设计”
+- README 回答“这套 skills 现在是什么、怎么用、边界在哪”
+
+也就是说：
+
+- 设计稿偏架构与原则
+- README 偏入口与使用说明
+
+## 常见误用 / FAQ
+
+### 1. 用户只说“继续”，为什么不能直接进入 `mdc-implement`？
+
+因为“继续”不是阶段证据。
+
+在 `mdc` 体系里，继续实现之前至少要先确认：
+
+- 规格是否已批准
+- 设计是否已批准
+- 任务计划是否已批准
+- 当前任务是否真的还在实现阶段
+- 是否还缺 review / gate
+
+所以“继续”默认先进入 `mdc-workflow-starter`，而不是默认进入 `mdc-implement`。
+
+### 2. 什么时候必须有 `task-progress.md`？
+
+如果项目没有自己的等价状态文件，且你准备实际按 `mdc` 主链推进，就应有 `task-progress.md` 或等价工件。
+
+它至少要承载：
+
+- 当前阶段
+- 当前活跃任务
+- 下一步 skill
+- 已批准工件
+- 待处理 review / gate
+
+如果项目已有自己的状态页、任务页或等价记录，并且这些信息足够完整，可以不强制新建 `task-progress.md`，而是通过 `mdc-contract` 做映射。
+
+### 3. 为什么 review-only 请求也要先走 `mdc-workflow-starter`？
+
+因为 review 也是流程动作，不是流程外动作。
+
+如果用户说“只做代码评审”或“只做规格评审”，仍然需要先判断：
+
+- 当前请求属于哪一种 review
+- 当前是否存在对应工件
+- 是否处在合理的 review 时机
+
+因此 review-only 也应该先经过入口路由。
+
+### 4. 为什么不能跳过规格或设计，直接拆任务或编码？
+
+因为 `mdc` 的核心就是把软件交付拆成：
+
+- WHAT：规格
+- HOW：设计
+- EXECUTION：任务与实现
+
+如果跳过上游阶段，会直接损坏后续几个关键能力：
+
+- 任务是否有依据
+- 评审是否有标准
+- 追溯性是否成立
+- 完成是否真的可验证
+
+### 5. 热修复是不是可以只修代码，不走完整质量链？
+
+不是。
+
+`mdc-hotfix` 是压缩支线，不是绕过流程的特权通道。
+
+热修复仍然要求：
+
+- 先复现
+- 最小修复
+- 经过质量层和门禁
+- 回写状态与相关工件
+
+### 6. 所有项目都必须采用 README 里写的默认路径吗？
+
+不是。
+
+README 里给的是推荐默认布局：
+
+- `docs/specs/`
+- `docs/designs/`
+- `docs/tasks/`
+- `docs/reviews/`
+- `docs/verification/`
+- `task-progress.md`
+
+如果项目已有自己的交付件命名或目录结构，优先通过 `mdc-contract` 映射，而不是强迫项目重命名。
+
+### 7. `mdc-test-driven-dev` 是否已经覆盖所有语言？
+
+还没有。
+
+当前它已经是系列级统一入口，但具体实现目前主要覆盖 C++ / GoogleTest 场景。  
+这意味着：
+
+- 入口规则已经统一
+- 多语言具体 TDD 实现还需要后续继续补
+
+### 8. 有了 review 通过结论，为什么还不能直接视为已批准？
+
+因为在 `mdc` 体系里，规格和设计存在“评审通过”和“真人确认通过”两个层次。
+
+尤其是：
+
+- 规格评审通过，不等于规格已冻结
+- 设计评审通过，不等于设计已批准
+
+只有显式批准证据存在时，`mdc-workflow-starter` 才应把它们当作已批准工件。
+
+## 一句话总结
+
+`mdc` 是一套面向软件交付的轻量 workflow skills：
+
+- 借鉴 `superpowers` 的强流程约束
+- 借鉴 `longtaskforagent` 的轻量工件驱动
+- 不依赖 subagent
+- 重点解决“先做什么、何时能往下走、什么才算完成”
