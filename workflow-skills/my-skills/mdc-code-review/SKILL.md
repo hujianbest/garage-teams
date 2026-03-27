@@ -1,6 +1,6 @@
 ---
 name: mdc-code-review
-description: 在测试评审之后、回归与完成门禁之前，对已实现的 MDC 任务代码进行评审。适用于需要检查正确性、可读性、错误处理、设计一致性和局部代码质量的场景。
+description: 在测试评审之后、可追溯性评审与回归门禁之前，对已实现的 MDC 任务代码进行评审。适用于需要检查正确性、可读性、错误处理、设计一致性和局部代码质量的场景。
 ---
 
 # MDC 代码评审
@@ -55,7 +55,7 @@ PASS | REVISE
 
 ## Next Step
 
-`mdc-regression-gate` | `mdc-implement`
+`mdc-traceability-review` | `mdc-implement`
 ```
 
 ## 判定规则

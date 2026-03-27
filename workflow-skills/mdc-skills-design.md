@@ -89,8 +89,10 @@ flowchart TD
         specReview[mdc-spec-review]
         designReview[mdc-design-review]
         tasksReview[mdc-tasks-review]
+        bugPatterns[mdc-bug-patterns]
         testReview[mdc-test-review]
         codeReview[mdc-code-review]
+        traceabilityReview[mdc-traceability-review]
         regressionGate[mdc-regression-gate]
         completionGate[mdc-completion-gate]
     end
@@ -102,9 +104,11 @@ flowchart TD
     designReview --> workTasks
     workTasks --> tasksReview
     tasksReview --> workImplement
-    workImplement --> testReview
+    workImplement --> bugPatterns
+    bugPatterns --> testReview
     testReview --> codeReview
-    codeReview --> regressionGate
+    codeReview --> traceabilityReview
+    traceabilityReview --> regressionGate
     regressionGate --> completionGate
     completionGate --> workFinalize
 
@@ -142,8 +146,10 @@ flowchart TD
 - `mdc-spec-review`
 - `mdc-design-review`
 - `mdc-tasks-review`
+- `mdc-bug-patterns`
 - `mdc-test-review`
 - `mdc-code-review`
+- `mdc-traceability-review`
 - `mdc-regression-gate`
 - `mdc-completion-gate`
 
@@ -152,8 +158,14 @@ flowchart TD
 - 你原始草案中的 `cod-review` 建议统一更名为 `mdc-code-review`。
 - `mdc-spec-review` 是必须补上的，否则 `mdc-specify` 的输出没有正式冻结门。
 - `mdc-tasks-review` 也是建议补上的，否则任务分解可能直接把坏设计带进实现。
+- `mdc-bug-patterns` 用于把团队历史错误案例和高频编码风险前置到实现评审链中。
+- `mdc-traceability-review` 用于在进入回归前确认规格、设计、任务、实现和验证仍然能对齐。
 
 ## 6. 交付件契约与兼容层
+
+质量与变更相关的配套模板可统一从以下索引进入：
+
+- `my-skills/quality-reference-index.md`
 
 ### 6.1 为什么需要“逻辑工件”和“实际文件路径”分离
 
@@ -324,8 +336,9 @@ flowchart TD
 2. 选择当前唯一活动任务
 3. 按 TDD 执行 Red -> Green -> Refactor
 4. 产出或更新 UT/集成测试
-5. 进入 `mdc-test-review` 和 `mdc-code-review`
-6. 运行回归检查与完成验证
+5. 进入 `mdc-bug-patterns`、`mdc-test-review`、`mdc-code-review`
+6. 执行 `mdc-traceability-review`
+7. 运行回归检查与完成验证
 
 **关键规则**
 
@@ -338,6 +351,10 @@ flowchart TD
 **目标**
 
 处理需求追加、范围调整、延后项回收。
+
+**建议配套资料**
+
+- `my-skills/mdc-increment/references/change-impact-sync-record-template.md`
 
 **借鉴来源**
 
@@ -352,14 +369,19 @@ flowchart TD
 
 1. 读取当前规格、设计、任务计划与变更请求
 2. 做影响分析
-3. 更新规格与设计受影响部分
-4. 如有必要，回到 `mdc-tasks`
+3. 更新规格、设计、任务计划、验证策略中受影响的部分
+4. 明确哪些记录、发布说明、进度状态也需要同步刷新
+5. 如有必要，回到 `mdc-tasks`
 
 ### `mdc-hotfix`
 
 **目标**
 
 处理高优先级线上或交付前缺陷。
+
+**建议配套资料**
+
+- `my-skills/mdc-hotfix/references/hotfix-repro-and-sync-record-template.md`
 
 **借鉴来源**
 
@@ -375,8 +397,8 @@ flowchart TD
 
 1. 先写失败复现测试
 2. 做最小修复
-3. 执行回归与完成验证
-4. 同步回写规格/设计/任务文档中受影响的部分
+3. 执行 `mdc-bug-patterns`、评审、追溯检查、回归与完成验证
+4. 同步回写规格、设计、任务、发布说明和状态记录中受影响的部分
 
 ### `mdc-finalize`
 
@@ -434,6 +456,23 @@ flowchart TD
 - 每个任务是否有明确 DoD
 - 是否为实现阶段准备了测试和验证动作
 
+### `mdc-bug-patterns`
+
+**作用**
+
+在常规测试评审和代码评审之前，针对当前改动所命中的已知缺陷模式做专项排查。
+
+**建议配套资料**
+
+- `my-skills/mdc-bug-patterns/references/bug-pattern-catalog-template.md`
+
+**检查维度**
+
+- 是否命中团队历史高频错误模式
+- 是否存在边界、空值、状态、时序、幂等等典型风险
+- 是否已经通过测试、保护性代码或约束手段覆盖这些风险
+- 是否只是修掉表象，而未触及同类缺陷机制
+
 ### `mdc-test-review`
 
 **作用**
@@ -466,6 +505,23 @@ flowchart TD
 - 边界处理
 - 错误处理
 - 是否偏离设计
+
+### `mdc-traceability-review`
+
+**作用**
+
+在进入回归前检查需求、设计、任务、实现、测试、验证之间是否仍能互相对得上。
+
+**建议配套资料**
+
+- `my-skills/mdc-traceability-review/references/traceability-review-record-template.md`
+
+**检查维度**
+
+- 当前实现是否仍符合已批准规格与设计
+- 当前任务完成项能否回指到相应设计或需求片段
+- 测试和验证证据是否覆盖被宣称完成的行为
+- 是否出现 undocumented behavior、orphan code 或无记录偏离
 
 ### `mdc-regression-gate`
 
@@ -515,8 +571,10 @@ flowchart TD
     tasks[mdc-tasks]
     tasksReview[mdc-tasks-review]
     implement[mdc-implement]
+    bugPatterns[mdc-bug-patterns]
     testReview[mdc-test-review]
     codeReview[mdc-code-review]
+    traceabilityReview[mdc-traceability-review]
     regressionGate[mdc-regression-gate]
     completionGate[mdc-completion-gate]
     finalize[mdc-finalize]
@@ -528,9 +586,11 @@ flowchart TD
     designReview --> tasks
     tasks --> tasksReview
     tasksReview --> implement
-    implement --> testReview
+    implement --> bugPatterns
+    bugPatterns --> testReview
     testReview --> codeReview
-    codeReview --> regressionGate
+    codeReview --> traceabilityReview
+    traceabilityReview --> regressionGate
     regressionGate --> completionGate
     completionGate --> finalize
 ```
@@ -546,6 +606,7 @@ flowchart TD
     hotfix[mdc-hotfix]
     tasks[mdc-tasks]
     implement[mdc-implement]
+    regressionGate[mdc-regression-gate]
 
     starter --> changeReq
     starter --> hotfixReq
@@ -553,6 +614,7 @@ flowchart TD
     increment --> tasks
     hotfixReq --> hotfix
     hotfix --> implement
+    hotfix --> regressionGate
 ```
 
 ## 9. `mdc-workflow-starter` 的推荐路由规则
@@ -565,8 +627,10 @@ flowchart TD
 4. 若规格已批准但无已批准设计，进入 `mdc-design`
 5. 若设计已批准但无任务计划，进入 `mdc-tasks`
 6. 若任务计划存在且仍有未完成任务，进入 `mdc-implement`
-7. 若实现已完成但缺回归或完成验证证据，进入 `mdc-regression-gate` / `mdc-completion-gate`
-8. 若验证已完成但交付记录未整理，进入 `mdc-finalize`
+7. 若当前任务已实现但尚未完成缺陷模式排查，进入 `mdc-bug-patterns`
+8. 若当前任务缺测试、代码或追溯性评审，依次进入 `mdc-test-review`、`mdc-code-review`、`mdc-traceability-review`
+9. 若实现已完成但缺回归或完成验证证据，进入 `mdc-regression-gate` / `mdc-completion-gate`
+10. 若验证已完成但交付记录未整理，进入 `mdc-finalize`
 
 这里的“已批准”建议不要只靠对话表述，至少要在交付件中体现状态，例如：
 
@@ -606,9 +670,12 @@ flowchart TD
 | `mdc-specify` | 规格文档、规格审查记录 |
 | `mdc-design` | 设计文档、设计审查记录 |
 | `mdc-tasks` | 任务计划、任务审查记录 |
-| `mdc-implement` | 代码、测试、进度日志 |
+| `mdc-implement` | 代码、测试、进度日志、当前任务上下文 |
+| `mdc-bug-patterns` | 缺陷模式命中记录、补充测试或防护说明 |
 | `mdc-test-review` / `mdc-code-review` | 审查记录、问题清单 |
+| `mdc-traceability-review` | 规格/设计/任务/实现/验证一致性记录 |
 | `mdc-regression-gate` / `mdc-completion-gate` | 验证证据、通过/未通过结论 |
+| `mdc-increment` / `mdc-hotfix` | 受影响工件清单、同步刷新记录 |
 | `mdc-finalize` | `task-progress.md`、`RELEASE_NOTES.md`、交付总结 |
 
 ### 11.2 推荐的最小记录格式
@@ -652,8 +719,10 @@ flowchart TD
 - `mdc-spec-review`
 - `mdc-design-review`
 - `mdc-tasks-review`
+- `mdc-bug-patterns`
 - `mdc-test-review`
 - `mdc-code-review`
+- `mdc-traceability-review`
 - `mdc-regression-gate`
 - `mdc-completion-gate`
 
@@ -685,8 +754,10 @@ flowchart TD
   mdc-tasks/
   mdc-tasks-review/
   mdc-implement/
+  mdc-bug-patterns/
   mdc-test-review/
   mdc-code-review/
+  mdc-traceability-review/
   mdc-regression-gate/
   mdc-completion-gate/
   mdc-increment/
@@ -700,9 +771,10 @@ flowchart TD
 2. `mdc-specify` + `mdc-spec-review`
 3. `mdc-design` + `mdc-design-review`
 4. `mdc-tasks` + `mdc-tasks-review`
-5. `mdc-implement` + `mdc-test-review` + `mdc-code-review`
-6. `mdc-regression-gate` + `mdc-completion-gate`
-7. `mdc-increment` + `mdc-hotfix` + `mdc-finalize`
+5. `mdc-implement` + `mdc-bug-patterns` + `mdc-test-review`
+6. `mdc-code-review` + `mdc-traceability-review`
+7. `mdc-regression-gate` + `mdc-completion-gate`
+8. `mdc-increment` + `mdc-hotfix` + `mdc-finalize`
 
 ### 14.3 每个 skill 的编写原则
 
@@ -711,6 +783,8 @@ flowchart TD
 - `SKILL.md` 尽量控制在 500 行以内
 - 主文件只保留规则、流程、触发条件和必要模板
 - 详细检查表、示例、记录模板放到同目录下的 reference 文件
+- 对需要团队持续积累的质量 skill，优先补配 reference 模板，而不是把样例全部堆进主 `SKILL.md`
+- 对变更流和热修复流，也建议补结构化记录模板，避免“分析过了但没有留下证据”
 - `description` 中写清楚 WHAT + WHEN
 - 明确写出何时不该使用本 skill
 

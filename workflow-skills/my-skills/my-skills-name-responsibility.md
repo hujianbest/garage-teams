@@ -23,12 +23,14 @@
 | `mdc-tasks`            | `sdd-work-tasks`       | `mdc-tasks`            | 将已批准的设计拆解成可执行任务计划，明确里程碑、依赖、完成条件和验证方式。                    |
 | `mdc-tasks-review`     | `sdd-tasks-review`     | `mdc-tasks-review`     | 负责审核任务计划是否粒度合适、顺序合理、依赖正确、可验证，并可进入实现阶段。                   |
 | `mdc-implement`        | `sdd-work-implement`   | `mdc-implement`        | 按已批准任务计划逐项实现，遵循一次一个任务、TDD、评审与验证闭环，不得跳步。                  |
+| `mdc-bug-patterns`     |                        | `mdc-bug-patterns`     | 负责基于团队历史错误案例和常见缺陷模式，对当前实现进行专项排查，补充风险防护与针对性验证。         |
 | `mdc-test-review`      | `sdd-test-review`      | `mdc-test-review`      | 负责审核当前任务相关测试是否真正验证行为、是否体现 fail-first、覆盖是否有意义。            |
 | `mdc-code-review`      | `sdd-code-review`      | `mdc-code-review`      | 负责审核当前任务实现代码的正确性、可维护性、错误处理与设计一致性。                        |
+| `mdc-traceability-review` |                     | `mdc-traceability-review` | 负责检查规格、设计、任务、实现、测试与验证证据之间是否仍然一致，防止设计漂移和无记录偏离。      |
 | `mdc-regression-gate`  | `sdd-regression-gate`  | `mdc-regression-gate`  | 负责执行回归门禁，确认当前改动没有破坏相关行为、构建、类型检查或集成面。                     |
 | `mdc-completion-gate`  | `sdd-completion-gate`  | `mdc-completion-gate`  | 负责在宣告任务完成前检查是否有最新、直接、足够的验证证据支持完成结论。                      |
 | `mdc-finalize`         | `sdd-work-finalize`    | `mdc-finalize`         | 在当前工作项通过完成门禁后，负责更新进度记录、发布说明、验证证据与下一步交接信息。                |
-| `mdc-increment`        | `sdd-work-increment`   | `mdc-increment`        | 处理需求变更请求，分析其对规格、设计、任务计划和已实现内容的影响，并路由回正确阶段。               |
+| `mdc-increment`        | `sdd-work-increment`   | `mdc-increment`        | 处理需求变更请求，分析其对规格、设计、任务计划、验证策略和已实现内容的影响，并同步刷新受影响工件后路由回正确阶段。 |
 | `mdc-hotfix`           | `sdd-work-hotfix`      | `mdc-hotfix`           | 处理紧急缺陷修复，在保证先复现、最小修复、回归验证和完成门禁的前提下完成热修复。                 |
 
 
