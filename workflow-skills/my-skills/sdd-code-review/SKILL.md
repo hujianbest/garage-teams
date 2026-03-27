@@ -1,44 +1,44 @@
 ---
 name: mdc-code-review
-description: Review code for an implemented MDC task after test review and before regression and completion gates. Use when implementation changes are ready to be checked for correctness, readability, error handling, design alignment, and local code quality.
+description: 在测试评审之后、回归与完成门禁之前，对已实现的 MDC 任务代码进行评审。适用于需要检查正确性、可读性、错误处理、设计一致性和局部代码质量的场景。
 ---
 
-# MDC Code Review
+# MDC 代码评审
 
-Review the code for the current implemented task.
+评审当前任务的实现代码。
 
-## Purpose
+## 目的
 
-This skill checks whether the implementation is sound after test quality has been reviewed.
+这个 skill 用于在测试质量完成评审后，判断实现本身是否可靠。
 
-It does not replace specification or design review.
+它不能替代需求评审或设计评审。
 
-## Review Checklist
+## 评审清单
 
-### 1. Correctness
+### 1. 正确性
 
-- Does the code appear to satisfy the current task?
-- Are obvious edge cases mishandled?
+- 代码是否看起来满足当前任务目标？
+- 是否明显漏掉了边界情况？
 
-### 2. Design Alignment
+### 2. 设计一致性
 
-- Does the implementation still fit the approved design?
-- Did the task introduce accidental architecture drift?
+- 实现是否仍然符合已批准设计？
+- 当前任务是否引入了意外的架构漂移？
 
-### 3. Readability And Maintainability
+### 3. 可读性与可维护性
 
-- Are names understandable?
-- Is the logic unnecessarily complex?
-- Is the code doing too much in one place?
+- 命名是否清晰易懂？
+- 逻辑是否存在不必要的复杂度？
+- 是否有单处承担过多职责的情况？
 
-### 4. Error Handling
+### 4. 错误处理
 
-- Are likely failure paths handled appropriately?
-- Did the implementation introduce brittle assumptions?
+- 常见失败路径是否处理得当？
+- 实现是否引入了脆弱假设？
 
-## Output Format
+## 输出格式
 
-Use this exact structure:
+请严格使用以下结构：
 
 ```markdown
 ## Verdict
@@ -58,18 +58,18 @@ PASS | REVISE
 `mdc-regression-gate` | `mdc-implement`
 ```
 
-## Decision Rules
+## 判定规则
 
-Return `PASS` only if the current task implementation is reasonable to validate further.
+只有当当前任务实现足够合理、可以进入下一步验证时，才返回 `PASS`。
 
-Return `REVISE` if correctness, maintainability, or design alignment concerns should be addressed before moving on.
+如果在正确性、可维护性或设计一致性方面仍有问题需要先修正，再返回 `REVISE`。
 
-## Anti-Patterns
+## 反模式
 
-- Repeating spec review comments here
-- Approving code only because tests are green
-- Ignoring design drift because the task is small
+- 在这里重复需求评审意见
+- 只因为测试是绿的就直接通过代码
+- 因为任务小就忽略设计漂移
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when it has produced a clear verdict and a single next step.
+只有在给出明确结论和唯一下一步之后，这个 skill 才算完成。

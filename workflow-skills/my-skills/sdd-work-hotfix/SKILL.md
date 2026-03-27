@@ -1,65 +1,65 @@
 ---
 name: mdc-hotfix
-description: Handle urgent bug fixes in an MDC-governed project without abandoning verification discipline. Use when a hotfix-request.json exists, when the user asks for an urgent fix, or when a defect must be repaired quickly while still requiring reproduction, minimal change, regression checks, and completion gating.
+description: 在不放弃验证纪律的前提下处理 MDC 项目的紧急缺陷修复。适用于存在 `hotfix-request.json`、用户明确提出紧急修复，或某个缺陷必须尽快修复但仍需要复现、最小改动、回归检查和完成门禁的场景。
 ---
 
-# MDC Hotfix
+# MDC 热修复
 
-Process an urgent defect without bypassing engineering discipline.
+处理紧急缺陷，但不能绕过工程纪律。
 
-## Purpose
+## 目的
 
-This skill is for urgent repair work where speed matters, but correctness and evidence still matter more.
+这个 skill 适用于速度重要、但正确性和证据仍然更重要的紧急修复场景。
 
-It is not a shortcut around TDD or verification.
+它不是绕过 TDD 或验证流程的捷径。
 
-## Hard Gate
+## 硬性门禁
 
-Do not apply a hotfix based only on intuition.
+不要仅凭直觉打热修复。
 
-Reproduce first, then fix, then re-verify.
+必须先复现，再修复，再重新验证。
 
-## Preconditions
+## 前置条件
 
-Use this skill when:
+在以下情况下使用本 skill：
 
-- `hotfix-request.json` exists, or
-- the user explicitly requests an urgent bug fix or pre-release repair
+- 存在 `hotfix-request.json`
+- 用户明确要求紧急修复缺陷或上线前修复问题
 
-## Workflow
+## 工作流
 
-### 1. Read The Hotfix Request
+### 1. 阅读热修复请求
 
-Read:
+阅读：
 
-- the bug or defect description
-- the current relevant spec/design/task context if available
-- any existing evidence of failure
+- 缺陷描述
+- 当前相关的规格、设计、任务上下文（如有）
+- 已存在的失败证据
 
-Identify:
+明确：
 
-- expected behavior
-- actual behavior
-- affected area
+- 期望行为
+- 实际行为
+- 受影响区域
 
-### 2. Reproduce The Problem
+### 2. 复现问题
 
-Create the smallest reliable reproduction:
+创建最小且可靠的复现方式：
 
-- failing automated test when possible
-- otherwise a clear manual verification procedure that can later be automated
+- 尽量用自动化失败测试复现
+- 否则至少提供一个清晰的手工验证步骤，后续可再自动化
 
-Do not implement before you can demonstrate the problem.
+在证明问题真实存在之前，不要开始修复实现。
 
-### 3. Apply The Minimum Safe Fix
+### 3. 应用最小安全修复
 
-Make the smallest change that resolves the reproduced failure.
+只做足以修复已复现失败的最小改动。
 
-Avoid opportunistic refactors unless they are necessary to complete the fix safely.
+除非确实是为了安全完成修复，否则不要顺手做机会式重构。
 
-### 4. Run Review And Gates
+### 4. 执行评审与门禁
 
-After the fix:
+修复之后：
 
 1. verify the reproduction now passes
 2. use `mdc-test-review` if tests changed
@@ -67,13 +67,13 @@ After the fix:
 4. use `mdc-regression-gate`
 5. use `mdc-completion-gate`
 
-### 5. Sync Artifacts If Needed
+### 5. 必要时同步工件
 
-If the bug revealed outdated or incorrect spec/design/task information, update the affected documents after the fix is stabilized.
+如果该缺陷暴露出规格、设计或任务文档已过时或不正确，应在修复稳定后同步更新相关文档。
 
-## Output Format
+## 输出格式
 
-Use this exact structure:
+请严格使用以下结构：
 
 ```markdown
 ## Hotfix Summary
@@ -93,13 +93,13 @@ Use this exact structure:
 `mdc-code-review` | `mdc-regression-gate` | `mdc-completion-gate` | `mdc-implement`
 ```
 
-## Anti-Patterns
+## 反模式
 
-- patching first and trying to explain later
-- claiming the bug is fixed without reproducing it first
-- using urgency as a reason to skip regression checks
-- mixing unrelated cleanup into the hotfix
+- 先打补丁，后补解释
+- 未先复现就声称问题已修复
+- 以“很紧急”为理由跳过回归检查
+- 在热修复中夹带无关清理工作
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when the defect has been reproduced, repaired with a minimum safe change, and routed through the appropriate downstream review and gate steps.
+只有在缺陷被成功复现、用最小安全改动修复，并被正确送入后续评审与门禁流程后，这个 skill 才算完成。

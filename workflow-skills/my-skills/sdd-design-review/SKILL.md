@@ -1,63 +1,63 @@
 ---
 name: mdc-design-review
-description: Review an MDC implementation design before task planning begins. Use when a design document draft exists and must be checked for architectural completeness, requirement coverage, interface clarity, technical fit, and readiness for task decomposition.
+description: 在任务规划开始前评审 MDC 实现设计。适用于设计文档草稿已经存在，且需要检查架构完整性、需求覆盖、接口清晰度、技术适配性和任务拆解准备度的场景。
 ---
 
-# MDC Design Review
+# MDC 设计评审
 
-Review the design document and decide whether it is ready to become the approved input to task planning.
+评审设计文档，并判断它是否可以成为任务规划阶段的已批准输入。
 
-## Hard Gate
+## 硬性门禁
 
-Do not move to `mdc-tasks` until the design passes review or the user explicitly accepts known gaps.
+在设计通过评审，或用户明确接受已知缺口之前，不得进入 `mdc-tasks`。
 
-## Purpose
+## 目的
 
-This skill prevents premature task decomposition.
+这个 skill 用来防止过早拆解任务。
 
-If the design is vague, task planning will either guess or collapse into implementation details.
+如果设计不清晰，任务规划就会变成猜测，或者过早下沉到实现细节。
 
-## Review Scope
+## 评审范围
 
-Review the design against:
+请基于以下内容评审设计：
 
-- the approved requirement spec
-- major constraints and NFRs
-- the project's technical context, if already known
+- 已批准的需求规格
+- 主要约束与非功能需求
+- 项目现有技术上下文（如果已知）
 
-Do not start writing tasks or code during review.
+评审时不要开始写任务或代码。
 
-## Checklist
+## 检查清单
 
-### 1. Requirement Coverage
+### 1. 需求覆盖
 
-- Does the design cover the important requirements from the spec?
-- Are major behaviors mapped to components, modules, or interfaces?
+- 设计是否覆盖了规格中的关键需求？
+- 主要行为是否映射到了组件、模块或接口？
 
-### 2. Architectural Coherence
+### 2. 架构一致性
 
-- Are responsibilities and boundaries clear?
-- Is the chosen approach explained, not just named?
-- Are module interactions understandable?
+- 职责和边界是否清晰？
+- 选定方案是否被解释清楚，而不仅仅是提了名字？
+- 模块之间的交互是否容易理解？
 
-### 3. Constraint Fit
+### 3. 约束适配
 
-- Does the design reflect stated constraints?
-- Are NFRs and integration points considered?
+- 设计是否体现了已声明约束？
+- 是否考虑了非功能需求和集成点？
 
-### 4. Interface Readiness
+### 4. 接口准备度
 
-- Are key contracts explicit enough for task planning?
-- Are the major data/control flows clear?
+- 关键契约是否足够明确，可以支撑任务规划？
+- 主要数据流和控制流是否清晰？
 
-### 5. Testing Readiness
+### 5. 测试准备度
 
-- Does the design include a testing strategy at the design level?
-- Is the design testable without requiring hidden assumptions?
+- 设计是否包含设计层面的测试策略？
+- 该设计是否可测试，而不依赖隐藏假设？
 
-## Output Format
+## 输出格式
 
-Use this exact structure:
+请严格使用以下结构：
 
 ```markdown
 ## Verdict
@@ -77,34 +77,34 @@ PASS | REVISE | BLOCKED
 `mdc-tasks` | `mdc-design`
 ```
 
-## Decision Rules
+## 判定规则
 
-Return `PASS` only if the design:
+只有在以下条件全部满足时，才返回 `PASS`：
 
-- is traceable to the spec
-- explains a coherent implementation approach
-- defines boundaries and interfaces clearly enough for planning
-- addresses major constraints and testing implications
+- 可以追溯到需求规格
+- 清楚说明了连贯的实现方案
+- 边界和接口足够清晰，可以进入任务规划
+- 覆盖了主要约束和测试影响
 
-Return `REVISE` if:
+以下情况返回 `REVISE`：
 
-- the core design is usable but incomplete
-- some modules, flows, or interfaces remain underspecified
-- the testing approach is weak but fixable
+- 核心设计可用，但还不完整
+- 某些模块、流程或接口仍然描述不足
+- 测试方案偏弱，但可修补
 
-Return `BLOCKED` if:
+以下情况返回 `BLOCKED`：
 
-- the design does not clearly support the spec
-- key architectural decisions are still missing
-- contradictions or unresolved technical risks prevent planning
+- 设计无法清晰支撑需求规格
+- 关键架构决策仍然缺失
+- 存在矛盾或未解决的技术风险，无法继续规划
 
-## Anti-Patterns
+## 反模式
 
-- Approving because "we can figure it out during implementation"
-- Turning review into low-level coding advice
-- Accepting a design that repeats the spec without design choices
-- Ignoring missing interfaces or module boundaries
+- 因为“实现时再说”就直接通过
+- 把设计评审变成底层编码建议
+- 接受只是复述需求、没有设计决策的文档
+- 忽略缺失的接口或模块边界
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when it has produced a clear verdict and a single next step.
+只有在给出明确结论和唯一下一步之后，这个 skill 才算完成。

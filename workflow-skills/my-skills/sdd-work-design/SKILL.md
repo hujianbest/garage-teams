@@ -1,76 +1,76 @@
 ---
 name: mdc-design
-description: Produce a software implementation design from an approved MDC requirement specification. Use when the requirement spec has passed review and the project needs architecture, module boundaries, interfaces, data flow, technical decisions, and a design document before task planning or coding.
+description: 基于已批准的 MDC 需求规格产出软件实现设计。适用于需求规格已通过评审，项目在任务规划或编码前需要明确架构、模块边界、接口、数据流、技术决策和设计文档的场景。
 ---
 
-# MDC Design
+# MDC 设计
 
-Create the design document that defines HOW the approved spec will be implemented.
+创建设计文档，说明已批准规格将“如何”被实现。
 
-## Hard Gate
+## 硬性门禁
 
-Do not decompose tasks or write implementation code until the design has been reviewed and approved.
+在设计经过评审并获批之前，不得拆解任务或编写实现代码。
 
-## Preconditions
+## 前置条件
 
-Use this skill only when:
+仅在以下条件满足时使用本 skill：
 
-- a requirement spec exists
-- the spec has passed review or is explicitly approved
+- 已存在需求规格
+- 该规格已通过评审，或被明确批准
 
-If the spec is still draft or under revision, go back to `mdc-spec-review` or `mdc-specify`.
+如果规格仍是草稿或还在修订中，请回到 `mdc-spec-review` 或 `mdc-specify`。
 
-## Goals
+## 目标
 
-The design document should remove major implementation guesswork while staying at the design level.
+设计文档应在保持设计层抽象的前提下，尽量消除后续实现中的主要猜测空间。
 
-It should answer:
+它应回答以下问题：
 
-- what major components or modules exist
-- how responsibilities are divided
-- how data and control flow through the system
-- what interfaces must exist
-- what constraints shape the implementation
-- how the design supports testing
+- 存在哪些主要组件或模块
+- 职责如何划分
+- 数据和控制流如何在系统中流动
+- 需要哪些接口
+- 哪些约束会影响实现
+- 设计如何支撑测试
 
-## Workflow
+## 工作流
 
-### 1. Read The Approved Spec
+### 1. 阅读已批准规格
 
-Extract:
+提取：
 
-- core scope
-- acceptance criteria
-- constraints
-- non-functional requirements
-- integration points
+- 核心范围
+- 验收标准
+- 约束
+- 非功能需求
+- 集成点
 
-### 2. Explore Technical Context
+### 2. 了解技术上下文
 
-Read the minimum relevant technical context:
+阅读最少但必要的技术上下文：
 
-- existing architecture or project layout
-- current frameworks and dependencies
-- deployment/runtime constraints if already known
+- 现有架构或项目布局
+- 当前框架和依赖
+- 已知的部署或运行约束
 
-Do not drift into implementation planning yet.
+此时不要提前进入实现规划。
 
-### 3. Propose 2-3 Approaches
+### 3. 提出 2 到 3 个候选方案
 
-Before committing to one design, compare at least two plausible approaches.
+在最终选定设计前，至少比较两个可行方案。
 
-For each approach, briefly state:
+对每个方案，简要说明：
 
-- how it works
-- key pros
-- key cons
-- why it does or does not fit the spec
+- 它如何工作
+- 主要优点
+- 主要缺点
+- 为什么适合或不适合当前规格
 
-Then recommend one approach.
+最后推荐一个方案。
 
-### 4. Write The Design
+### 4. 编写设计文档
 
-Use this structure unless the project has a required template:
+除非项目已有固定模板，否则使用以下结构：
 
 ```markdown
 # <Topic> Implementation Design
@@ -96,43 +96,43 @@ Use this structure unless the project has a required template:
 ## Risks And Open Issues
 ```
 
-Guidance:
+编写建议：
 
-- keep requirements and design distinct
-- define boundaries and responsibilities clearly
-- explain why the chosen approach fits the spec
-- include enough detail for task decomposition, not line-by-line coding
+- 区分需求与设计
+- 清晰定义边界和职责
+- 解释为什么所选方案适合该规格
+- 提供足够支撑任务拆解的细节，但不要写成逐行编码说明
 
-### 5. Self-Check Before Review
+### 5. 评审前自检
 
-Verify:
+确认以下内容：
 
-- every major requirement is addressed by the design
-- constraints and NFRs influenced decisions
-- the architecture is coherent, not just a list of components
-- interfaces are explicit enough for later task planning
-- testing strategy exists at the design level
+- 每个主要需求都被设计覆盖
+- 约束和非功能需求确实影响了设计决策
+- 架构是连贯的，而不是组件清单
+- 接口定义足够明确，能支撑后续任务规划
+- 存在设计层面的测试策略
 
-### 6. Handoff To Review
+### 6. 交给评审
 
-When ready, hand off to `mdc-design-review`.
+准备好之后，交给 `mdc-design-review`。
 
-Use:
+输出应使用：
 
 ```markdown
-Design document drafted and ready for review.
+设计文档已起草完成，可进入评审。
 
 Next skill: `mdc-design-review`
 ```
 
-## Anti-Patterns
+## 反模式
 
-- Treating design as implementation pseudocode
-- Copying the spec into a new file without adding design decisions
-- Presenting only one approach with no trade-off discussion
-- Starting task decomposition inside the design doc
-- Ignoring NFRs and constraints
+- 把设计文档写成实现伪代码
+- 只是复制需求规格，没有加入设计决策
+- 只给一个方案，不讨论权衡
+- 在设计文档里直接开始拆任务
+- 忽略非功能需求和约束
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when a reviewable design document exists and is ready for `mdc-design-review`.
+只有在存在一份可评审的设计文档，并且已准备好交给 `mdc-design-review` 时，这个 skill 才算完成。

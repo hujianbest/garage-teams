@@ -1,95 +1,95 @@
 ---
 name: mdc-tasks
-description: Turn an approved MDC design into an executable task plan and task breakdown. Use when the design has passed review and the project needs milestones, task ordering, dependencies, definition of done, and implementation-ready work items before coding starts.
+description: 将已批准的 MDC 设计转化为可执行任务计划和任务拆解。适用于设计已经通过评审，且项目在编码前需要里程碑、任务顺序、依赖、完成定义和可直接实施工作项的场景。
 ---
 
-# MDC Tasks
+# MDC 任务拆解
 
-Create the task plan that translates the approved design into executable work.
+创建任务计划，把已批准设计转化为可执行工作。
 
-## Hard Gate
+## 硬性门禁
 
-Do not start implementation until task planning is complete and ready for review.
+在任务规划完成并准备好评审之前，不得开始实现。
 
-## Preconditions
+## 前置条件
 
-Use this skill only when:
+仅在以下条件满足时使用本 skill：
 
-- the requirement spec is approved
-- the design is approved
+- 需求规格已批准
+- 设计已批准
 
-If design is still draft or under revision, go back to `mdc-design-review` or `mdc-design`.
+如果设计仍是草稿或还在修订中，请回到 `mdc-design-review` 或 `mdc-design`。
 
-## Goals
+## 目标
 
-The task plan must make implementation predictable.
+任务计划必须让实现过程变得可预期。
 
-It should define:
+它应明确以下内容：
 
-- milestones
-- ordered tasks
-- dependencies
-- task-level done conditions
-- verification expectations
+- 里程碑
+- 有序任务
+- 依赖关系
+- 任务级完成条件
+- 验证预期
 
-## Workflow
+## 工作流
 
-### 1. Read The Approved Inputs
+### 1. 阅读已批准输入
 
-Read:
+阅读：
 
-- approved requirement spec
-- approved design
-- current project context if relevant
+- 已批准需求规格
+- 已批准设计
+- 当前项目上下文（如相关）
 
-Extract:
+提取：
 
-- major workstreams
-- dependencies and sequencing
-- testing implications
-- risky or uncertain areas
+- 主要工作流
+- 依赖与顺序
+- 测试影响
+- 风险或不确定区域
 
-### 2. Define Milestones
+### 2. 定义里程碑
 
-Group work into milestones that produce meaningful progress.
+把工作分组为能产生明确阶段性成果的里程碑。
 
-Each milestone should have:
+每个里程碑应包含：
 
-- purpose
-- included tasks
-- exit criteria
+- 目标
+- 包含的任务
+- 退出标准
 
-### 3. Break Work Into Tasks
+### 3. 拆解为任务
 
-Tasks must be small enough to execute and verify without ambiguity.
+任务必须足够小，能够被明确执行和验证。
 
-Prefer task shapes like:
+优先使用这类任务形态：
 
-- write failing test
-- run and confirm fail
-- implement minimum behavior
-- run and confirm pass
-- refactor and re-run
-- update status and records
+- 编写失败测试
+- 运行并确认失败
+- 实现最小行为
+- 运行并确认通过
+- 重构并重新运行
+- 更新状态与记录
 
-Avoid vague task items like:
+避免使用这类模糊任务项：
 
-- implement module
-- finish feature
-- polish later
+- 实现某模块
+- 完成功能
+- 后面再优化
 
-### 4. Record Dependencies And Done Conditions
+### 4. 记录依赖与完成条件
 
-For each task, define:
+对每个任务明确：
 
-- prerequisites
-- artifacts to touch
-- verification method
-- done condition
+- 前置条件
+- 会触碰哪些工件
+- 验证方式
+- 完成条件
 
-### 5. Write The Task Plan
+### 5. 编写任务计划
 
-Use this structure unless the project requires another template:
+除非项目要求其他模板，否则使用以下结构：
 
 ```markdown
 # <Topic> Task Plan
@@ -109,26 +109,26 @@ Use this structure unless the project requires another template:
 ## Risks And Sequencing Notes
 ```
 
-### 6. Handoff To Review
+### 6. 交给评审
 
-When the plan is ready, hand off to `mdc-tasks-review`.
+任务计划准备好后，交给 `mdc-tasks-review`。
 
-Use:
+输出应使用：
 
 ```markdown
-Task plan drafted and ready for review.
+任务计划已起草完成，可进入评审。
 
 Next skill: `mdc-tasks-review`
 ```
 
-## Anti-Patterns
+## 反模式
 
-- Turning the task plan into a copy of the design
-- Using tasks that are too large to verify
-- Omitting dependencies
-- Omitting done conditions
-- Deferring verification to the end of the entire feature
+- 把任务计划写成设计文档副本
+- 使用大到无法验证的任务
+- 漏掉依赖关系
+- 漏掉完成条件
+- 把验证拖到整个功能结束时才做
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when a reviewable task plan exists and is ready for `mdc-tasks-review`.
+只有在存在一份可评审任务计划，并且已准备好交给 `mdc-tasks-review` 时，这个 skill 才算完成。

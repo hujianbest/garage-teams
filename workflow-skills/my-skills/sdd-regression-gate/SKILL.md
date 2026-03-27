@@ -1,94 +1,94 @@
 ---
 name: mdc-regression-gate
-description: Run the regression gate for an implemented MDC task after code review and before final completion claims. Use when the current task appears implemented and reviewed, and you need to verify that related behavior, broader tests, builds, or checks were not broken by the change.
+description: 在代码评审之后、最终完成宣告之前，对已实现的 MDC 任务执行回归门禁。适用于当前任务看起来已经完成并通过评审，但仍需确认相关行为、更大范围测试、构建或检查未被破坏的场景。
 ---
 
-# MDC Regression Gate
+# MDC 回归门禁
 
-Run the minimum regression evidence required before the task can be considered complete.
+在任务可被视为完成之前，执行最小必要的回归验证。
 
-## Purpose
+## 目的
 
-This skill protects the codebase from local fixes that quietly break nearby behavior.
+这个 skill 用于防止“局部修好了，但周边悄悄坏掉”的情况。
 
-Green tests for the new task are not enough by themselves.
+仅仅当前新任务测试通过，并不足以说明没有引入回归。
 
-## Inputs
+## 输入
 
-Use:
+使用以下输入：
 
-- the current implemented task
-- the task plan's verification expectations
-- the project's normal validation commands
+- 当前实现的任务
+- 任务计划中的验证要求
+- 项目常规验证命令
 
-## Workflow
+## 工作流
 
-### 1. Identify The Relevant Regression Surface
+### 1. 明确相关回归面
 
-Determine what must still be true after this change:
+确定本次改动之后，哪些内容必须继续保持成立：
 
-- related tests
-- impacted modules
-- build or type-check status
-- local integration points
+- 相关测试
+- 受影响模块
+- 构建或类型检查状态
+- 本地集成点
 
-### 2. Run Fresh Checks
+### 2. 运行最新检查
 
-Run the relevant verification commands now.
+立即运行相关验证命令。
 
-Do not rely on earlier runs unless they were run for this exact task state in the current flow.
+不要依赖更早之前的结果，除非那些结果正是针对当前这份最新任务状态，在本轮流程中执行得到的。
 
-### 3. Read Actual Results
+### 3. 读取实际结果
 
-Check:
+检查：
 
-- exit status
-- failure count
-- whether the scope tested matches the regression surface
+- 退出状态
+- 失败数量
+- 本次验证范围是否覆盖了回归面
 
-### 4. Decide The Gate Result
+### 4. 决定门禁结果
 
-If the regression surface is still healthy, the next step is `mdc-completion-gate`.
+如果回归面仍然健康，下一步进入 `mdc-completion-gate`。
 
-If not, the next step is `mdc-implement`.
+如果不健康，下一步回到 `mdc-implement`。
 
-## Output Format
+## 输出格式
 
-Use this exact structure:
+请严格使用以下结构：
 
 ```markdown
-## Verdict
+## 结论
 
 PASS | REVISE | BLOCKED
 
-## Evidence
+## 证据
 
-- command and result summary
+- 命令与结果摘要
 
-## Regression Risks
+## 回归风险
 
-- item
+- 风险项
 
-## Next Step
+## 下一步
 
 `mdc-completion-gate` | `mdc-implement`
 ```
 
-## Decision Rules
+## 判定规则
 
-Return `PASS` only if the relevant regression checks were run fresh and their results support moving forward.
+只有在相关回归检查为最新执行，且结果支持继续推进时，才返回 `PASS`。
 
-Return `REVISE` if checks fail or coverage is insufficient.
+如果检查失败，或覆盖范围不足，则返回 `REVISE`。
 
-Return `BLOCKED` if the correct regression command cannot be run yet because the environment or validation setup is broken.
+如果由于环境或验证配置损坏，暂时无法运行正确的回归命令，则返回 `BLOCKED`。
 
-## Anti-Patterns
+## 反模式
 
-- Assuming nearby behavior still works
-- Using stale test output
-- Running only the new test and calling that regression coverage
-- Ignoring failed build or type-check results because unit tests passed
+- 想当然地认为周边行为仍然正常
+- 使用过期测试输出
+- 只跑新测试就声称已经覆盖回归
+- 因为单测通过就忽略构建或类型检查失败
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when it has produced a clear gate result with fresh evidence and a single next step.
+只有在基于最新证据给出明确门禁结论和唯一下一步后，这个 skill 才算完成。

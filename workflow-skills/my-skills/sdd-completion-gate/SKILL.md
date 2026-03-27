@@ -1,97 +1,97 @@
 ---
 name: mdc-completion-gate
-description: Enforce the final completion gate for an implemented MDC task using fresh verification evidence. Use when a task has passed test review, code review, and regression checks, and the agent is about to claim completion, update status, commit progress, or move to the next task.
+description: 使用最新验证证据对已实现的 MDC 任务执行最终完成门禁。适用于任务已经通过测试评审、代码评审和回归检查，且即将宣告完成、更新状态、提交进度或切换到下一任务的场景。
 ---
 
-# MDC Completion Gate
+# MDC 完成门禁
 
-Enforce evidence before completion claims.
+在宣告完成之前，必须先确认有足够证据。
 
-## Iron Rule
+## 铁律
 
-Do not claim a task is complete without fresh verification evidence for the current state of the work.
+没有针对当前最新代码状态的验证证据，就不能宣称任务完成。
 
-If you did not run the verifying command in this flow, you cannot honestly claim completion.
+如果本轮流程里没有亲自运行验证命令，就不能诚实地宣称完成。
 
-## Apply This Skill Before
+## 在以下动作前必须使用本 Skill
 
-- saying the task is done
-- updating progress/state to completed
-- moving to the next task
-- preparing commit or delivery language that implies success
+- 说任务已经完成
+- 更新进度或状态为已完成
+- 切换到下一个任务
+- 编写带有“已完成”含义的提交或交付说明
 
-## Workflow
+## 工作流
 
-### 1. Identify The Claim
+### 1. 明确你要宣告的结论
 
-State exactly what you are about to claim, for example:
+明确写出你准备宣告什么，例如：
 
-- tests pass
-- behavior works
-- bug is fixed
-- task is complete
+- 测试通过
+- 功能行为正常
+- 缺陷已修复
+- 任务已完成
 
-### 2. Identify The Proof Command
+### 2. 确定证明该结论的命令
 
-Choose the command or commands that actually prove the claim.
+选择真正能证明该结论的命令。
 
-Do not substitute weaker evidence.
+不要用更弱的证据替代。
 
-### 3. Run Fresh Verification
+### 3. 执行最新验证
 
-Run the full verification command now.
+立即运行完整验证命令。
 
-### 4. Read The Full Result
+### 4. 阅读完整结果
 
-Check:
+检查：
 
-- exit code
-- failure count
-- whether output really supports the claim
+- 退出码
+- 失败数量
+- 输出是否真的支持该结论
 
-### 5. Gate The Claim
+### 5. 对结论做门禁判断
 
-- If the evidence supports the claim, allow completion
-- If not, report actual status and route back to `mdc-implement`
+- 如果证据支持结论，则允许完成
+- 如果不支持，则说明真实状态并回退到 `mdc-implement`
 
-## Output Format
+## 输出格式
 
-Use this exact structure:
+请严格使用以下结构：
 
 ```markdown
-## Verdict
+## 结论
 
 PASS | REVISE | BLOCKED
 
-## Verified Claim
+## 已验证结论
 
-- claim
+- 结论项
 
-## Evidence
+## 证据
 
-- command and result summary
+- 命令与结果摘要
 
-## Next Step
+## 下一步
 
 `done-for-current-task` | `mdc-implement`
 ```
 
-## Decision Rules
+## 判定规则
 
-Return `PASS` only if the intended completion claim is directly supported by fresh evidence.
+只有当准备宣告的“完成”结论被最新证据直接支持时，才返回 `PASS`。
 
-Return `REVISE` if the evidence does not support the claim or more implementation is required.
+如果证据不足以支持该结论，或者仍需继续实现，则返回 `REVISE`。
 
-Return `BLOCKED` if the verifying command cannot be run because the environment or toolchain is broken.
+如果由于环境或工具链问题无法运行正确的验证命令，则返回 `BLOCKED`。
 
-## Anti-Patterns
+## 反模式
 
-- saying "should be done now"
-- trusting old output
-- treating green local intuition as evidence
-- assuming review approval means execution success
-- moving on because you are tired of the task
+- 说“现在应该算完成了”
+- 依赖旧输出
+- 把主观感觉当成证据
+- 认为评审通过就等于运行成功
+- 因为做烦了就直接进入下一步
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when it has either authorized a completion claim with fresh evidence or rejected the claim and routed work back for revision.
+只有在用最新证据批准完成结论，或明确拒绝该结论并把工作退回修订后，这个 skill 才算完成。

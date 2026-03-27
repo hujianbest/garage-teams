@@ -1,55 +1,55 @@
 ---
 name: mdc-specify
-description: Produce an approved requirement specification for MDC-governed software work. Use when no approved spec exists, when a project is still at the requirements/specification stage, or when the user wants to define scope, requirements, acceptance criteria, constraints, or out-of-scope items before design or implementation.
+description: 为 MDC 驱动的软件工作产出一份已批准需求规格。适用于尚无已批准规格、项目仍处于需求阶段，或用户希望在设计与实现之前先明确范围、需求、验收标准、约束与非目标内容的场景。
 ---
 
-# MDC Specify
+# MDC 需求澄清
 
-Create a requirement specification that defines WHAT must be built.
+创建一份定义“要做什么”的需求规格说明。
 
-## Hard Gate
+## 硬性门禁
 
-Do not design architecture, decompose tasks, scaffold, or write implementation code until the requirement spec has been reviewed and approved.
+在需求规格通过评审并获批之前，不得开始架构设计、任务拆解、脚手架或实现代码编写。
 
-## Goals
+## 目标
 
-The requirement spec must make later design and implementation possible without guessing.
+需求规格必须足以让后续设计和实现不靠猜测推进。
 
-It should answer:
+它应回答以下问题：
 
-- what problem is being solved
-- who the users are
-- what is in scope
-- what is out of scope
-- what constraints apply
-- how success will be verified
+- 解决的是什么问题
+- 用户是谁
+- 哪些内容在范围内
+- 哪些内容在范围外
+- 存在哪些约束
+- 如何验证成功
 
-## Workflow
+## 工作流
 
-Follow these steps in order.
+按以下顺序执行。
 
-### 1. Explore Context
+### 1. 了解上下文
 
-Read only the materials needed to understand the request:
+只阅读理解请求所需的材料：
 
-- user-provided requirement notes
-- existing project docs relevant to scope
-- existing system behavior if this is an enhancement
+- 用户提供的需求说明
+- 与当前范围相关的现有项目文档
+- 如果是增强需求，则阅读现有系统行为
 
-Extract initial assumptions, constraints, and unknowns.
+提炼初始假设、约束和未知项。
 
-### 2. Clarify Before Writing
+### 2. 先澄清，再写文档
 
-Ask focused questions before drafting the spec.
+在起草规格前，先提出聚焦问题。
 
-Rules:
+规则如下：
 
-- prefer one topic at a time
-- group closely related questions only when it reduces back-and-forth
-- replace vague words with measurable statements
-- explicitly ask for out-of-scope items if the user did not provide them
+- 尽量一次只问一个主题
+- 只有在能减少来回沟通时，才合并相关问题
+- 把模糊表述替换成可衡量描述
+- 如果用户未给出范围外内容，要主动询问
 
-Minimum areas to clarify:
+至少要澄清这些方面：
 
 1. purpose and users
 2. functional scope
@@ -57,72 +57,72 @@ Minimum areas to clarify:
 4. constraints and dependencies
 5. acceptance criteria
 
-### 3. Draft The Spec
+### 3. 起草规格
 
-Write a spec that separates requirements from design decisions.
+编写一份把“需求”与“设计决策”分开的规格文档。
 
-Use this structure unless the project already has a required template:
+除非项目已有固定模板，否则使用以下结构：
 
 ```markdown
-# <Topic> Requirement Specification
+# <主题> 需求规格说明
 
-## Purpose
+## 目标
 
-## Scope
+## 范围
 
-## User Roles
+## 用户角色
 
-## Functional Requirements
+## 功能需求
 
-## Non-Functional Requirements
+## 非功能需求
 
-## Constraints
+## 约束
 
-## Out Of Scope
+## 范围外内容
 
-## Acceptance Criteria
+## 验收标准
 
-## Open Questions
+## 开放问题
 ```
 
-Guidance:
+编写建议：
 
-- Functional requirements describe observable behavior
-- Non-functional requirements describe measurable quality targets
-- Constraints describe hard limits
-- Out-of-scope is explicit, not implied
-- Open questions remain only if they do not block review
+- 功能需求描述可观察行为
+- 非功能需求描述可衡量质量目标
+- 约束描述硬性限制
+- 范围外内容必须显式写出，而不是隐含存在
+- 开放问题只能保留那些不会阻塞评审的问题
 
-### 4. Check For Spec Quality
+### 4. 检查规格质量
 
-Before handing off, verify:
+交付前请确认：
 
-- requirements are testable
-- vague words are quantified or removed
-- no design choices are mixed into requirement statements
-- out-of-scope is explicit
-- acceptance criteria exist for core behaviors
+- 需求可测试
+- 模糊词已量化或删除
+- 需求陈述中没有混入设计选择
+- 范围外内容已显式说明
+- 核心行为具备验收标准
 
-### 5. Handoff To Review
+### 5. 交给评审
 
-When the draft is ready, hand off to `mdc-spec-review`.
+草稿准备好后，交给 `mdc-spec-review`。
 
-Your output should say:
+输出应写成：
 
 ```markdown
-Requirement spec drafted and ready for review.
+需求规格已起草完成，可进入评审。
 
 Next skill: `mdc-spec-review`
 ```
 
-## Anti-Patterns
+## 反模式
 
-- Jumping from user idea straight to architecture
-- Treating a brainstorm note as an approved spec
-- Writing tasks in the spec
-- Using design language like class, endpoint, table, framework unless it is a hard external constraint
-- Leaving success criteria implicit
+- 从用户想法直接跳到架构设计
+- 把头脑风暴笔记当成已批准规格
+- 在规格里直接写任务
+- 除非是硬性外部约束，否则不要使用 class、endpoint、table、framework 这类设计语言
+- 把成功标准留成隐含信息
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when a reviewable requirement spec draft exists and is ready for `mdc-spec-review`.
+只有在存在一份可评审的需求规格草稿，并且它已经准备好交给 `mdc-spec-review` 时，这个 skill 才算完成。

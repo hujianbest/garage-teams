@@ -1,41 +1,41 @@
 ---
 name: mdc-implement
-description: Execute an approved MDC task plan and implement code in a controlled way. Use when the task plan has passed review and implementation should proceed task by task with TDD, verification, review, and no skipping ahead.
+description: 以受控方式执行已批准的 MDC 任务计划并完成实现。适用于任务计划已通过评审，且实现阶段应按任务逐项推进、遵循 TDD、验证与评审流程、不允许跳步的场景。
 ---
 
-# MDC Implement
+# MDC 实现
 
-Implement the approved task plan one task at a time.
+按已批准任务计划，一次实现一个任务。
 
-## Hard Gate
+## 硬性门禁
 
-Do not start implementation unless the task plan has passed review.
+任务计划未通过评审前，不得开始实现。
 
-Do not move to the next task until the current one has been implemented, reviewed, and verified.
+当前任务在实现、评审、验证完成之前，不得切换到下一个任务。
 
-## Core Rule
+## 核心规则
 
-One active task at a time.
+一次只允许有一个活跃任务。
 
-## TDD Rule
+## TDD 规则
 
-Do not write production code without a failing test first, unless the task is explicitly non-code configuration and that exception is documented.
+除非当前任务明确属于非代码配置类工作且该例外已被记录，否则不得在没有失败测试的前提下编写生产代码。
 
-## Workflow
+## 工作流
 
-### 1. Orient
+### 1. 对齐上下文
 
-Read:
+阅读：
 
-- the approved task plan
-- the current progress/state record
-- the relevant spec and design sections for the current task
+- 已批准任务计划
+- 当前进度或状态记录
+- 当前任务对应的规格和设计片段
 
-Pick exactly one active task.
+只选定一个活跃任务。
 
-### 2. Execute With Red-Green-Refactor
+### 2. 按 Red-Green-Refactor 执行
 
-For the current task:
+对于当前任务：
 
 1. write or update a failing test
 2. run it and confirm the failure is meaningful
@@ -43,41 +43,41 @@ For the current task:
 4. rerun and confirm pass
 5. refactor while keeping tests green
 
-### 3. Prepare Review Inputs
+### 3. 准备评审输入
 
-Before claiming task completion:
+在声称任务完成之前：
 
-- identify what changed
-- identify what tests prove it
-- identify what risk areas remain
+- 明确本次改了什么
+- 明确哪些测试在证明它
+- 明确还存在哪些风险区域
 
-### 4. Handoff To Review And Gates
+### 4. 交给评审与门禁
 
-After implementation of the current task:
+当前任务实现完成后：
 
 1. use `mdc-test-review`
 2. then use `mdc-code-review`
 3. then use `mdc-regression-gate`
 4. then use `mdc-completion-gate`
 
-That order is mandatory.
+这个顺序是强制的。
 
-## Mandatory Order
+## 强制顺序
 
 ```text
-Implement -> test-review -> code-review -> regression-gate -> completion-gate
+实现 -> 测试评审 -> 代码评审 -> 回归门禁 -> 完成门禁
 ```
 
-Do not skip review because the task looks simple.
+不要因为任务看起来简单就跳过评审。
 
-## Anti-Patterns
+## 反模式
 
-- working on multiple tasks in parallel
-- implementing before writing a failing test
-- treating green tests from an older run as current evidence
-- saying "done" before completion gate
-- switching tasks because the current one got inconvenient
+- 并行处理多个任务
+- 先写实现，再补失败测试
+- 把旧的绿测结果当成当前证据
+- 在完成门禁前就说“做完了”
+- 因为当前任务变麻烦就切换任务
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when the current task has gone through review and completion gating, or when a blocking issue is clearly reported.
+只有在当前任务已经经过评审和完成门禁，或明确报告了阻塞问题后，这个 skill 才算完成。

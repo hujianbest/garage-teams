@@ -1,92 +1,92 @@
 ---
 name: mdc-increment
-description: Handle requirement changes in an MDC-governed project without bypassing specification and design discipline. Use when a change-request.json exists, when the user asks to add or modify requirements in an existing workflow, or when approved scope must be updated before implementation continues.
+description: 在不绕过规格与设计纪律的前提下处理 MDC 项目的需求变更。适用于存在 `change-request.json`、用户明确要求增删改需求，或已批准范围发生变化、必须在继续实现前先同步更新的场景。
 ---
 
-# MDC Increment
+# MDC 增量变更
 
-Process a requirement change without corrupting the main MDC flow.
+在不破坏主 MDC 流程的前提下处理需求变更。
 
-## Purpose
+## 目的
 
-This skill handles change requests such as:
+这个 skill 处理以下变更请求：
 
-- adding a new requirement
-- changing scope
-- changing acceptance criteria
-- reintroducing previously deferred work
+- 新增需求
+- 修改范围
+- 修改验收标准
+- 重新纳入之前延期的工作
 
-It prevents ad-hoc requirement edits from leaking directly into design or implementation.
+它的作用是防止“随手改需求”直接渗透到设计或实现层。
 
-## Hard Gate
+## 硬性门禁
 
-Do not jump from a change request straight into coding.
+不要从变更请求直接跳进编码。
 
-A change must first be analyzed for impact on the spec, design, and task plan.
+任何变更都必须先分析它对规格、设计和任务计划的影响。
 
-## Preconditions
+## 前置条件
 
-Use this skill when:
+在以下情况下使用本 skill：
 
-- `change-request.json` exists, or
-- the user explicitly asks to modify approved scope or requirements
+- 存在 `change-request.json`
+- 用户明确要求修改已批准范围或需求
 
-## Workflow
+## 工作流
 
-### 1. Read The Change Request
+### 1. 阅读变更请求
 
-Read:
+阅读：
 
-- the change request itself
-- the approved requirement spec
-- the approved design
-- the current task plan, if it exists
+- 变更请求本身
+- 已批准需求规格
+- 已批准设计
+- 当前任务计划（如有）
 
-Determine:
+明确：
 
-- what changed
-- what remains valid
-- what artifacts are affected
+- 具体变了什么
+- 哪些内容仍然有效
+- 哪些工件会受影响
 
-### 2. Perform Impact Analysis
+### 2. 执行影响分析
 
-Assess impact on:
+评估对以下内容的影响：
 
-- scope and requirements
-- constraints or acceptance criteria
-- architecture or interfaces
-- task ordering and dependencies
-- already implemented work
+- 范围与需求
+- 约束或验收标准
+- 架构或接口
+- 任务顺序与依赖
+- 已完成实现
 
-Classify the change:
+对变更进行分类：
 
-- spec-only update
-- spec + design update
-- spec + design + task plan update
-- implemented behavior now invalid
+- 仅更新规格
+- 更新规格与设计
+- 更新规格、设计与任务计划
+- 已实现行为因此失效
 
-### 3. Update The Correct Artifacts
+### 3. 更新正确的工件
 
-Apply the minimum necessary changes to keep artifacts aligned.
+用最小必要改动保持各类工件一致。
 
-Rules:
+规则如下：
 
-- requirements changes go to the requirement spec first
-- design changes follow only if the requirement change affects HOW
-- task plan changes follow only if design or scope changes affect execution
+- 需求变更先落到需求规格
+- 只有当需求变化影响“如何实现”时，才继续更新设计
+- 只有当设计或范围变化影响执行时，才更新任务计划
 
-### 4. Route Back To The Correct Phase
+### 4. 路由回正确阶段
 
-After the update:
+更新完成后：
 
 - if the spec changed materially and needs re-review -> `mdc-spec-review`
 - if the design changed materially and needs re-review -> `mdc-design-review`
 - if only task sequencing changed -> `mdc-tasks-review`
 - if all relevant docs remain approved -> return to the appropriate implementation phase
 
-## Output Format
+## 输出格式
 
-Use this exact structure:
+请严格使用以下结构：
 
 ```markdown
 ## Change Summary
@@ -106,13 +106,13 @@ Use this exact structure:
 `mdc-spec-review` | `mdc-design-review` | `mdc-tasks-review` | `mdc-implement`
 ```
 
-## Anti-Patterns
+## 反模式
 
-- editing the implementation first and fixing docs later
-- treating a requirement change as a task-only change
-- assuming old approvals still hold after material scope changes
-- leaving artifacts out of sync
+- 先改实现，后补文档
+- 把需求变更误当成单纯任务调整
+- 范围发生实质变化后，仍假定旧批准有效
+- 让多个工件处于不同步状态
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when the change has been analyzed, the affected artifacts have been updated or identified for update, and a single correct next step has been chosen.
+只有在变更已完成分析、受影响工件已更新或被明确标记待更新，并且已经选定唯一正确下一步之后，这个 skill 才算完成。

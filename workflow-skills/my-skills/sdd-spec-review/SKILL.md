@@ -1,59 +1,59 @@
 ---
 name: mdc-spec-review
-description: Review an MDC requirement specification before design begins. Use when a requirement spec draft exists and must be checked for completeness, scope clarity, ambiguity, acceptance criteria, and readiness to become the approved input to design.
+description: 在设计开始之前评审 MDC 需求规格。适用于需求规格草稿已经存在，且需要检查完整性、范围清晰度、歧义、验收标准以及是否可作为设计阶段已批准输入的场景。
 ---
 
-# MDC Spec Review
+# MDC 需求评审
 
-Review the requirement specification and decide whether it is ready to be approved for design.
+评审需求规格，并判断它是否已经可以批准进入设计阶段。
 
-## Purpose
+## 目的
 
-This skill is the specification freeze gate.
+这个 skill 是需求规格冻结门禁。
 
-If the spec is weak, design will drift. If the spec is approved too early, implementation will inherit avoidable ambiguity.
+如果规格本身不扎实，设计就会漂移；如果批准得过早，实现阶段就会继承本可避免的歧义。
 
-## Hard Gate
+## 硬性门禁
 
-Do not move to `mdc-design` until the spec passes review or the user explicitly accepts known gaps.
+在规格通过评审，或用户明确接受已知缺口之前，不得进入 `mdc-design`。
 
-## Review Method
+## 评审方法
 
-Review only the spec and the minimum supporting context needed to judge it.
+只评审需求规格本身，以及做判断所需的最少辅助上下文。
 
-Do not redesign the system during review.
+评审过程中不要顺手重新设计系统。
 
-## Checklist
+## 检查清单
 
-Check the spec against these dimensions:
+请从以下维度检查需求规格：
 
-### 1. Scope
+### 1. 范围
 
-- Is the problem statement clear?
-- Is in-scope clear?
-- Is out-of-scope explicit?
+- 问题陈述是否清晰？
+- 范围内内容是否明确？
+- 范围外内容是否显式写出？
 
-### 2. Requirement Quality
+### 2. 需求质量
 
-- Are core requirements observable and testable?
-- Are vague words removed or quantified?
-- Are requirements free from hidden design decisions?
+- 核心需求是否可观察、可测试？
+- 模糊表达是否被移除或量化？
+- 需求描述中是否避免了隐藏设计决策？
 
-### 3. Completeness
+### 3. 完整性
 
-- Are the main user roles identified?
-- Are edge cases or negative paths at least acknowledged?
-- Are constraints and dependencies stated?
-- Are acceptance criteria present for core behaviors?
+- 主要用户角色是否已识别？
+- 边界情况或负路径是否至少被识别出来？
+- 约束和依赖是否写明？
+- 核心行为是否具备验收标准？
 
-### 4. Readiness
+### 4. 准备度
 
-- Can a designer proceed without guessing the basics?
-- Are blocking open questions identified clearly?
+- 设计人员能否在不猜测基础信息的情况下继续？
+- 阻塞性开放问题是否被清楚标出？
 
-## Output Format
+## 输出格式
 
-Use this exact structure:
+请严格使用以下结构：
 
 ```markdown
 ## Verdict
@@ -73,46 +73,46 @@ PASS | REVISE | BLOCKED
 `mdc-design` | `mdc-specify`
 ```
 
-Severity guidance:
+严重级别说明：
 
-- `critical`: blocks design
-- `important`: should be fixed before approval
-- `minor`: does not block but should be improved
+- `critical`: 阻塞设计
+- `important`: 应在批准前修复
+- `minor`: 不阻塞，但建议改进
 
-## Decision Rules
+## 判定规则
 
-Return `PASS` only if:
+只有在以下条件全部满足时，才返回 `PASS`：
 
-- scope is clear
-- requirements are usable
-- acceptance criteria exist for core scope
-- remaining open questions do not block design
+- 范围清晰
+- 需求可直接使用
+- 核心范围具备验收标准
+- 剩余开放问题不会阻塞设计
 
-Return `REVISE` if:
+以下情况返回 `REVISE`：
 
-- the spec is useful but incomplete
-- ambiguity remains in important areas
-- acceptance criteria are weak or partial
+- 规格有用，但还不完整
+- 重要区域仍存在歧义
+- 验收标准偏弱或不完整
 
-Return `BLOCKED` if:
+以下情况返回 `BLOCKED`：
 
-- the spec is too vague to support design
-- the core problem or scope is still unclear
-- major contradictions remain unresolved
+- 规格过于模糊，无法支撑设计
+- 核心问题或范围仍不清楚
+- 关键矛盾尚未解决
 
-## Approval Handling
+## 批准处理
 
-If the spec passes, explicitly say it is ready to become the approved design input.
+如果规格通过，请明确说明它已经可以成为设计阶段的已批准输入。
 
-If it does not pass, send it back to `mdc-specify` with concrete revision points.
+如果未通过，请把它退回 `mdc-specify`，并附上具体修订点。
 
-## Anti-Patterns
+## 反模式
 
-- Turning review into redesign
-- Approving because "we can figure it out later"
-- Treating implied scope as acceptable
-- Ignoring missing acceptance criteria
+- 把评审变成重新设计
+- 因为“后面再想”就直接批准
+- 把隐含范围当成可以接受
+- 忽略缺失的验收标准
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when it has produced a clear verdict and a single next step.
+只有在给出明确结论和唯一下一步后，这个 skill 才算完成。

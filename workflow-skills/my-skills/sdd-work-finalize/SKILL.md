@@ -1,93 +1,93 @@
 ---
 name: mdc-finalize
-description: Finalize an MDC work cycle after implementation and completion gating have passed. Use when the current work item is complete and you need to update progress records, release notes, review evidence, and prepare a clean handoff to the next task or session.
+description: 在实现与完成门禁都通过之后，收尾一个 MDC 工作周期。适用于当前工作项已经完成，且需要更新进度记录、发布说明、评审证据以及为下一个任务或下一次会话做好交接的场景。
 ---
 
-# MDC Finalize
+# MDC 收尾
 
-Close out the current MDC work cycle cleanly.
+把当前 MDC 工作周期干净地收尾。
 
-## Purpose
+## 目的
 
-This skill turns completed work into durable project state.
+这个 skill 的目标是把“已经完成的工作”沉淀为“可持续的项目状态”。
 
-It exists so the next session does not have to rediscover:
+它的存在是为了让下一次会话不必重新摸索：
 
-- what was done
-- what evidence supports completion
-- what changed for users
-- what should happen next
+- 做了什么
+- 有哪些证据支持完成
+- 对用户来说有哪些变化
+- 接下来应该做什么
 
-## Preconditions
+## 前置条件
 
-Use this skill only after the current task has passed completion gating.
+只有在当前任务通过完成门禁之后，才能使用这个 skill。
 
-## Workflow
+## 工作流
 
-### 1. Update Progress State
+### 1. 更新进度状态
 
-Update the project's progress record with:
+在项目进度记录中补充：
 
-- completed task or scope item
-- date or session marker
-- current status
-- next recommended task
+- 已完成任务或范围项
+- 日期或会话标记
+- 当前状态
+- 推荐的下一任务
 
-### 2. Update Release Notes
+### 2. 更新发布说明
 
-If the completed work changed user-visible behavior, update release notes with a concise description of:
+如果完成的工作影响了用户可见行为，请在发布说明中简要记录：
 
-- what changed
-- why it matters
+- 变了什么
+- 为什么重要
 
-### 3. Record Evidence Links
+### 3. 记录证据位置
 
-Capture where the supporting evidence lives:
+记录支持完成结论的证据在哪里：
 
-- tests run
-- review outcomes
-- regression result
-- completion gate result
+- 测试执行结果
+- 评审结论
+- 回归结果
+- 完成门禁结果
 
-The record can be concise, but it must make later auditing possible.
+记录可以简洁，但必须支持后续审计和追溯。
 
-### 4. Prepare Handoff
+### 4. 准备交接
 
-State:
+明确说明：
 
-- what is complete
-- what remains
-- what the next correct skill should be, if another session resumes
+- 哪些内容已经完成
+- 还剩什么
+- 如果下一次会话继续，正确的下一步 skill 是什么
 
-## Output Format
+## 输出格式
 
-Use this exact structure:
+请严格使用以下结构：
 
 ```markdown
-## Finalized Work
+## 已完成工作
 
-- completed item
+- 已完成项
 
-## Updated Records
+## 已更新记录
 
-- record updated
+- 已更新记录项
 
-## Evidence Summary
+## 证据摘要
 
-- evidence item
+- 证据项
 
-## Next Step
+## 下一步
 
 `mdc-implement` | `mdc-increment` | `mdc-hotfix` | `workflow-complete`
 ```
 
-## Anti-Patterns
+## 反模式
 
-- declaring completion without updating project state
-- leaving the next task implicit
-- forgetting release notes for user-visible changes
-- mixing new implementation work into finalization
+- 宣告完成，却没有更新项目状态
+- 把下一任务留成隐含信息
+- 对用户可见变化忘记写发布说明
+- 在收尾过程中混入新的实现工作
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when project state, release communication, and handoff information have been updated clearly enough for the next session to resume without guesswork.
+只有在项目状态、发布沟通和交接信息都更新到足以让下一次会话无须猜测地继续时，这个 skill 才算完成。

@@ -1,47 +1,47 @@
 ---
 name: mdc-tasks-review
-description: Review an MDC task plan before implementation begins. Use when a task plan draft exists and must be checked for granularity, sequencing, dependency correctness, verifiability, and readiness to guide implementation.
+description: 在实现开始前评审 MDC 任务计划。适用于任务计划草稿已经存在，且需要检查粒度、顺序、依赖正确性、可验证性以及是否足以指导实现的场景。
 ---
 
-# MDC Tasks Review
+# MDC 任务评审
 
-Review the task plan and decide whether implementation can begin.
+评审任务计划，并判断是否可以开始实现。
 
-## Hard Gate
+## 硬性门禁
 
-Do not move to `mdc-implement` until the task plan passes review or the user explicitly accepts known gaps.
+在任务计划通过评审，或用户明确接受已知缺口之前，不得进入 `mdc-implement`。
 
-## Purpose
+## 目的
 
-This skill is the execution readiness gate.
+这个 skill 是执行准备度门禁。
 
-If the task plan is too coarse, implementation will drift.
+如果任务计划过于粗糙，实现阶段就容易漂移。
 
-## Checklist
+## 检查清单
 
-### 1. Granularity
+### 1. 粒度
 
-- Are tasks small enough to execute and verify?
-- Are there still tasks that hide multiple behaviors?
+- 任务是否足够小，可以直接执行和验证？
+- 是否仍存在一个任务里混入多个行为的情况？
 
-### 2. Sequencing
+### 2. 顺序
 
-- Is the order of tasks logical?
-- Are prerequisites respected?
+- 任务顺序是否合理？
+- 前置条件是否被正确遵守？
 
-### 3. Verification Readiness
+### 3. 验证准备度
 
-- Does each important task have a clear verification method?
-- Are done conditions explicit?
+- 每个关键任务是否都有清晰验证方法？
+- 完成条件是否明确？
 
-### 4. Traceability
+### 4. 可追溯性
 
-- Can major tasks be traced back to the design and spec?
-- Are risky areas represented in the plan?
+- 主要任务能否追溯回设计和规格？
+- 风险区域是否体现在计划中？
 
-## Output Format
+## 输出格式
 
-Use this exact structure:
+请严格使用以下结构：
 
 ```markdown
 ## Verdict
@@ -61,29 +61,29 @@ PASS | REVISE | BLOCKED
 `mdc-implement` | `mdc-tasks`
 ```
 
-## Decision Rules
+## 判定规则
 
-Return `PASS` only if the plan:
+只有当计划满足以下条件时，才返回 `PASS`：
 
-- is sequenced coherently
-- has usable task granularity
-- contains explicit done conditions
-- supports implementation without major guesswork
+- 顺序连贯
+- 粒度可执行
+- 完成条件明确
+- 可以支撑实现而无需大量猜测
 
-Return `REVISE` if:
+以下情况返回 `REVISE`：
 
-- the plan is mostly usable but some tasks are too broad or underspecified
+- 计划整体可用，但部分任务过大或描述不足
 
-Return `BLOCKED` if:
+以下情况返回 `BLOCKED`：
 
-- implementation cannot proceed safely from the current task plan
+- 基于当前任务计划，无法安全推进实现
 
-## Anti-Patterns
+## 反模式
 
-- Approving because "the implementer can figure it out"
-- Ignoring missing verification steps
-- Letting milestone labels substitute for actual tasks
+- 因为“实现的人会自己补齐”就直接通过
+- 忽略缺失的验证步骤
+- 用里程碑标题代替真正的任务项
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when it has produced a clear verdict and a single next step.
+只有在给出明确结论和唯一下一步之后，这个 skill 才算完成。

@@ -1,43 +1,43 @@
 ---
 name: mdc-test-review
-description: Review tests for an implemented MDC task before code review and completion gating. Use when a task implementation includes new or changed tests and those tests must be checked for meaningful failure-first behavior, behavioral coverage, and usefulness.
+description: 在代码评审与完成门禁之前，对已实现 MDC 任务的测试进行评审。适用于当前任务包含新增或变更测试，且需要检查这些测试是否体现 fail-first、覆盖关键行为并真正有用的场景。
 ---
 
-# MDC Test Review
+# MDC 测试评审
 
-Review the tests for the current implemented task.
+评审当前任务的测试。
 
-## Purpose
+## 目的
 
-This skill checks whether the tests actually validate behavior instead of merely decorating the task with shallow coverage.
+这个 skill 用于判断测试是否真的在验证行为，而不只是给任务表面上加了一层浅覆盖。
 
-## Review Checklist
+## 评审清单
 
-### 1. Failure-First Discipline
+### 1. 失败优先纪律
 
-- Was there a failing test before the implementation?
-- Did the failure represent the intended missing behavior?
+- 在实现前，是否先出现了失败测试？
+- 这个失败是否准确代表了缺失行为？
 
-### 2. Behavioral Value
+### 2. 行为价值
 
-- Do the tests check behavior rather than implementation trivia?
-- Are assertions meaningful?
+- 测试验证的是行为，而不是实现细节吗？
+- 断言是否有意义？
 
-### 3. Coverage Shape
+### 3. 覆盖形态
 
-- Is there at least basic unhappy-path or edge-path coverage where relevant?
-- Are important task behaviors represented?
+- 在适用场景下，是否至少覆盖了基本异常路径或边界路径？
+- 重要任务行为是否都被体现出来？
 
-### 4. Test Quality Risks
+### 4. 测试质量风险
 
-- Overuse of mocks
-- weak assertions
-- vague names
-- tests coupled too tightly to implementation details
+- 过度使用 mock
+- 断言过弱
+- 命名模糊
+- 测试与实现细节耦合过紧
 
-## Output Format
+## 输出格式
 
-Use this exact structure:
+请严格使用以下结构：
 
 ```markdown
 ## Verdict
@@ -57,18 +57,18 @@ PASS | REVISE
 `mdc-code-review` | `mdc-implement`
 ```
 
-## Decision Rules
+## 判定规则
 
-Return `PASS` only if the tests are meaningfully useful for the current task.
+只有当这些测试对当前任务真正有验证价值时，才返回 `PASS`。
 
-Return `REVISE` if test quality is too weak to trust the task result yet.
+如果测试质量太弱，尚不足以支撑对任务结果的信任，则返回 `REVISE`。
 
-## Anti-Patterns
+## 反模式
 
-- Approving tests because they exist
-- Ignoring the lack of a failing-test-first signal
-- Accepting shallow assertions as sufficient evidence
+- 因为“有测试”就直接通过
+- 忽略没有失败优先信号的问题
+- 把浅层断言当成足够证据
 
-## Success Condition
+## 完成条件
 
-This skill is complete only when it has produced a clear verdict and a single next step.
+只有在给出明确结论和唯一下一步之后，这个 skill 才算完成。
