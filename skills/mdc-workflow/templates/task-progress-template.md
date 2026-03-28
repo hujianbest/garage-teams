@@ -10,6 +10,8 @@
 
 - Current Stage:
 - Current Active Task:
+- Workflow Profile: full | standard | lightweight
+- Profile Selection Rationale:
 - Next Action Or Recommended Skill:
 - Last Updated:
 
@@ -40,4 +42,5 @@
 - Summary:
 - Updated Files:
 - Evidence:
+- Profile Change: (若本次发生 profile 升级，记录升级方向和原因)
 - Next Suggested Action Or Skill:

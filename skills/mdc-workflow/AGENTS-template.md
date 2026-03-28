@@ -91,6 +91,22 @@
 - `<例如 集成测试中避免 mock repository 层>`
 - `<例如 非代码配置变更允许豁免 TDD，但必须记录理由>`
 
+### Workflow Profiles
+
+- 默认 profile: `full`
+- 强制 full 规则:
+  - `<例如 涉及支付、权限、并发状态机的改动>`
+  - `<例如 跨模块接口变更>`
+  - `<例如 数据迁移>`
+- 允许 lightweight 的条件:
+  - `<例如 docs/ 下的纯文档改动>`
+  - `<例如 README、CHANGELOG 更新>`
+  - `<例如 配置文件调整（不影响运行时行为）>`
+- 禁止 lightweight 的条件:
+  - `<例如 涉及测试基础设施变更>`
+  - `<例如 CI/CD 配置变更>`
+  - `<例如 安全相关配置变更>`
+
 ### 门禁与例外
 
 - `<例如 docs-only 改动可以跳过 mdc-test-review，但不能跳过 completion gate>`

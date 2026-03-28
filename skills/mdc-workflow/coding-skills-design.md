@@ -68,6 +68,52 @@
 8. **轻支线，重主线**：变更和热修复可以走支线，但不能破坏主链路的可追溯性。
 9. **任务粒度可验证**：任务拆分以“能独立验证、能独立关闭”为标准，而不是按文件随意切。
 10. **测试不是尾声，是实现阶段的一部分**：TDD 和测试质量审查前置到实现流内部。
+11. **流程密度匹配任务复杂度**：通过自适应 workflow profile 让简单任务走轻量链路、复杂任务走完整链路，而不是所有任务一刀切走同一条重型管线。
+
+## 4.1 自适应 Workflow Profiles
+
+### 动机
+
+主链完整走下来涉及 18 个节点。对改一个配置项或修一个 typo 来说，这条链路过重。但如果为了省事允许随意跳步，又会损坏流程约束力。
+
+业界共识（Anthropic 2025、Propel 2026）：流程密度应匹配任务风险——"Start with the simplest pattern that meets your quality bar" 以及 "Risk must be tiered"。
+
+### Profile 定义
+
+引入三档 workflow profile，每档保留不同密度的门禁：
+
+| Profile | 名称 | 适用场景 | 节点链路 |
+|---------|------|---------|---------|
+| **full** | 完整流程 | 新功能、架构变更、高风险模块、跨模块重构、无已批准规格或设计 | 全部 18 节点主链 |
+| **standard** | 标准流程 | 中等功能、已有规格+设计的功能扩展、非高风险 bugfix | 从 `mdc-tasks` 开始，保留完整质量层（共 12 节点） |
+| **lightweight** | 轻量流程 | 纯文档/配置/样式变更、低风险 bugfix（单文件、无接口变化） | `mdc-implement` → `mdc-regression-gate` → `mdc-completion-gate` → `mdc-finalize`（共 4 节点） |
+
+### Profile 选择机制
+
+- Profile 由 `mdc-workflow-starter` 在路由阶段决定，不允许用户自行声称。
+- 若 `AGENTS.md` 声明了强制 profile 规则，优先执行。
+- 信号冲突时，选择更重的 profile（保守原则）。
+- 允许升级（lightweight → standard → full），**不允许降级**。
+
+### Profile 升级触发条件
+
+- 实现过程中发现缺少规格或设计依据
+- review / gate 返回 `阻塞`，且阻塞原因指向上游工件缺失
+- 改动范围超出预期（例如从单文件扩散到多模块）
+
+### `AGENTS.md` 扩展
+
+在 `AGENTS.md` 的 `MDC Workflow` 段新增 `Workflow Profiles` 配置，包括：默认 profile、强制 full 规则、允许/禁止 lightweight 条件。
+
+### 对 `task-progress.md` 的影响
+
+Current State 段新增 `Workflow Profile` 字段和 `Profile Selection Rationale` 字段，Session Log 新增 `Profile Change` 字段。
+
+### 对路由和迁移表的影响
+
+- `mdc-workflow-starter` 路由分两步：先决定 profile，再在 profile 约束下决定阶段。
+- 每个 profile 维护独立的结果驱动迁移表。
+- 合法状态集合按 profile 缩窄：在当前 profile 不包含的节点上推进，视为无效迁移。
 
 ## 5. 三层架构总览
 
@@ -836,4 +882,6 @@ flowchart TD
 
 这套 skills 作业体系的核心，不是“让 Agent 更会写代码”，而是“让 Agent 先按团队认可的开发节奏工作”。它继承了 `superpowers` 的强约束意识，也吸收了 `longtaskforagent` 的交付件驱动与阶段路由，但刻意去掉了 subagent，以换取更简单、更可控、更适合团队先落地试用的版本。
 
-如果后续要实现，这份方案已经可以直接作为蓝图使用：你可以按本文的 skill 地图、门禁规则、交付件契约和实现顺序，一步步把它变成项目内的实际 skills 目录与 `SKILL.md` 文件。
+通过自适应 workflow profile 机制，它同时解决了"完整流程过重"和"随意跳步损坏约束"之间的矛盾：简单任务走 lightweight（4 节点），中等任务走 standard（12 节点），复杂任务走 full（18 节点），每个 profile 内的门禁仍然完整执行。
+
+如果后续要实现，这份方案已经可以直接作为蓝图使用：你可以按本文的 skill 地图、门禁规则、profile 机制、交付件契约和实现顺序，一步步把它变成项目内的实际 skills 目录与 `SKILL.md` 文件。

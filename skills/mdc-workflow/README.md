@@ -63,6 +63,7 @@
 2. 用工件和记录承接状态，而不是依赖对话记忆。
 3. 把质量防护独立成层，而不是在最后“顺手检查一下”。
 4. 在不引入 subagent 的前提下，保留评审、回退、验证、收尾闭环。
+5. 用自适应 workflow profile 让流程密度匹配任务复杂度，而不是所有任务走同一条重型管线。
 
 ## 非目标
 
@@ -136,6 +137,7 @@ flowchart TD
 
 - 读取阶段证据
 - 判断当前所处阶段
+- 选择 workflow profile（full / standard / lightweight）
 - 决定 workflow 中推荐的下一步动作或 skill
 - 阻止乱序推进
 - 作为主链 / 支线 / review / gate 的统一状态机编排器
@@ -531,9 +533,36 @@ flowchart TD
 - 必须基于 fresh verification evidence，而不是主观判断
 - 只根据实际命令输出陈述状态，不能把“应该通过”当作“已经通过”
 
+## Workflow Profiles
+
+`mdc` 支持三档 workflow profile，让流程密度匹配任务复杂度。
+
+| Profile | 适用场景 | 节点链路 |
+|---------|---------|---------|
+| **full** | 新功能、架构变更、高风险模块、跨模块重构、无已批准规格或设计 | 全部主链节点（18 个） |
+| **standard** | 中等功能、已有规格+设计的功能扩展、非高风险 bugfix | `mdc-tasks` → 完整质量层 → `mdc-finalize`（12 个） |
+| **lightweight** | 纯文档/配置/样式变更、低风险 bugfix | `mdc-implement` → `mdc-regression-gate` → `mdc-completion-gate` → `mdc-finalize`（4 个） |
+
+Profile 由 `mdc-workflow-starter` 在路由阶段决定，不允许用户自行声称。选择依据包括工件状态、改动范围、`AGENTS.md` 中的团队规则等信号。
+
+关键规则：
+
+- 每个 profile 内的节点仍执行完整检查，profile 控制的是走哪些节点，不是降低门禁强度
+- 信号冲突时选择更重的 profile（保守原则）
+- 允许从轻 profile 升级到重 profile（lightweight → standard → full），不允许降级
+- 升级由 `mdc-workflow-starter` 在检测到实际复杂度超出当前 profile 时触发
+
+详细选择规则参见 `mdc-workflow-starter/references/profile-selection-guide.md`。
+
+团队可在 `AGENTS.md` 中配置：
+
+- 默认 profile
+- 强制 full 的规则（如"涉及支付的任何改动"）
+- 允许 / 禁止 lightweight 的条件
+
 ## 主链工作流
 
-默认主链如下：
+以下是 full profile 的默认主链：
 
 ```mermaid
 flowchart TD
@@ -581,6 +610,27 @@ flowchart TD
 - 未批准设计前，不进入任务
 - 未批准任务前，不进入实现
 - 未完成质量链与门禁前，不宣称完成
+
+### standard profile 主链
+
+当已有已批准规格+设计时，可从任务拆分开始：
+
+```text
+mdc-workflow-starter → mdc-tasks → mdc-tasks-review → mdc-implement
+→ mdc-bug-patterns → mdc-test-review → mdc-code-review
+→ mdc-traceability-review → mdc-regression-gate → mdc-completion-gate
+→ mdc-finalize
+```
+
+### lightweight profile 主链
+
+当改动不涉及功能行为变化或为低风险修复时：
+
+```text
+mdc-workflow-starter → mdc-implement
+→ mdc-regression-gate → mdc-completion-gate
+→ mdc-finalize
+```
 
 ## 支线工作流
 
@@ -646,6 +696,7 @@ flowchart TD
 
 - `AGENTS.md`
 - `mdc-workflow-starter/references/routing-evidence-guide.md`
+- `mdc-workflow-starter/references/profile-selection-guide.md`
 - `AGENTS-template.md`
 - `templates/task-progress-template.md`
 - `templates/review-record-template.md`
@@ -889,6 +940,27 @@ README 里给的是推荐默认布局：
 
 只有显式批准证据存在时，`mdc-workflow-starter` 才应把它们当作已批准工件。
 
+### 9. 什么时候可以用 lightweight profile？
+
+当改动满足以下全部条件时：
+
+- 纯文档 / 配置 / 样式变更，或低风险单文件 bugfix
+- 不涉及接口、数据模型或功能行为变化
+- 不在 `AGENTS.md` 声明的高风险模块中
+- 不在 `AGENTS.md` 的 `禁止 lightweight 的条件` 中
+
+lightweight 不是"跳过流程"，而是"用更短的受控链路完成低复杂度工作"。它仍要通过 regression-gate 和 completion-gate。
+
+### 10. profile 是谁决定的？可以手动指定吗？
+
+Profile 由 `mdc-workflow-starter` 根据信号矩阵自动判断，不允许用户自行声称。
+
+如果觉得默认判断不合适，正确做法是在 `AGENTS.md` 中调整 Workflow Profiles 配置（如强制 full 规则、允许 / 禁止 lightweight 条件），而不是在会话中直接要求某个 profile。
+
+### 11. profile 可以降级吗？
+
+不可以。一旦选定或升级到某个 profile，只能保持或继续升级，不能降回更轻的 profile。
+
 ## 一句话总结
 
 `mdc` 是一套面向软件交付的轻量 workflow skills：
@@ -896,4 +968,5 @@ README 里给的是推荐默认布局：
 - 借鉴 `superpowers` 的强流程约束
 - 借鉴 `longtaskforagent` 的轻量工件驱动
 - 不依赖 subagent
+- 用自适应 profile 让流程密度匹配任务复杂度
 - 重点解决“先做什么、何时能往下走、什么才算完成”
