@@ -38,7 +38,7 @@
 
 在会话开始时，`mdc-workflow-starter` 应按以下顺序判断：
 
-1. `mdc-contract` 或等价作业契约
+1. `AGENTS.md` 中与 `mdc-workflow` 相关的映射与审批约定
 2. 需求规格 / 设计文档 / 任务计划的存在情况与批准状态
 3. `task-progress.md`
 4. `docs/reviews/`
@@ -52,7 +52,7 @@
 
 在会话开始时，`mdc-workflow-starter` 应优先只检查：
 
-1. 作业合同
+1. `AGENTS.md` 中的 `mdc-workflow` 配置段
 2. 规格 / 设计 / 任务工件的存在情况和批准状态
 3. 进度、评审和验证记录
 4. 用户当前请求
@@ -73,6 +73,7 @@
 
 优先寻找显式批准标记，例如：
 
+- 若 `AGENTS.md` 已声明项目别名，优先采用其中的 approved / pass / revise / blocked 映射
 - `状态: 已批准`
 - 兼容旧写法：`Status: Approved`
 - 带有 `通过` 结论的评审章节

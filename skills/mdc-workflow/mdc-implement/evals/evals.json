@@ -36,6 +36,18 @@
         "完成后仍需走 bug-patterns 到 completion-gate 的顺序",
         "不在完成门禁前宣称已完成"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "这个服务的 AGENTS.md 已经规定：当前任务必须先设计 API 层行为测试，再执行 `pnpm test:unit`，然后执行 `pnpm test:integration`；集成测试里不要 mock repository 层。你按正确流程推进这个当前任务。",
+      "expected_output": "应在实现阶段优先读取 AGENTS.md 中的 testing 规范，用这些约束来设计测试和进入 TDD，而不是只给出泛化的默认 TDD 说明。",
+      "files": [],
+      "expectations": [
+        "优先读取 AGENTS.md 中的 testing 规范",
+        "测试设计体现 API 层行为测试优先的要求",
+        "说明后续验证命令顺序为 `pnpm test:unit` 再 `pnpm test:integration`",
+        "避免在集成测试策略中默认允许 mock repository 层"
+      ]
     }
   ]
 }

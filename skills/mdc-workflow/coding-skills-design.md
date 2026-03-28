@@ -177,11 +177,9 @@ flowchart TD
 
 团队往往已有既定交付件名称，例如 PRD、SRS、概要设计、详细设计、任务清单、测试报告、发布说明。如果这套 skills 直接写死文件名，会造成与现有规范冲突。
 
-因此建议引入一个轻量映射工件：
+因此建议把映射直接收口到 `AGENTS.md` 中的 `mdc-workflow` 配置段。
 
-- `docs/process/mdc-contract.md` 或 `docs/process/mdc-contract.json`
-
-它的作用是定义：
+它的作用是统一定义：
 
 - 逻辑工件名
 - 团队现有交付件名
@@ -228,7 +226,7 @@ flowchart TD
 
 **输入**
 
-- `mdc-contract`
+- `AGENTS.md` 中的 `mdc-workflow` 配置
 - 既有交付件路径
 - 当前用户请求
 - 进度记录、评审记录、验证记录、发布说明等阶段证据工件

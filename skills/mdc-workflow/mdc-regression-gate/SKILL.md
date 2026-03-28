@@ -35,7 +35,7 @@ description: 在代码评审之后、最终完成宣告之前，对已实现的 
 
 - `docs/verification/regression-<task>.md`
 
-如项目已有等价路径，可按 `mdc-contract` 映射路径保存。
+如 `AGENTS.md` 为当前项目声明了等价路径，按其中映射路径保存。
 
 若项目尚未形成固定 verification 记录格式，默认使用：
 

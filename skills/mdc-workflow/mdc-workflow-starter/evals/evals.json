@@ -119,6 +119,30 @@
         "采用保守处理而不是直接进入实现",
         "将下一步路由到 mdc-tasks"
       ]
+    },
+    {
+      "id": 11,
+      "prompt": "这个项目的 AGENTS.md 已经约定：需求规格使用 `Approval: Accepted` 表示已批准，设计文档使用 `Gate: Greenlit` 表示通过。当前规格文档已经写明 `Approval: Accepted`，但设计文档还没有 `Gate: Greenlit`。请按正确流程判断下一步。",
+      "expected_output": "应识别 AGENTS.md 中声明的批准别名，把规格视为已批准、设计视为未批准，并将下一步路由到 mdc-design。",
+      "files": [],
+      "expectations": [
+        "优先读取 AGENTS.md 中的审批状态别名",
+        "识别 `Approval: Accepted` 可视为规格已批准",
+        "识别设计缺少 `Gate: Greenlit`，因此尚未批准",
+        "将下一步路由到 mdc-design"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "这个项目的 AGENTS.md 规定进度记录不在 `task-progress.md`，而在 `delivery/current-cycle.md`；真人确认可由 PR 审批记录作为等价证据。当前评审记录显示规格已通过，PR 审批也已完成。请按正确流程判断下一步。",
+      "expected_output": "应识别 AGENTS.md 中声明的等价进度文件和真人确认证据，不因为默认文件名不同而卡住流程；在规格已批准、设计尚未批准时，继续路由到 mdc-design。",
+      "files": [],
+      "expectations": [
+        "优先读取 AGENTS.md 中的工件映射",
+        "接受 `delivery/current-cycle.md` 作为等价进度记录",
+        "接受 PR 审批记录作为真人确认等价证据",
+        "在规格批准、设计未批准的前提下路由到 mdc-design"
+      ]
     }
   ]
 }

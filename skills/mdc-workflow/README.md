@@ -35,6 +35,17 @@
 
 对于这类请求，`mdc-workflow-starter` 是系列统一入口。
 
+## 团队扩展入口
+
+`mdc-workflow` 现在把 `AGENTS.md` 视为团队扩展的唯一入口。
+
+这意味着：
+
+- 阶段顺序、门禁和交接格式仍由 `mdc-*` skills 固定
+- 工件路径映射、审批状态别名、真人确认等价证据、模板覆盖和团队规范由 `AGENTS.md` 注入
+- 若 `AGENTS.md` 未声明某项配置，才回落到本目录中的默认路径、默认模板和默认状态词
+- 不再允许为同一项目维护 `AGENTS.md` 之外的平行映射来源
+
 ## 设计目标
 
 `mdc` 的核心目标是：
@@ -192,7 +203,7 @@ flowchart TD
 典型输入：
 
 - 当前用户请求
-- `mdc-contract` 或等价工件映射
+- `AGENTS.md` 中与 `mdc-workflow` 相关的工件映射与团队规范
 - 规格、设计、任务、review、verification、`task-progress.md`、`RELEASE_NOTES.md`
 
 典型输出：
@@ -598,12 +609,13 @@ flowchart TD
 - 验证记录：`docs/verification/`
 - 发布说明：`RELEASE_NOTES.md`
 
-如果项目已有自己的等价工件，可以通过 `mdc-contract` 映射，而不必强行改名。
+如果项目已有自己的等价工件，应在 `AGENTS.md` 中声明映射，而不必强行改名。
 
 相关模板与参考资料位于：
 
-- `mdc-workflow-starter/references/mdc-contract-template.md`
+- `AGENTS.md`
 - `mdc-workflow-starter/references/routing-evidence-guide.md`
+- `AGENTS-template.md`
 - `templates/task-progress-template.md`
 - `templates/review-record-template.md`
 - `templates/verification-record-template.md`
@@ -773,7 +785,7 @@ flowchart TD
 - 已批准工件
 - 待处理 review / gate
 
-如果项目已有自己的状态页、任务页或等价记录，并且这些信息足够完整，可以不强制新建 `task-progress.md`，而是通过 `mdc-contract` 做映射。
+如果项目已有自己的状态页、任务页或等价记录，并且这些信息足够完整，可以不强制新建 `task-progress.md`，而是在 `AGENTS.md` 中声明等价映射。
 
 ### 3. 为什么 review-only 请求也要先走 `mdc-workflow-starter`？
 
@@ -828,7 +840,7 @@ README 里给的是推荐默认布局：
 - `docs/verification/`
 - `task-progress.md`
 
-如果项目已有自己的交付件命名或目录结构，优先通过 `mdc-contract` 映射，而不是强迫项目重命名。
+如果项目已有自己的交付件命名或目录结构，优先通过 `AGENTS.md` 声明映射，而不是强迫项目重命名。
 
 ### 7. `mdc-test-driven-dev` 是否已经覆盖所有语言？
 

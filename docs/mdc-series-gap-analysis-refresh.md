@@ -89,7 +89,7 @@
 现在这几个点已经发生了明显变化：
 
 - `mdc-workflow-starter` 已经被强化为系列级统一前置门
-- `mdc-contract-template` 和 `routing-evidence-guide` 已明确最小工件契约与证据优先级
+- `AGENTS.md` 中的 `mdc-workflow` 配置与 `routing-evidence-guide` 已明确最小工件契约与证据优先级
 - `task-progress-template`、`review-record-template`、`verification-record-template` 已补齐
 - 质量层已统一到 review / gate 落盘协议与 `task-progress.md` 同步语义
 - `mdc-test-driven-dev` 已变成系列级 TDD 入口
@@ -150,7 +150,7 @@
 
 `mdc-workflow-starter` 不再只靠用户一句“继续”，而是检查：
 
-- 作业契约
+- `AGENTS.md` 中的 `mdc-workflow` 配置
 - 规格 / 设计 / 任务工件及其批准状态
 - `task-progress.md`
 - review 记录
@@ -179,7 +179,7 @@
 - `docs/verification/`
 - `RELEASE_NOTES.md`
 
-再加上 `mdc-contract` 映射层，已经可以支撑跨会话继续推进，而不完全依赖聊天历史。
+再加上 `AGENTS.md` 中集中声明的工件映射与审批约定，已经可以支撑跨会话继续推进，而不完全依赖聊天历史。
 
 ### D. 质量层已从“建议”升级为“协议”
 
