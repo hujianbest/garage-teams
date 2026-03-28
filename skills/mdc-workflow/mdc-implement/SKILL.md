@@ -85,6 +85,14 @@ TDD 执行统一委托给现有的 `mdc-test-driven-dev` skill。
 2. 再用任务计划校验该任务是否真实存在且仍然有效
 3. 若两者冲突，暂停实现并先修正状态记录或回到上游阶段
 
+如果当前是因为后续质量能力（`mdc-bug-patterns`、`mdc-test-review`、`mdc-code-review`、`mdc-traceability-review`）或门禁（`mdc-regression-gate`、`mdc-completion-gate`）返回"需修改"或"阻塞"而重新进入本 skill：
+
+- 先读取评审或门禁结论中的发现项、风险和修订建议
+- 定位需要修正的具体代码或测试区域
+- 优先修复 `critical` 与 `important` 级别的问题
+- 修复完成后，应从触发回流的那个质量能力或门禁重新开始后续检查，而不是从质量链起点重走
+- 不要因为回流修订就重新执行整个 TDD 流程，除非修订涉及行为变更需要新增或修改测试
+
 ### 2. 设计测试用例并与真人确认
 
 在进入 TDD 之前，先输出当前任务的测试设计，至少说明：
