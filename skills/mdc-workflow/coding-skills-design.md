@@ -130,6 +130,7 @@ flowchart TD
 - 判断当前处于哪个阶段
 - 决定进入主链、变更支线或热修复支线
 - 阻止 Agent 在错误阶段直接写代码
+- 作为 review / gate 完成后的统一恢复编排器
 
 它相当于 `using-superpowers` 和 `using-long-task` 的组合版，但目标更聚焦于这套作业体系的流程约束。
 

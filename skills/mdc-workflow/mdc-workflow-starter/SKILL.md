@@ -45,6 +45,58 @@ description: 在 workflow 场景中先判断当前阶段，再把软件工作路
 
 能力型 skill 只负责完成本类检查并给出结论；至于当前会话应不应该进入它、之后该进入哪里，由本 skill 统一编排。
 
+## 状态机原则
+
+把 `mdc-workflow` 视为一个由本 skill 驱动的轻量状态机，而不是一组可以随意挑选的能力说明：
+
+- 任一时刻只允许存在一个**当前推荐节点**
+- 当前推荐节点必须由最新工件证据、review / gate 结论和用户请求共同决定
+- 下游 skill 不负责自行挑选下一步；它们只负责完成本节点职责并返回结论
+- 任何新的用户请求、证据冲突、review / gate 结论、变更信号、热修复信号，都会触发本 skill 重新编排
+
+如果你发现自己在没有重新经过本 skill 的情况下，就直接把会话从一个节点切到另一个节点，这通常说明你已经绕开了状态机。
+
+## 合法状态集合
+
+主链推荐节点只允许落在以下集合中：
+
+- `mdc-specify`
+- `mdc-spec-review`
+- 规格真人确认
+- `mdc-design`
+- `mdc-design-review`
+- 设计真人确认
+- `mdc-tasks`
+- `mdc-tasks-review`
+- `mdc-implement`
+- `mdc-bug-patterns`
+- `mdc-test-review`
+- `mdc-code-review`
+- `mdc-traceability-review`
+- `mdc-regression-gate`
+- `mdc-completion-gate`
+- `mdc-finalize`
+
+支线推荐节点只允许落在以下集合中：
+
+- `mdc-increment`
+- `mdc-hotfix`
+
+如果某个用户请求、口头描述或局部记录暗示跳到上述集合之外，按无效迁移处理，回到最近一个有证据支撑的上游节点。
+
+## 状态转移来源
+
+本 skill 只能依据以下四类输入决定迁移：
+
+1. 当前用户请求
+2. 已批准或未批准的工件状态
+3. review / gate 结论
+4. 进度记录、验证记录、发布记录中的阶段证据
+
+不要把“我记得上轮已经做到这里了”当作合法输入。
+
+不要把“某个 skill 看起来就很适合这个请求”当作合法输入。
+
 ## 铁律
 
 在把会话正确路由到合适阶段之前，不要开始推进主链或支线工作。
@@ -153,6 +205,50 @@ description: 在 workflow 场景中先判断当前阶段，再把软件工作路
 默认主链编排如下：
 
 `mdc-specify -> mdc-spec-review -> 规格真人确认 -> mdc-design -> mdc-design-review -> 设计真人确认 -> mdc-tasks -> mdc-tasks-review -> mdc-implement -> mdc-bug-patterns -> mdc-test-review -> mdc-code-review -> mdc-traceability-review -> mdc-regression-gate -> mdc-completion-gate -> mdc-finalize`
+
+## 结果驱动迁移表
+
+把 review / gate 结论视为显式迁移信号，而不是普通建议：
+
+| 当前节点 | 结论 | 下一推荐节点 |
+|---|---|---|
+| `mdc-spec-review` | `通过` | 规格真人确认 |
+| `mdc-spec-review` | `需修改` / `阻塞` | `mdc-specify` |
+| 规格真人确认 | 确认通过 | `mdc-design` |
+| 规格真人确认 | 要求修改 / 未确认 | `mdc-specify` |
+| `mdc-design-review` | `通过` | 设计真人确认 |
+| `mdc-design-review` | `需修改` / `阻塞` | `mdc-design` |
+| 设计真人确认 | 确认通过 | `mdc-tasks` |
+| 设计真人确认 | 要求修改 / 未确认 | `mdc-design` |
+| `mdc-tasks-review` | `通过` | `mdc-implement` |
+| `mdc-tasks-review` | `需修改` / `阻塞` | `mdc-tasks` |
+| `mdc-bug-patterns` | `通过` | `mdc-test-review` |
+| `mdc-bug-patterns` | `需修改` / `阻塞` | `mdc-implement` |
+| `mdc-test-review` | `通过` | `mdc-code-review` |
+| `mdc-test-review` | `需修改` / `阻塞` | `mdc-implement` |
+| `mdc-code-review` | `通过` | `mdc-traceability-review` |
+| `mdc-code-review` | `需修改` / `阻塞` | `mdc-implement` |
+| `mdc-traceability-review` | `通过` | `mdc-regression-gate` |
+| `mdc-traceability-review` | `需修改` / `阻塞` | `mdc-implement` |
+| `mdc-regression-gate` | `通过` | `mdc-completion-gate` |
+| `mdc-regression-gate` | `需修改` / `阻塞` | `mdc-implement` |
+| `mdc-completion-gate` | `通过` | `mdc-finalize` |
+| `mdc-completion-gate` | `需修改` / `阻塞` | `mdc-implement` |
+
+如果某个下游 skill 给出的结论无法映射到唯一下一推荐节点，则说明编排信息还不完整，应回到本 skill 重新判断，而不是自行补脑推进。
+
+## 恢复编排协议
+
+当某个节点完成后，按以下顺序恢复状态机：
+
+1. 读取该节点的最新结论
+2. 检查该结论对应的上游 / 下游迁移是否有明确规则
+3. 检查用户是否在此期间提出了新范围、新缺陷或新阻塞
+4. 若有范围变化，优先判断是否切到 `mdc-increment`
+5. 若有紧急缺陷，优先判断是否切到 `mdc-hotfix`
+6. 若没有新的支线信号，则按迁移表进入唯一下一推荐节点
+
+不要跳过第 2 步和第 3 步。
 
 ## 什么叫“已批准”
 

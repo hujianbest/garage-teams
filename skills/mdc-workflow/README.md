@@ -138,6 +138,7 @@ flowchart TD
 - 判断当前所处阶段
 - 决定 workflow 中推荐的下一步动作或 skill
 - 阻止乱序推进
+- 作为主链 / 支线 / review / gate 的统一状态机编排器
 
 ### 2. 执行型
 
