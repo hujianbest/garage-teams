@@ -48,3 +48,33 @@
 | `templates/` | 新项目/新技能模板（按需） |
 
 人类可读的总览与协作说明见根目录 [README.md](README.md)。
+
+## Cursor Cloud specific instructions
+
+本仓库是知识/技能集合（Markdown + Python 辅助脚本），没有后端服务、数据库或构建产物。
+
+### 运行时依赖
+
+- **Python 3.12+**（系统自带）
+- **PyYAML**（`pip install PyYAML`，由 update script 自动安装）
+
+### 关键可执行脚本
+
+所有脚本在 `.cursor/skills/skill-creator/` 下，需以该目录为 `cwd` 运行：
+
+| 命令 | 用途 |
+|------|------|
+| `python3 -m scripts.quick_validate <skill-dir>` | 验证 SKILL.md 的 frontmatter 格式 |
+| `python3 -m scripts.package_skill <skill-dir> [output-dir]` | 将技能打包为 `.skill` 文件 |
+| `python3 -m scripts.aggregate_benchmark <benchmark-dir>` | 汇总 benchmark 统计 |
+| `python3 -m scripts.generate_report <json-input> [-o output.html]` | 生成 HTML 优化报告 |
+| `python3 -m scripts.run_eval ...` | 触发评测（依赖 `claude` CLI） |
+| `python3 -m scripts.run_loop ...` | 评测+改进循环（依赖 `claude` CLI） |
+
+> `run_eval` 和 `run_loop` 依赖 `claude` CLI 工具，Cloud 环境中通常不可用，属于预期限制。
+
+### 注意事项
+
+- `references/` 目录内为第三方项目快照（只读参考），不需要安装其依赖或运行其服务。
+- `skills-cn/` 为中文翻译的技能集合，同样是文档资产。
+- 没有 lint 配置、CI 流水线或自动化测试套件需要运行——核心验证方式是上述 Python 脚本。
