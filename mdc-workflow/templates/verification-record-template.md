@@ -16,6 +16,7 @@
 ## Claim Being Verified
 
 - Claim:
+- Artifact Scope: `change workspace` | `baseline artifacts` | `archive`
 
 ## Command
 
@@ -33,11 +34,20 @@
 
 - Conclusion: `通过` | `需修改` | `阻塞`
 - Recommended Next Action Or Skill:
+- Next Node:
+- Blocking Reasons:
 
 ## Evidence Location
 
 - Output Log:
 - Related Artifacts:
+- Freshness Note:
+
+## Structured Handoff
+
+- Required Reads:
+- Expected Writes:
+- Writes Scope: `change workspace` | `baseline artifacts` | `archive`
 
 ## Notes
 

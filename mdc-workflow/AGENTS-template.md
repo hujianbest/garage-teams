@@ -28,6 +28,14 @@
 
 ### 工件映射
 
+先按 artifact model 声明三类工件：
+
+- `baseline artifacts`: `<例如 已批准 specs/designs 与长期团队规范>`
+- `change workspace`: `<例如 单次需求、increment 或 hotfix 的在制工件集合>`
+- `archive`: `<例如 已完成 change 的 review / verification / release 归档位置>`
+
+然后再声明实际路径：
+
 - 需求规格: `<例如 docs/specs/<topic>.md>`
 - 设计文档: `<例如 docs/designs/<topic>.md>`
 - 任务计划: `<例如 docs/tasks/<topic>.md>`
@@ -35,6 +43,15 @@
 - 验证目录: `<例如 docs/verification/>`
 - 进度文件: `<例如 task-progress.md>`
 - 发布说明: `<例如 RELEASE_NOTES.md>`
+- 归档目录: `<例如 docs/archive/>`
+
+### Change Workspace 约定
+
+- workspace 命名方式: `<例如 feature-<topic> / hotfix-<issue> / change-<date>-<topic>>`
+- workspace 标识记录位置: `<例如 task-progress.md 的 Current Workspace 字段>`
+- 哪些工件默认属于 workspace: `<例如 spec delta / design delta / tasks / review / verification / release notes>`
+- 哪些工件只在 finalize 后才能提升为 baseline: `<例如 已批准 spec / design 最终稿>`
+- 哪些记录完成后进入 archive: `<例如 review / verification / finalize summary / release snapshot>`
 
 ### 审批别名
 
@@ -112,6 +129,12 @@
 - `<例如 docs-only 改动可以跳过 mdc-test-review，但不能跳过 completion gate>`
 - `<例如 紧急 hotfix 仍需先复现再修复>`
 - `<例如 若使用异步审批系统，PR approval 可作为真人确认等价证据>`
+
+### Archive 与收口策略
+
+- finalize 时哪些结果回写到 baseline: `<例如 已批准 spec / design 的最终版>`
+- finalize 时哪些结果进入 archive: `<例如 review 记录 / verification 记录 / release note snapshot>`
+- archive 是否允许参与恢复上下文: `<例如 允许，但不能替代当前 workspace 的批准证据或 fresh verification evidence>`
 
 ## 额外项目约定
 

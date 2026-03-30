@@ -12,6 +12,8 @@
 - 读取了正确的路由证据
 - 选择了正确的下游 skill
 - 没有发生阶段跳步
+- 正确区分 `baseline artifacts`、`change workspace` 与 `archive`
+- 在内部形成可解释的结构化 payload，而不只是 prose 路由
 
 ## 重要说明
 
@@ -29,6 +31,10 @@
 - `task-progress.md` 与任务计划批准状态冲突
 - prompt 明确表达需求变更
 - prompt 明确表达紧急热修复
+- 存在多个 workspace，且当前 prompt 只应继续其中一个
+- archive 中存在旧的 PASS 记录，但当前 workspace 仍是草稿
+- starter 应能说明 `requiredReads` / `expectedWrites` / `blockingReasons`
+- starter 应能说明 `writesScope`
 
 如果前置条件缺失，路由结果不同也可能是合理的。
 
@@ -48,3 +54,6 @@
 2. 回答是否引用了路由证据
 3. 下游 skill 是否正确
 4. 是否避免了过早进入设计、任务或代码实现
+5. 是否正确识别当前 `change workspace`
+6. 是否没有把 archive 误当成当前批准依据
+7. 是否给出了与当前节点一致的 `writesScope`

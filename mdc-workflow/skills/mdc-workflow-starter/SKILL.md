@@ -43,11 +43,31 @@ description: 在 workflow 场景中先判断当前阶段，再把软件工作路
 
 能力型 skill 只负责完成本类检查并给出结论；至于当前会话应不应该进入它、之后该进入哪里，由本 skill 统一编排。
 
+## Artifact Model
+
+在进入 profile 判断和阶段判断之前，先把当前请求放进一个明确的 artifact model 中。
+
+`mdc-workflow` 默认把工件分成三类：
+
+- `baseline artifacts`：长期有效的当前事实，例如已批准规格、已批准设计、稳定团队规范
+- `change workspace`：单次需求、增量变更或 hotfix 的在制工件集合，是当前 workflow 主要读写对象
+- `archive`：已完成 change workspace 的闭环记录，用于审计、追溯与经验回流
+
+路由前先回答三个问题：
+
+1. 当前请求属于哪个 `change workspace`
+2. 当前读到的工件中，哪些属于 baseline，哪些属于当前 workspace，哪些只是 archive
+3. 当前推荐节点要读取和写入的是哪一类工件
+
+如果项目没有显式的 workspace 命名方式，可以基于当前主题、任务标识、进度记录或当前 change request 推断，并在路由输出中说明。
+
+`archive` 可以帮助恢复历史上下文，但不能代替当前 workspace 所需的批准证据，也不能代替 fresh verification evidence。
+
 ## 状态机原则
 
 把 `mdc-workflow` 视为一个由本 skill 驱动的轻量状态机，而不是一组可以随意挑选的能力说明：
 
-- 任一时刻只允许存在一个**当前推荐节点**和一个**当前 workflow profile**
+- 任一时刻只允许存在一个**当前 change workspace**、一个**当前推荐节点**和一个**当前 workflow profile**
 - 当前推荐节点必须由最新工件证据、review / gate 结论和用户请求共同决定
 - 推荐节点必须在当前 profile 的合法节点集合内
 - 下游 skill 不负责自行挑选下一步；它们只负责完成本节点职责并返回结论
@@ -165,9 +185,9 @@ lightweight profile 主链推荐节点：
 本 skill 只能依据以下四类输入决定迁移：
 
 1. 当前用户请求
-2. 已批准或未批准的工件状态
+2. baseline artifacts 与当前 change workspace 中已批准或未批准的工件状态
 3. review / gate 结论
-4. 进度记录、验证记录、发布记录中的阶段证据
+4. 进度记录、验证记录、发布记录与必要 archive 记录中的阶段证据
 
 不要把"我记得上轮已经做到这里了"当作合法输入。
 
@@ -237,7 +257,7 @@ lightweight profile 主链推荐节点：
 
 若其中声明了 `mdc-workflow` 相关规则，优先读取：
 
-- 工件路径映射
+- baseline / change workspace / archive 的路径映射
 - 审批状态别名与 review 结论别名
 - 真人确认的等价证据来源
 - 进度记录、review、verification 的实际位置
@@ -251,10 +271,10 @@ lightweight profile 主链推荐节点：
 
 只读取完成路由所需的最少内容：
 
-1. `AGENTS.md` 中与 `mdc-workflow` 相关的工件映射、团队约定和 Workflow Profiles 配置（如果存在）
-2. 当前需求、缺陷、变更或继续推进的用户请求
-3. 现有已批准的规格、设计、任务工件，但只读取判断"是否存在、是否已批准"所需的最少内容
-4. 当前进度记录（含 Workflow Profile 字段）、发布说明、评审记录、验证记录等可作为阶段证据的工件
+1. `AGENTS.md` 中与 `mdc-workflow` 相关的 artifact 映射、团队约定和 Workflow Profiles 配置（如果存在）
+2. 当前需求、缺陷、变更或继续推进的用户请求，以及它当前归属的 change workspace 线索
+3. 当前 change workspace 中的规格、设计、任务、review、verification、`task-progress.md`、`RELEASE_NOTES.md`，但只读取判断"是否存在、是否已批准、是否已完成收尾"所需的最少内容
+4. 当前仍有效的 baseline artifacts，以及仅在需要恢复闭环时才读取的 archive 记录
 
 路由阶段不要开始大范围探索代码库。
 
@@ -275,7 +295,23 @@ lightweight profile 主链推荐节点：
 
 ## 路由顺序
 
-路由分两步：先决定 profile，再决定当前阶段。
+路由分三步：先识别 current workspace，再决定 profile，再决定当前阶段。
+
+### 第零步：识别 current workspace
+
+先判断当前请求是：
+
+- 继续已有的 change workspace
+- 新建一个 change workspace
+- 还是在已有 workspace 之外，单独请求查看 archive / 历史闭环信息
+
+同时区分当前读取到的工件分别属于：
+
+- `baseline artifacts`
+- `change workspace`
+- `archive`
+
+如果某个工件只是 archive 历史记录，不要把它误当作当前 workspace 的有效批准依据。
 
 ### 第一步：决定 Workflow Profile
 
@@ -418,27 +454,47 @@ lightweight profile 主链推荐节点：
 
 路由判断是内部编排步骤，不是需要用户确认的独立消息。
 
-完成路由后，将路由结论作为简短内联说明嵌入执行流中，然后立刻进入目标 skill。不要把路由结论作为独立消息发送后等待用户回复。
+完成路由后，先在内部形成一份结构化 instruction payload，再把精简后的路由结论嵌入执行流，然后立刻进入目标 skill。不要把路由结论作为独立消息发送后等待用户回复。
 
-路由说明应包含：
+payload 至少应包含：
 
-1. 当前识别阶段
-2. 选定的 Workflow Profile
-3. 推荐的下一步 skill
+- `currentWorkspace`
+- `currentProfile`
+- `currentNode`
+- `readyNodes`
+- `blockedNodes`
+- `blockingReasons`
+- `requiredReads`
+- `expectedWrites`
+- `nextActionHint`
+
+其中：
+
+- `requiredReads` 用来回答“下一步必须读什么”
+- `expectedWrites` 用来回答“下一步必须写到哪里”
+- `blockingReasons` 用来回答“为什么现在不能往下走”
+
+对用户展示的简化路由说明至少应包含：
+
+1. 当前识别到的 change workspace
+2. 当前识别阶段
+3. 选定的 Workflow Profile
+4. 推荐的下一步 skill
 
 仅在以下情况补充详细说明：
 
 - 存在证据冲突
 - 发生了 profile 升级
 - 当前是 review / gate 后的恢复编排且跳转不直观
+- 某些节点因缺少 baseline / workspace / archive 证据而 blocked
 
 简洁示例（嵌入执行流中，不独立停顿）：
 
-> 路由：full profile → `mdc-specify`（无已批准规格）
+> 路由：workspace=`feature-export-csv`，full profile → `mdc-specify`（无已批准规格）
 
-> 路由：lightweight profile → `mdc-implement`（纯配置调整）
+> 路由：workspace=`config-cleanup`，lightweight profile → `mdc-implement`（纯配置调整）
 
-> 路由：standard profile，`mdc-code-review` 通过 → 进入 `mdc-traceability-review`
+> 路由：workspace=`billing-hotfix-2026-03-30`，standard profile，`mdc-code-review` 通过 → 进入 `mdc-traceability-review`
 
 发出路由说明后，立刻进入目标 skill，不等待用户确认。唯一例外：当路由结果指向暂停点（见"连续执行原则"）时，才需要等待用户输入。
 

@@ -18,11 +18,14 @@
 
 - Primary Artifact:
 - Supporting Context:
+- Artifact Scope: `baseline artifacts` | `change workspace` | `archive`
 
 ## Conclusion
 
 - Conclusion: `通过` | `需修改` | `阻塞`
 - Recommended Next Action Or Skill:
+- Next Node:
+- Blocking Reasons:
 
 ## Findings
 
@@ -39,6 +42,12 @@
 - Action:
 - Owner:
 - Status:
+
+## Structured Handoff
+
+- Required Reads:
+- Expected Writes:
+- Writes Scope: `change workspace` | `baseline artifacts` | `archive`
 
 ## Notes
 

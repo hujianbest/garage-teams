@@ -227,18 +227,22 @@ flowchart TD
 典型输入：
 
 - 当前用户请求
-- `AGENTS.md` 中与 `mdc-workflow` 相关的工件映射与团队规范
-- 规格、设计、任务、review、verification、`task-progress.md`、`RELEASE_NOTES.md`
+- `AGENTS.md` 中与 `mdc-workflow` 相关的工件映射、workspace / archive 约定与团队规范
+- 当前 change workspace 的工件：变更请求、规格或设计 delta、任务计划、review、verification、`task-progress.md`、`RELEASE_NOTES.md`
+- 当前仍有效的 baseline artifacts：已批准规格、已批准设计、稳定团队规范
+- 仅在需要恢复历史闭环或判断是否已完成收尾时读取 archive 记录
 
 典型输出：
 
-- 当前阶段判断
-- 下游 skill 路由结论
-- 本轮 checklist / todo 初始化
+- `routing result`：当前 change workspace、当前阶段、当前 profile、推荐的下一步 skill
+- `required inputs`：进入下一节点前必须读取的工件、批准证据与 review / verification 记录
+- `write targets`：当前节点应写入哪些 change workspace、baseline artifact 或 archive 目标
+- `blocking reasons` 与 `next action hint`
 
 关键规则：
 
 - 先路由再回答，不能因为用户说“继续”就直接开始实现
+- 先识别当前请求属于哪个 change workspace，再判断哪些工件是 baseline、哪些是 in-flight
 - 若关键工件缺失或审批证据不完整，必须回到更保守的上游阶段
 - 当检测到变更请求或热修复信号时，优先路由到支线流程
 
@@ -678,19 +682,71 @@ flowchart TD
 
 ## 工件与状态
 
-`mdc` 采用轻量工件驱动，而不是完全依赖会话记忆。
+`mdc` 采用轻量工件驱动，但从本版开始不再只把这些文件视为“推荐目录集合”，而是视为一个更稳定的 artifact model。
 
-推荐的最小工件集合包括：
+### Artifact Model
 
-- 需求规格：`docs/specs/`
-- 设计文档：`docs/designs/`
+`mdc-workflow` 默认把工件分成三类：
+
+| 类别 | 含义 | 默认映射 |
+|---|---|---|
+| `baseline artifacts` | 长期有效的当前事实，是后续 change workspace 判断“现在真实状态”的基线 | 已批准规格、已批准设计、稳定团队规范、`AGENTS.md` 中声明的长期规则 |
+| `change workspace` | 单次需求、增量变更或 hotfix 的在制工作区，是当前 workflow 主要读写对象 | 变更请求、规格 / 设计 delta、任务计划、`task-progress.md`、review、verification、`RELEASE_NOTES.md`、收尾记录 |
+| `archive` | 已完成 change workspace 的闭环留痕，用于审计、追溯与经验回流 | 团队约定的归档目录，或现有 review / verification / release 历史记录 |
+
+这样做的核心目的，是显式区分“当前事实”和“本次变更工作区”：
+
+- `baseline artifacts` 用来回答“现在系统/团队规则到底是什么”
+- `change workspace` 用来回答“当前这次变更正在改什么、做到哪一步了”
+- `archive` 用来回答“之前那些已完成变更留下了什么可追溯证据”
+
+### 推荐的 change workspace 工件
+
+一个最小可落地的 change workspace，通常会从少量 seed artifacts 开始，并在 workflow 生命周期中逐步补齐更多记录。
+
+启动阶段通常至少需要：
+
+- 需求规格：`docs/specs/` 中的当前变更规格或等价工件
+- 设计文档：`docs/designs/` 中的当前设计或设计增量
 - 任务计划：`docs/tasks/`
 - 进度记录：`task-progress.md`
+
+随着执行推进，workspace 会继续沉淀：
+
 - 评审记录：`docs/reviews/`
 - 验证记录：`docs/verification/`
 - 发布说明：`RELEASE_NOTES.md`
+- 收尾记录：可写回 `task-progress.md`、独立 finalization note，或团队约定的 archive index
 
-如果项目已有自己的等价工件，应在 `AGENTS.md` 中声明映射，而不必强行改名。
+如果当前处于更早的路由阶段，review、verification、release 或 finalization 类工件暂时不存在是正常的；starter 应据此判断“尚未产出”，而不是把 workspace 视为无效。
+
+如果项目已有自己的等价工件，应在 `AGENTS.md` 中声明它们属于 baseline、change workspace 还是 archive，而不必强行改名。
+
+### 生命周期原则
+
+- `mdc-increment` 和 `mdc-hotfix` 默认在当前 `change workspace` 内做影响分析和同步
+- `mdc-finalize` 负责把已完成 change 的结果分成两部分：该回写到 `baseline artifacts` 的长期事实，以及该进入 `archive` 的闭环记录
+- archive 可用于恢复上下文，但不能替代当前 workspace 所需的批准证据或 fresh verification evidence
+
+## Starter Instruction Payload
+
+`mdc-workflow-starter` 的输出不应只是一句“下一步去哪个 skill”，而应形成稳定的 instruction payload。
+
+建议至少包含以下字段：
+
+| 字段 | 作用 |
+|---|---|
+| `currentWorkspace` | 当前请求归属的 change workspace 标识或说明 |
+| `currentProfile` | 当前 workflow profile |
+| `currentNode` | 当前推荐节点 |
+| `readyNodes` | 在当前 workspace 与 profile 下已满足前置条件的节点 |
+| `blockedNodes` | 当前仍不可进入的节点 |
+| `blockingReasons` | 每个 blocked 节点为什么不能进入 |
+| `requiredReads` | 进入 `currentNode` 前必须读取的工件与证据 |
+| `expectedWrites` | 当前节点应写入哪些 workspace / baseline / archive 目标 |
+| `nextActionHint` | 面向当前会话的简洁动作提示 |
+
+对话里可以只展示简化后的路由摘要，但 `mdc-workflow-starter` 的内部判断应围绕这组字段组织。这样 review / gate 后恢复编排时，就不必只靠自然语言记忆上下文。
 
 相关模板与参考资料位于：
 

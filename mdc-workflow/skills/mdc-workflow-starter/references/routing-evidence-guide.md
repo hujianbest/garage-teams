@@ -10,17 +10,13 @@
 
 ## 推荐工件布局
 
-除非项目已有已批准的等价路径，否则默认使用以下布局：
+除非项目已有已批准的等价路径，否则默认按 artifact model 组织理解：
 
-| 逻辑工件 | 推荐路径 | 说明 |
+| 类别 | 推荐路径 | 说明 |
 |---|---|---|
-| 需求规格 | `docs/specs/YYYY-MM-DD-<topic>-srs.md` | 定义做什么 |
-| 设计文档 | `docs/designs/YYYY-MM-DD-<topic>-design.md` | 定义怎么做 |
-| 任务计划 | `docs/tasks/YYYY-MM-DD-<topic>-tasks.md` | 定义执行顺序 |
-| 进度记录 | `task-progress.md` | 支撑跨会话连续推进 |
-| 发布说明 | `RELEASE_NOTES.md` | 面向用户的变更说明 |
-| 评审记录 | `docs/reviews/` | 可选但建议提供 |
-| 验证记录 | `docs/verification/` | 可选但建议提供 |
+| `baseline artifacts` | 已批准 `docs/specs/`、已批准 `docs/designs/`、稳定团队规范 | 定义当前长期事实 |
+| `change workspace` | 当前变更对应的 spec / design delta、`docs/tasks/`、`task-progress.md`、`docs/reviews/`、`docs/verification/`、`RELEASE_NOTES.md` | 承载当前在制工作 |
+| `archive` | 团队约定的归档目录或历史 review / verification / release 记录 | 保存已完成 change 的闭环证据 |
 
 ## 最小路由证据
 
@@ -28,7 +24,7 @@
 
 推荐的路由证据包括：
 
-- 需求规格、设计文档、任务计划的批准状态
+- 当前 change workspace 中需求规格、设计文档、任务计划的批准状态
 - `task-progress.md` 这类进度记录
 - `docs/reviews/` 下的评审记录
 - `docs/verification/` 下的验证记录
@@ -38,13 +34,14 @@
 
 在会话开始时，`mdc-workflow-starter` 应按以下顺序判断：
 
-1. `AGENTS.md` 中与 `mdc-workflow` 相关的映射与审批约定
-2. 需求规格 / 设计文档 / 任务计划的存在情况与批准状态
+1. `AGENTS.md` 中与 `mdc-workflow` 相关的 artifact 映射与审批约定
+2. 当前 change workspace 的规格 / 设计 / 任务工件存在情况与批准状态
 3. `task-progress.md`
 4. `docs/reviews/`
 5. `docs/verification/`
 6. `RELEASE_NOTES.md`
-7. 用户当前请求
+7. 必要时读取 archive 中最近一次闭环记录
+8. 用户当前请求
 
 若较高优先级工件与较低优先级工件冲突，应优先相信更基础、更上游的工件状态。
 
@@ -52,10 +49,13 @@
 
 在会话开始时，`mdc-workflow-starter` 应优先只检查：
 
-1. `AGENTS.md` 中的 `mdc-workflow` 配置段
-2. 规格 / 设计 / 任务工件的存在情况和批准状态
-3. 进度、评审和验证记录
-4. 用户当前请求
+1. `AGENTS.md` 中的 `mdc-workflow` 配置段，先识别 baseline / change workspace / archive 的映射
+2. 当前请求归属的 `change workspace` 是什么，是否是继续已有 workspace 或新建 workspace
+3. 当前 change workspace 的规格 / 设计 / 任务工件存在情况和批准状态
+4. 当前 workspace 下的进度、评审、验证、发布与收尾记录
+5. 仍然有效的 baseline artifacts
+6. 仅在需要恢复历史闭环时读取 archive 记录
+7. 用户当前请求
 
 在完成阶段路由前，避免大范围代码探索。
 
