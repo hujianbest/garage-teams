@@ -1,7 +1,5 @@
 # MDC Skills Design Rules
 
-本文提炼 `mdc-workflow/skills/` 目录下现有 `mdc-*` skills 的共通设计原则，作为目录级约束与维护基线。它不替代单个 skill 的 `SKILL.md`，而是回答这些 skill 为什么要这样设计，以及新增或重构 skill 时应保持哪些不变性。
-
 ## 1. 路由优先于执行
 
 - 所有 workflow 场景先经过 `mdc-workflow-starter`，再决定当前阶段、profile 与下一步 skill。
@@ -85,6 +83,7 @@
 - 大型检查表、记录模板、参考材料优先下沉到 `references/` 或模板文件。
 - skill 的描述要明确“何时使用”，避免把完整流程塞进 `description`。
 - 项目相关的路径映射、审批别名、团队规范应放在 `AGENTS.md`，不要在多个 skill 中重复硬编码。
+- skill之间不要相互依赖，skill之间的执行顺序通过外部调度
 
 ## 13. 新增或重构 skill 时的自检问题
 
