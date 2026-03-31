@@ -111,26 +111,17 @@ Current State 段新增 `Workflow Profile` 字段和 `Profile Selection Rational
 
 ### 对路由和迁移表的影响
 
-- `mdc-workflow-starter` 路由分三步：先识别 current `change workspace`，再决定 profile，最后在 profile 约束下决定阶段。
+- `mdc-workflow-starter` 路由分两步：先决定 profile，再在 profile 约束下决定阶段。
 - 每个 profile 维护独立的结果驱动迁移表。
 - 合法状态集合按 profile 缩窄：在当前 profile 不包含的节点上推进，视为无效迁移。
 
-## 5. 分层结构总览
-
-本轮设计补强不直接引入完整 workflow schema，而是先把两件事定型：
-
-1. 把“推荐工件集合”升级为稳定的 artifact model。
-2. 把 `mdc-workflow-starter` 的自然语言路由说明升级为结构化 instruction contract。
-
-在此基础上，`mdc` 的运行结构更适合描述为四层：
+## 5. 三层架构总览
 
 ```mermaid
 flowchart TD
-    agents[AGENTS.md 治理注入层]
-    artifacts[Artifact Model\nbaseline/change/archive]
-    starter[Starter Runtime\nrouting + instruction payload]
+    starter[mdc-workflow-starter]
 
-    subgraph executionLayer [Skill 执行层]
+    subgraph executionLayer [任务执行层]
         workSpecify[mdc-specify]
         workDesign[mdc-design]
         workTasks[mdc-tasks]
@@ -154,11 +145,7 @@ flowchart TD
         completionGate[mdc-completion-gate]
     end
 
-    agents --> artifacts
-    artifacts --> starter
     starter --> workSpecify
-    starter --> workIncrement
-    starter --> workHotfix
     workSpecify --> specReview
     specReview -->|通过| specConfirm
     specReview -->|需修改/阻塞| workSpecify
@@ -176,55 +163,62 @@ flowchart TD
     traceabilityReview --> regressionGate
     regressionGate --> completionGate
     completionGate --> workFinalize
-    workFinalize --> artifacts
+
+    starter --> workIncrement
+    starter --> workHotfix
 ```
 
-### 5.1 治理注入层：`AGENTS.md`
+### 5.1 第一层：`mdc-workflow-starter`
 
-`AGENTS.md` 继续是唯一扩展入口，但它现在不只是“路径映射说明”，而是整个 workflow 的治理注入层：
+职责不是干活，而是：
 
-- 声明 baseline / change workspace / archive 的实际路径映射
-- 声明审批别名、真人确认等价证据和模板覆盖
-- 声明 profile 风险矩阵、例外规则与团队规范
+- 读取当前项目的阶段状态
+- 判断当前处于哪个阶段
+- 决定进入主链、变更支线或热修复支线
+- 阻止 Agent 在错误阶段直接写代码
+- 作为 review / gate 完成后的统一恢复编排器
 
-这一层不直接决定当前节点，但决定 starter 读取和解释工件的方式。
+它相当于 `using-superpowers` 和 `using-long-task` 的组合版，但目标更聚焦于这套作业体系的流程约束。
 
-### 5.2 工件模型层：Artifact Model
+### 5.2 第二层：任务执行与阶段编排流
 
-当前设计把工件分成三类：
+这是实际产生交付件的主链与支线：
 
-- `baseline artifacts`：长期有效的当前事实，例如已批准 spec、已批准 design、稳定团队规范
-- `change workspace`：单次需求、增量变更或 hotfix 的在制工件集合，是 workflow 主要读写对象
-- `archive`：已完成 change workspace 的闭环记录，用于审计、回放与经验沉淀
+- `mdc-specify`
+- `mdc-design`
+- `mdc-tasks`
+- `mdc-implement`
+- `mdc-increment`
+- `mdc-hotfix`
+- `mdc-finalize`
 
-这层的目标，是显式区分“系统现在是什么”和“这次改动正在改什么”。没有这个边界，`mdc-increment` / `mdc-hotfix` 很容易退化成只在 prose 里说“有变更”，却没有稳定落点。
+其中：
 
-### 5.3 Starter Runtime 层：`mdc-workflow-starter`
+- `mdc-specify`、`mdc-design`、`mdc-tasks` 以产出阶段主工件为主
+- `mdc-implement` 属于**执行型 / 阶段编排型**：它既执行当前活跃任务，也负责把实现阶段串到后续质量链
+- `mdc-increment`、`mdc-hotfix`、`mdc-finalize` 负责支线或收尾阶段内的受控推进，而不是承担顶层会话路由
 
-`mdc-workflow-starter` 的职责不再只是“决定下一步去哪个 skill”，而是围绕当前 change workspace 计算一份稳定的 instruction payload：
+### 5.3 第三层：质量防护层
 
-- 当前请求属于哪个 change workspace
-- 当前 profile 是什么
-- 当前推荐节点是什么
-- 哪些节点 ready，哪些 blocked
-- blocked 的原因是什么
-- 进入当前节点前必须读取什么
-- 当前节点应写回哪些 workspace / baseline / archive 目标
+这是阶段之间的独立检查层：
 
-换句话说，它开始承担一个轻量 runtime 的职责，但仍然保持“skill 层入口”这一交互形态。
-
-### 5.4 Skill 执行层与质量防护层
-
-这两层仍然保持原有职责分工：
-
-- 执行层负责产出阶段主工件、推进变更、处理 hotfix 和收尾
-- 质量防护层负责独立审查、门禁和回退信号
+- `mdc-spec-review`
+- `mdc-design-review`
+- `mdc-tasks-review`
+- `mdc-bug-patterns`
+- `mdc-test-review`
+- `mdc-code-review`
+- `mdc-traceability-review`
+- `mdc-regression-gate`
+- `mdc-completion-gate`
 
 说明：
 
-- `mdc-code-review`、`mdc-spec-review`、`mdc-tasks-review` 等质量 skill 仍然提供显式结论
-- 这些结论不再只被视为 prose 建议，而是 starter runtime 计算下一步时的输入
-- `mdc-finalize` 现在除了收尾，还要负责把 change workspace 的结果分成“回写 baseline”与“进入 archive”两类结果
+- 你原始草案中的 `cod-review` 建议统一更名为 `mdc-code-review`。
+- `mdc-spec-review` 是必须补上的，否则 `mdc-specify` 的输出没有正式冻结门。
+- `mdc-tasks-review` 也是建议补上的，否则任务分解可能直接把坏设计带进实现。
+- `mdc-bug-patterns` 用于把团队历史错误案例和高频编码风险前置到实现评审链中。
+- `mdc-traceability-review` 用于在进入回归前确认规格、设计、任务、实现和验证仍然能对齐。
 
 ## 6. 交付件契约与兼容层
 
@@ -246,47 +240,31 @@ flowchart TD
 - 审批要求
 - 是否必须
 
-### 6.2 推荐的 Artifact Model
+### 6.2 推荐的逻辑工件集合
 
-| 类别 | 推荐默认路径 | 作用 |
+| 逻辑工件 | 推荐默认路径 | 作用 |
 |---|---|---|
-| `baseline artifacts` | 已批准 `docs/specs/`、已批准 `docs/designs/`、稳定团队规范 | 记录当前长期事实，作为后续变更判断基线 |
-| `change workspace` | 当前 change 对应的 spec / design delta、`docs/tasks/`、`task-progress.md`、`docs/reviews/`、`docs/verification/`、`RELEASE_NOTES.md` | 承载单次需求、increment 或 hotfix 的在制状态 |
-| `archive` | 团队约定的归档目录或历史 review / verification / release 记录 | 保存已完成 change workspace 的闭环证据 |
-
-这三类工件不是三套平行配置，而是三种逻辑角色。具体路径仍通过 `AGENTS.md` 做映射。
+| 需求规格 | `docs/specs/YYYY-MM-DD-<topic>-srs.md` | 说明做什么 |
+| 设计文档 | `docs/designs/YYYY-MM-DD-<topic>-design.md` | 说明怎么做 |
+| 任务计划 | `docs/tasks/YYYY-MM-DD-<topic>-tasks.md` | 说明怎么拆任务、怎么执行 |
+| 进度记录 | `task-progress.md` | 记录当前状态、最近进展、下一步 |
+| 评审记录 | `docs/reviews/` | 记录各阶段审查结论 |
+| 验证记录 | `docs/verification/` | 记录测试、回归、完成验证证据 |
+| 发布说明 | `RELEASE_NOTES.md` | 记录用户可见交付变化 |
 
 ### 6.3 推荐的阶段证据工件
 
 借鉴 `longtaskforagent`，建议保留少量、稳定、可读的阶段证据工件，而不是依赖根目录 JSON 信号文件：
 
-| 工件 | 所属类别 | 用途 |
-|---|---|---|
-| 需求、设计、任务文档中的审批状态 | baseline / change workspace | 判断当前 change 是否具备进入下一阶段的基础 |
-| `task-progress.md` | change workspace | 记录当前主阶段、最近进展、活动任务与下一步建议 |
-| `docs/reviews/` | change workspace，完成后可进入 archive | 记录各类 review / gate 的结论 |
-| `docs/verification/` | change workspace，完成后可进入 archive | 记录测试、回归、完成验证证据 |
-| `RELEASE_NOTES.md` | change workspace，必要时沉淀到 archive | 记录用户可见变化，辅助判断是否已完成收尾 |
+| 工件 | 用途 |
+|---|---|
+| 需求、设计、任务文档中的审批状态 | 判断主链是否已进入下一阶段 |
+| `task-progress.md` | 记录当前主阶段、最近进展、活动任务与下一步建议 |
+| `docs/reviews/` | 记录各类 review / gate 的结论 |
+| `docs/verification/` | 记录测试、回归、完成验证证据 |
+| `RELEASE_NOTES.md` | 记录用户可见变化，辅助判断是否已完成收尾 |
 
 如果团队已有自己的项目状态页、变更单、缺陷单或任务系统，也应优先映射这些既有工件，而不是额外引入新的 JSON 触发器。
-
-### 6.4 Starter Instruction Contract
-
-为了让 `mdc-workflow-starter` 在“继续”“review 之后恢复”“支线回流”场景下稳定工作，建议把它的输出契约固定为以下字段：
-
-| 字段 | 说明 |
-|---|---|
-| `currentWorkspace` | 当前请求归属的 change workspace |
-| `currentProfile` | 当前 profile |
-| `currentNode` | 当前推荐节点 |
-| `readyNodes` | 当前可以进入的节点 |
-| `blockedNodes` | 当前不能进入的节点 |
-| `blockingReasons` | blocked 的明确原因 |
-| `requiredReads` | 进入当前节点前必须读取的工件与证据 |
-| `expectedWrites` | 当前节点应写入的 workspace / baseline / archive 目标 |
-| `nextActionHint` | 面向当前会话的简洁动作提示 |
-
-这份 contract 先以设计约束存在，不要求立刻实现脚本或 CLI；但后续任何 starter 文案、评测或自动化都应围绕这组字段展开，而不是重新发明一套 prose 约定。
 
 ## 7. 推荐的完整 skill 地图
 
@@ -308,10 +286,9 @@ flowchart TD
 
 **输出**
 
-- `routing result`：明确当前 change workspace、当前阶段、当前 profile 与下游 skill
-- `required inputs`：进入下游节点前必须读取的工件、批准证据与 review / verification 记录
-- `write targets`：当前节点应写入哪些 change workspace、baseline artifact 或 archive 目标
-- `blocking reasons` 与 `nextActionHint`
+- 明确当前阶段
+- 决定下游 skill
+- 初始化本轮 checklist / todo
 
 **关键规则**
 
@@ -732,7 +709,6 @@ flowchart TD
 
 建议按如下优先级判断当前阶段：
 
-0. 先识别当前请求归属的 `change workspace`，并区分当前读取到的工件分别属于 baseline、workspace 还是 archive
 1. 若用户请求或现有工件明确表明当前是热修复场景，优先进入 `mdc-hotfix`
 2. 否则若用户请求或现有工件明确表明发生需求变更，进入 `mdc-increment`
 3. 若没有已批准规格，进入 `mdc-specify`
