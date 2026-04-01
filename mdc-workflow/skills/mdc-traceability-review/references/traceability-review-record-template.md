@@ -77,7 +77,7 @@
 
 ## 下一步
 
-`进入后续验证` | `回到实现修订`
+`进入 mdc-regression-gate` | `回到 mdc-test-driven-dev`
 ```
 
 ## 简化版模板
@@ -105,7 +105,7 @@
 
 ## 下一步
 
-`进入后续验证` | `回到实现修订`
+`进入 mdc-regression-gate` | `回到 mdc-test-driven-dev`
 ```
 
 ## 评审提示

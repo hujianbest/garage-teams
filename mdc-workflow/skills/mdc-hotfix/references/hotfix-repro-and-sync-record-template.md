@@ -67,7 +67,7 @@
 
 ## 下一步
 
-`进入后续质量检查` | `进入后续验证` | `进入最终完成判断` | `回到实现修订`
+写出唯一下一步动作或 skill，例如：`mdc-test-driven-dev` | `mdc-bug-patterns` | `mdc-regression-gate` | `mdc-completion-gate`
 ```
 
 ## 简化版模板
@@ -98,7 +98,7 @@
 
 ## 下一步
 
-`进入后续验证` | `进入最终完成判断` | `回到实现修订`
+写出唯一下一步动作或 skill，例如：`mdc-test-driven-dev` | `mdc-regression-gate` | `mdc-completion-gate`
 ```
 
 ## 评审提示

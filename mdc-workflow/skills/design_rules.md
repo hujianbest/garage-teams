@@ -83,7 +83,7 @@
 - 大型检查表、记录模板、参考材料优先下沉到 `references/` 或模板文件。
 - skill 的描述要明确“何时使用”，避免把完整流程塞进 `description`。
 - 项目相关的路径映射、审批别名、团队规范应放在 `AGENTS.md`，不要在多个 skill 中重复硬编码。
-- skill之间不要相互依赖，skill之间的执行顺序通过外部调度
+- skill之间不要相互依赖，skill之间的执行顺序通过 `mdc-workflow-starter` 或等价外部调度统一决定。
 
 ## 13. 新增或重构 skill 时的自检问题
 

@@ -84,9 +84,9 @@
 
 | Profile | 名称 | 适用场景 | 节点链路 |
 |---------|------|---------|---------|
-| **full** | 完整流程 | 新功能、架构变更、高风险模块、跨模块重构、无已批准规格或设计 | 全部 18 节点主链 |
-| **standard** | 标准流程 | 中等功能、已有规格+设计的功能扩展、非高风险 bugfix | 从 `mdc-tasks` 开始，保留完整质量层（共 12 节点） |
-| **lightweight** | 轻量流程 | 纯文档/配置/样式变更、低风险 bugfix（单文件、无接口变化） | `mdc-test-driven-dev` → `mdc-regression-gate` → `mdc-completion-gate` → `mdc-finalize`（共 4 节点） |
+| **full** | 完整流程 | 新功能、架构变更、高风险模块、跨模块重构、无已批准规格或设计 | 全部主链节点 |
+| **standard** | 标准流程 | 中等功能、已有规格+设计的功能扩展、非高风险 bugfix | `mdc-tasks` → `mdc-tasks-review` → `mdc-test-driven-dev` → 完整质量层 → `mdc-finalize` |
+| **lightweight** | 轻量流程 | 纯文档/配置/样式变更、低风险 bugfix（单文件、无接口变化） | `mdc-tasks` → `mdc-tasks-review` → `mdc-test-driven-dev` → `mdc-regression-gate` → `mdc-completion-gate` → `mdc-finalize` |
 
 ### Profile 选择机制
 
@@ -195,7 +195,7 @@ flowchart TD
 其中：
 
 - `mdc-specify`、`mdc-design`、`mdc-tasks` 以产出阶段主工件为主
-- `mdc-test-driven-dev` 属于**执行型 / 阶段编排型**：它既执行当前活跃任务，也负责把实现阶段串到后续质量链
+- `mdc-test-driven-dev` 属于**执行型 / 节点内闭环型**：它既执行当前活跃任务，也负责把 fresh evidence、风险和推荐下一步写回工件
 - `mdc-increment`、`mdc-hotfix`、`mdc-finalize` 负责支线或收尾阶段内的受控推进，而不是承担顶层会话路由
 
 ### 5.3 第三层：质量防护层
@@ -386,9 +386,9 @@ flowchart TD
 
 **角色定位**
 
-执行型 / 阶段编排型。
+执行型 / 节点内闭环型。
 
-它不是顶层路由器，不负责像 `mdc-workflow-starter` 那样判断当前会话处于哪个阶段；它负责在“已经确认进入实现阶段”之后，围绕唯一活跃任务执行实现，并把结果受控地交给后续质量层。
+它不是顶层路由器，不负责像 `mdc-workflow-starter` 那样判断当前会话处于哪个阶段；它负责在“已经确认进入实现阶段”之后，围绕唯一活跃任务执行实现，并把 fresh evidence、风险和推荐下一步写回工件，供外部调度恢复后续质量链。
 
 **目标**
 
@@ -408,9 +408,9 @@ flowchart TD
 4. 若真人提出意见，先修改测试设计，再进入 TDD
 5. 再按 TDD 执行 Red -> Green -> Refactor
 6. 产出或更新 UT/集成测试
-7. 进入 `mdc-bug-patterns`、`mdc-test-review`、`mdc-code-review`
-8. 执行 `mdc-traceability-review`
-9. 运行回归检查与完成验证
+7. 写回 fresh evidence、剩余风险和推荐下一步
+8. 由 `mdc-workflow-starter` 恢复到正确的质量能力或门禁
+9. 不在实现节点内部直接串起下游质量链
 
 **关键规则**
 
@@ -468,9 +468,9 @@ flowchart TD
 **动作**
 
 1. 先写失败复现测试
-2. 做最小修复
-3. 执行 `mdc-bug-patterns`、评审、追溯检查、回归与完成验证
-4. 同步回写规格、设计、任务、发布说明和状态记录中受影响的部分
+2. 收敛最小修复边界，并把唯一实现下一步写回工件
+3. 由 `mdc-workflow-starter` 恢复到 `mdc-test-driven-dev` 或后续门禁
+4. 稳定后同步回写规格、设计、任务、发布说明和状态记录中受影响的部分
 
 ### `mdc-finalize`
 
@@ -683,6 +683,8 @@ flowchart TD
     completionGate --> finalize
 ```
 
+注：图中的箭头表示 `mdc-workflow-starter` 根据当前结论恢复出的合法下一节点，不表示当前 skill 在内部直接调用下游 skill。
+
 ## 8.2 支线路由
 
 ```mermaid
@@ -692,18 +694,17 @@ flowchart TD
     hotfixReq[热修复请求]
     increment[mdc-increment]
     hotfix[mdc-hotfix]
-    tasks[mdc-tasks]
-    implement[mdc-test-driven-dev]
-    regressionGate[mdc-regression-gate]
+    reroute[返回 mdc-workflow-starter 重新编排]
 
     starter --> changeReq
     starter --> hotfixReq
     changeReq --> increment
-    increment --> tasks
+    increment --> reroute
     hotfixReq --> hotfix
-    hotfix --> implement
-    hotfix --> regressionGate
+    hotfix --> reroute
 ```
+
+变更支线和热修复支线都不在自身节点内部决定下游实现或门禁；它们只负责把影响分析、复现证据、修复边界和唯一下一步写回工件，再由 `mdc-workflow-starter` 重新编排。
 
 ## 9. `mdc-workflow-starter` 的推荐路由规则
 
@@ -713,12 +714,13 @@ flowchart TD
 2. 否则若用户请求或现有工件明确表明发生需求变更，进入 `mdc-increment`
 3. 若没有已批准规格，进入 `mdc-specify`
 4. 若规格已批准但无已批准设计，进入 `mdc-design`
-5. 若设计已批准但无任务计划，进入 `mdc-tasks`
-6. 若任务计划存在且仍有未完成任务，进入 `mdc-test-driven-dev`
-7. 若当前任务已实现但尚未完成缺陷模式排查，进入 `mdc-bug-patterns`
+5. 若设计已批准但无已批准任务计划，进入 `mdc-tasks`
+6. 若任务计划已批准且仍有未完成任务，进入 `mdc-test-driven-dev`
+7. 若当前任务已完成实现并已写回 fresh evidence，但尚未完成缺陷模式排查，进入 `mdc-bug-patterns`
 8. 若当前任务缺测试、代码或追溯性评审，依次进入 `mdc-test-review`、`mdc-code-review`、`mdc-traceability-review`
-9. 若实现已完成但缺回归或完成验证证据，进入 `mdc-regression-gate` / `mdc-completion-gate`
-10. 若验证已完成但交付记录未整理，进入 `mdc-finalize`
+9. 若实现已完成但缺回归验证证据，进入 `mdc-regression-gate`
+10. 若实现已完成但缺完成验证证据，进入 `mdc-completion-gate`
+11. 若验证已完成但交付记录未整理，进入 `mdc-finalize`
 
 这里的“已批准”建议不要只靠对话表述，至少要在交付件中体现状态，例如：
 
@@ -882,6 +884,6 @@ flowchart TD
 
 这套 skills 作业体系的核心，不是“让 Agent 更会写代码”，而是“让 Agent 先按团队认可的开发节奏工作”。它继承了 `superpowers` 的强约束意识，也吸收了 `longtaskforagent` 的交付件驱动与阶段路由，但刻意去掉了 subagent，以换取更简单、更可控、更适合团队先落地试用的版本。
 
-通过自适应 workflow profile 机制，它同时解决了"完整流程过重"和"随意跳步损坏约束"之间的矛盾：简单任务走 lightweight（4 节点），中等任务走 standard（12 节点），复杂任务走 full（18 节点），每个 profile 内的门禁仍然完整执行。
+通过自适应 workflow profile 机制，它同时解决了"完整流程过重"和"随意跳步损坏约束"之间的矛盾：简单任务走 lightweight，中等任务走 standard，复杂任务走 full，每个 profile 内的门禁仍然完整执行。
 
 如果后续要实现，这份方案已经可以直接作为蓝图使用：你可以按本文的 skill 地图、门禁规则、profile 机制、交付件契约和实现顺序，一步步把它变成项目内的实际 skills 目录与 `SKILL.md` 文件。

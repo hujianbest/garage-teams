@@ -67,7 +67,7 @@ profile 控制的是当前工作需要走哪些节点，而不是降低门禁强
 |---------|---------|---------|
 | **full** | 新功能、架构变更、高风险模块、跨模块重构、无已批准规格或设计 | 全部主链节点 |
 | **standard** | 中等功能、已有规格+设计的功能扩展、非高风险 bugfix | `mdc-tasks` → `mdc-tasks-review` → `mdc-test-driven-dev` → 完整质量层 → `mdc-finalize` |
-| **lightweight** | 纯文档/配置/样式变更、低风险 bugfix（单文件、无接口变化） | `mdc-test-driven-dev` → `mdc-regression-gate` → `mdc-completion-gate` → `mdc-finalize` |
+| **lightweight** | 纯文档/配置/样式变更、低风险 bugfix（单文件、无接口变化） | `mdc-tasks` → `mdc-tasks-review` → `mdc-test-driven-dev` → `mdc-regression-gate` → `mdc-completion-gate` → `mdc-finalize` |
 
 ### Profile 选择规则
 
@@ -148,6 +148,8 @@ standard profile 主链推荐节点：
 
 lightweight profile 主链推荐节点：
 
+- `mdc-tasks`
+- `mdc-tasks-review`
 - `mdc-test-driven-dev`
 - `mdc-regression-gate`
 - `mdc-completion-gate`
@@ -289,16 +291,17 @@ lightweight profile 主链推荐节点：
 2. 否则若用户明确提出需求变更、范围调整、验收标准变化，进入 `mdc-increment`
 3. 若用户明确要求规格评审，且当前证据支持此时应评审规格，进入 `mdc-spec-review`（仅 full）
 4. 若用户明确要求设计评审，且当前证据支持此时应评审设计，进入 `mdc-design-review`（仅 full）
-5. 若用户明确要求任务评审，且当前证据支持此时应评审任务计划，进入 `mdc-tasks-review`（full / standard）
+5. 若用户明确要求任务评审，且当前证据支持此时应评审任务计划，进入 `mdc-tasks-review`（full / standard / lightweight）
 6. 若用户明确要求测试评审 / 代码评审 / 追溯性评审 / 回归门禁 / 完成门禁，且当前证据支持此时应进入该能力，则进入对应 skill（需在当前 profile 节点链路内）
 7. 若没有已批准需求规格，进入 `mdc-specify`（仅 full；若 standard / lightweight 检测到缺少规格依据，触发 profile 升级）
 8. 若没有已批准实现设计，进入 `mdc-design`（仅 full；若 standard / lightweight 检测到缺少设计依据，触发 profile 升级）
-9. 若没有已批准任务计划，进入 `mdc-tasks`（full / standard）
+9. 若没有已批准任务计划，进入 `mdc-tasks`（full / standard / lightweight）
 10. 若仍有未完成计划任务，进入 `mdc-test-driven-dev`
 11. 若当前任务已实现，但缺少缺陷模式排查证据，进入 `mdc-bug-patterns`（full / standard；lightweight 跳过）
 12. 若当前任务缺少测试、代码或追溯性评审结论，依次进入 `mdc-test-review`、`mdc-code-review`、`mdc-traceability-review`（full / standard；lightweight 跳过）
-13. 若当前任务缺少回归或完成验证证据，进入 `mdc-regression-gate` 或 `mdc-completion-gate`
-14. 否则进入 `mdc-finalize`
+13. 若当前任务缺少回归验证证据，进入 `mdc-regression-gate`
+14. 若当前任务缺少完成验证证据，进入 `mdc-completion-gate`
+15. 否则进入 `mdc-finalize`
 
 ### Profile 感知的自动升级
 
@@ -436,7 +439,7 @@ lightweight profile 主链推荐节点：
 
 > 路由：full profile → `mdc-specify`（无已批准规格）
 
-> 路由：lightweight profile → `mdc-test-driven-dev`（纯配置调整）
+> 路由：lightweight profile → `mdc-tasks`（纯配置调整，但仍需最小任务计划与任务评审）
 
 > 路由：standard profile，`mdc-code-review` 通过 → 进入 `mdc-traceability-review`
 

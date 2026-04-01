@@ -8,7 +8,7 @@
 
 - 路由型 skill：负责判断当前阶段、推荐下一步、维护流程顺序
 - 执行型 skill：负责产出当前阶段的主要工件或实现结果
-- 执行型 / 阶段编排型 skill：负责在某一阶段内部组织执行顺序、串起下游质量链或支线同步动作
+- 执行型 / 节点内闭环型 skill：负责在某一阶段内部完成本节点闭环、状态同步与交接输入准备，不负责串起下游质量链
 - 能力型 skill：负责完成某一类具体检查或评审，由 `mdc-workflow-starter` 统一编排到合适位置
 
 它的目标不是让 Agent “更自由地写代码”，而是让 Agent 在软件开发任务里先按正确顺序工作：
@@ -155,7 +155,7 @@ flowchart TD
 - 在主链和支线中推进实际工作
 - 直接生成当前阶段的主要工件或验证结果
 
-### 3. 执行型 / 阶段编排型
+### 3. 执行型 / 节点内闭环型
 
 - `mdc-test-driven-dev`
 - `mdc-increment`
@@ -165,8 +165,8 @@ flowchart TD
 职责：
 
 - 在已经确认好的阶段内推进实际工作，而不是承担顶层会话路由
-- 串起该阶段内部的执行顺序、交接和状态同步
-- 把结果受控地交给后续质量层、支线回流点或收尾动作
+- 完成本节点内部闭环、交接和状态同步
+- 把 fresh evidence、风险和推荐下一步写回工件，供外部调度恢复后续编排
 
 ### 4. 能力型质量层
 
@@ -200,16 +200,16 @@ flowchart TD
 | `mdc-design-review` | 能力型质量层 | 审查设计是否覆盖规格并具备可实现性 | 设计草稿已完成，准备进入真人确认前 |
 | `mdc-tasks` | 执行型 | 将设计翻译为可执行任务计划 | 设计已批准，但任务计划尚未批准 |
 | `mdc-tasks-review` | 能力型质量层 | 审查任务计划粒度、依赖、DoD 与验证安排 | 任务计划草稿已完成，准备进入实现前 |
-| `mdc-test-driven-dev` | 执行型 / 阶段编排型 | 作为唯一实现入口，按唯一活跃任务推进实现、执行 TDD，并把结果交给后续质量能力 | 任务计划已批准且仍有未完成任务，或 `mdc-hotfix` 进入受控修复 |
+| `mdc-test-driven-dev` | 执行型 / 节点内闭环型 | 作为唯一实现入口，按唯一活跃任务推进实现、执行 TDD，并写回 fresh evidence 与推荐下一步 | 任务计划已批准且仍有未完成任务，或 `mdc-hotfix` 进入受控修复 |
 | `mdc-bug-patterns` | 能力型质量层 | 对当前改动做缺陷模式专项排查 | 高风险改动专项排查，或 workflow 中实现后的首个质量检查 |
 | `mdc-test-review` | 能力型质量层 | 审查测试是否真正验证行为 | 需要独立评审测试质量，或 workflow 中进入正式评审链时 |
-| `mdc-code-review` | 能力型质量层 | 审查实现正确性、可维护性与设计一致性 | 需要独立评审实现质量，或 workflow 中进入后续验证前 |
+| `mdc-code-review` | 能力型质量层 | 审查实现正确性、可维护性与设计一致性 | 需要独立评审实现质量，或 workflow 中进入 `mdc-traceability-review` 前 |
 | `mdc-traceability-review` | 能力型质量层 | 检查规格、设计、任务、实现、测试、验证链路是否一致 | 需要独立核对追溯关系，或 workflow 中回归门禁前 |
 | `mdc-regression-gate` | 能力型质量层 | 确认改动没有破坏相关行为或集成面 | 需要独立核对回归信号，或 workflow 中完成门禁前 |
 | `mdc-completion-gate` | 能力型质量层 | 用最新验证证据决定是否允许宣称完成 | 准备更新完成状态、切换任务、输出交付说明前 |
-| `mdc-increment` | 执行型 / 阶段编排型 | 处理需求追加、范围调整与变更影响同步 | 用户提出新增、删改需求，或现有工件表明范围变化 |
-| `mdc-hotfix` | 执行型 / 阶段编排型 | 处理紧急缺陷修复，并要求先复现再修 | 用户提出紧急缺陷修复，或现有证据表明处于热修复场景 |
-| `mdc-finalize` | 执行型 / 阶段编排型 | 收尾当前工作周期，更新状态、发布说明和证据索引 | 完成门禁通过后，准备结束当前周期时 |
+| `mdc-increment` | 执行型 / 节点内闭环型 | 处理需求追加、范围调整与变更影响同步，并写回唯一下一步 | 用户提出新增、删改需求，或现有工件表明范围变化 |
+| `mdc-hotfix` | 执行型 / 节点内闭环型 | 处理紧急缺陷修复，要求先复现再做最小修复，并写回唯一下一步 | 用户提出紧急缺陷修复，或现有证据表明处于热修复场景 |
+| `mdc-finalize` | 执行型 / 节点内闭环型 | 收尾当前工作周期，更新状态、发布说明和证据索引 | 完成门禁通过后，准备结束当前周期时 |
 
 ## 各 Skill 详细说明
 
@@ -310,13 +310,13 @@ flowchart TD
 - 明确任务优先级、里程碑和前置依赖
 - 任务计划完成后，先过 `mdc-tasks-review`，再进入实现
 
-### 执行型 / 阶段编排型
+### 执行型 / 节点内闭环型
 
 #### `mdc-test-driven-dev`
 
 目标：
 
-- 在任务计划约束下执行当前唯一活跃任务，并串起测试设计确认、TDD、评审和验证链
+- 在任务计划约束下执行当前唯一活跃任务，并产出实现、测试与状态更新
 - 它不是顶层路由器，而是“已进入实现阶段后的统一执行入口”
 
 典型输入：
@@ -335,7 +335,7 @@ flowchart TD
 
 - 先输出测试用例设计并与真人确认，再进入 TDD
 - 没有失败测试，不写生产代码
-- 在 workflow 中，当前任务实现完成后，通常按质量层默认顺序进入后续检查与门禁
+- 在 workflow 中，当前任务实现完成后，应把 fresh evidence、剩余风险和推荐下一步写回工件，再由 `mdc-workflow-starter` 恢复后续编排
 
 #### `mdc-increment`
 
@@ -371,8 +371,8 @@ flowchart TD
 
 典型输出：
 
-- 失败复现测试
-- 最小修复实现
+- 失败复现测试或等价失败证据
+- 最小修复边界与唯一实现下一步
 - 同步刷新的规格、设计、任务、验证与发布记录
 
 关键规则：
@@ -538,9 +538,9 @@ flowchart TD
 
 | Profile | 适用场景 | 节点链路 |
 |---------|---------|---------|
-| **full** | 新功能、架构变更、高风险模块、跨模块重构、无已批准规格或设计 | 全部主链节点（18 个） |
-| **standard** | 中等功能、已有规格+设计的功能扩展、非高风险 bugfix | `mdc-tasks` → 完整质量层 → `mdc-finalize`（12 个） |
-| **lightweight** | 纯文档/配置/样式变更、低风险 bugfix | `mdc-test-driven-dev` → `mdc-regression-gate` → `mdc-completion-gate` → `mdc-finalize`（4 个） |
+| **full** | 新功能、架构变更、高风险模块、跨模块重构、无已批准规格或设计 | 全部主链节点 |
+| **standard** | 中等功能、已有规格+设计的功能扩展、非高风险 bugfix | `mdc-tasks` → `mdc-tasks-review` → `mdc-test-driven-dev` → 完整质量层 → `mdc-finalize` |
+| **lightweight** | 纯文档/配置/样式变更、低风险 bugfix | `mdc-tasks` → `mdc-tasks-review` → `mdc-test-driven-dev` → `mdc-regression-gate` → `mdc-completion-gate` → `mdc-finalize` |
 
 Profile 由 `mdc-workflow-starter` 在路由阶段决定，不允许用户自行声称。选择依据包括工件状态、改动范围、`AGENTS.md` 中的团队规则等信号。
 
@@ -626,7 +626,7 @@ mdc-workflow-starter → mdc-tasks → mdc-tasks-review → mdc-test-driven-dev
 当改动不涉及功能行为变化或为低风险修复时：
 
 ```text
-mdc-workflow-starter → mdc-test-driven-dev
+mdc-workflow-starter → mdc-tasks → mdc-tasks-review → mdc-test-driven-dev
 → mdc-regression-gate → mdc-completion-gate
 → mdc-finalize
 ```
@@ -642,16 +642,14 @@ flowchart TD
     starter[mdc-workflow-starter]
     changeReq[变更请求]
     increment[mdc-increment]
-    tasks[mdc-tasks]
-    implement[mdc-test-driven-dev]
-    reviews[相关 review / gate]
+    reroute[返回 mdc-workflow-starter 重新编排]
 
     starter --> changeReq
     changeReq --> increment
-    increment --> tasks
-    increment --> implement
-    increment --> reviews
+    increment --> reroute
 ```
+
+`mdc-increment` 完成后，不在支线内部自行决定是回到任务、实现还是某个 review / gate；它应把影响分析、回写结果和唯一下一步写回工件，再由 `mdc-workflow-starter` 重新编排。
 
 ### 热修复
 
@@ -662,18 +660,20 @@ flowchart TD
     starter[mdc-workflow-starter]
     hotfixReq[热修复请求]
     hotfix[mdc-hotfix]
+    reroute[返回 mdc-workflow-starter 重新编排]
     implement[mdc-test-driven-dev]
     quality[质量层与门禁]
     finalize[mdc-finalize]
 
     starter --> hotfixReq
     hotfixReq --> hotfix
-    hotfix --> implement
-    implement --> quality
+    hotfix --> reroute
+    reroute --> implement
+    reroute --> quality
     quality --> finalize
 ```
 
-热修复不是“先改再补流程”，而是走一条压缩但仍受约束的支线。
+热修复不是“先改再补流程”，而是走一条压缩但仍受约束的支线。`mdc-hotfix` 结束后，应把复现证据、修复边界和唯一下一步写回工件，再由 `mdc-workflow-starter` 恢复到实现节点或后续门禁。
 
 ## 工件与状态
 
@@ -737,12 +737,8 @@ flowchart TD
 测试用例设计
 -> 真人确认测试设计
 -> mdc-test-driven-dev
--> bug patterns
--> test review
--> code review
--> traceability review
--> regression gate
--> completion gate
+-> 写回 fresh evidence 与推荐下一步
+-> 由 mdc-workflow-starter 恢复后续质量链
 ```
 
 ### 4. 完成必须可验证
