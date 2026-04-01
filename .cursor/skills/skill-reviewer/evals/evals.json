@@ -72,8 +72,9 @@
       ],
       "expectations": [
         "聚焦触发与描述维度，而不是泛泛做整包审查",
-        "检查 description 是否主要描述何时使用",
+        "检查 description 是否既帮助理解 skill 做什么，也帮助判断何时使用",
         "评估误触发或漏触发风险",
+        "检查 description 是否把长工作流或正文流程塞进了 frontmatter",
         "保持 audit-only，不直接重写 description"
       ]
     },
