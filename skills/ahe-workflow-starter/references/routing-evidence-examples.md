@@ -63,6 +63,8 @@
 - `活跃任务` / `Current Task` -> `Current Active Task`
 - `next skill` / `Next Action` -> `Next Action Or Recommended Skill`
 
+这些旧字段只应用于读取旧工件时的归一化判断，不应继续写回到新的 AHE progress 记录中。
+
 ### 变更请求示例
 
 ```markdown

@@ -111,7 +111,7 @@ direct invoke 常见信号：
 
 - `templates/task-progress-template.md`
 
-下游 AHE skill 默认读取 canonical 字段名；如果项目仍沿用通用模板，请在实际进度工件中显式采用这些字段，而不要假定 `Current Task` / `Next Action` 等 generic 字段会被自动兼容。
+下游 AHE skill 默认读取 canonical progress schema；如果项目仍沿用通用模板，请在实际进度工件中显式采用这些字段，而不要假定 generic 字段别名会被自动兼容。
 
 任务计划交给 `ahe-tasks-review` 后，还应同步：
 

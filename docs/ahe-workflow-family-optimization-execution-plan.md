@@ -194,7 +194,7 @@
 
 - 用 canonical 字段替换或显式映射当前 generic 字段
 - 在模板开头说明该模板与 `ahe-*` workflow 的关系
-- 避免继续传播 `Current Task` / `Next Action` 这类会被下游误判的名称
+- 避免继续传播 generic progress 别名，统一收口到 canonical progress schema
 
 前置条件：
 

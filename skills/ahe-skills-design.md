@@ -7,7 +7,7 @@
 这套方案吸收两类参考：
 
 - `superpowers`：借鉴它的强流程控制、`brainstorming` 的前置澄清与设计批准机制、`test-driven-development` 与 `verification-before-completion` 的硬门禁思想。
-- `longtaskforagent`：借鉴它的 phase routing、交付件驱动、跨会话状态管理、质量门与支线流程设计。
+- `longtaskforagent`：借鉴它的 stage routing、交付件驱动、跨会话状态管理、质量门与支线流程设计。
 
 同时明确一个边界：**当前 live workflow 已采用 reviewer subagent 执行 review 节点**。父会话负责编排、派发和消费 return contract；实现、回修和真人确认仍受主链门禁约束。
 
@@ -44,7 +44,7 @@
 
 ### 3.2 借鉴 `longtaskforagent` 的部分
 
-- `using-long-task`：借鉴用工件状态做 phase routing，而不是靠用户一句“继续”判断当前阶段。
+- `using-long-task`：借鉴用工件状态做 stage routing，而不是靠用户一句“继续”判断当前阶段。
 - `long-task-requirements` / `long-task-design`：借鉴将 WHAT 和 HOW 分离，并给每一层单独批准门。
 - `long-task-work`：借鉴“执行不是一个大动作，而是一条包含 Config Gate、TDD、质量门、验收、持久化更新的流水线”。
 - `architecture.md`：借鉴“长任务依赖持久化工件而不是聊天记忆”的核心思想。

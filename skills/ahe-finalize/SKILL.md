@@ -247,7 +247,7 @@ Profile-aware 证据矩阵：
 | “顺手再改一点实现再一起收尾” | 收尾阶段不再混入新的实现工作。 |
 | “状态先不更新，后面想起来再说” | 进度状态、同步状态和交接信息必须在当前收尾中完成。 |
 | “这些 review 这次没有，是不是漏了” | 先看当前 profile；该有的必须引用，不该有的明确写 `N/A`。 |
-| “Next Action 先写成 `工作流完成` 就行” | 工作流完成是状态，不是 canonical skill；不要伪造 handoff。 |
+| “`Next Action Or Recommended Skill` 先写成 `工作流完成` 就行” | 工作流完成是状态，不是 canonical skill；不要伪造 handoff。 |
 
 ## Red Flags
 
