@@ -188,6 +188,8 @@ Verification 是 skill 的退出条件，而不是礼貌性 checklist。
 
 换句话说，要求的是语义清晰，而不是机械套标题。
 
+当前 live family 对“什么时候走 starter、什么时候允许 direct invoke”的入口约定，集中维护在 `docs/ahe-workflow-entrypoints.md`。
+
 ### `standalone contract`
 
 当用户直接点名某个 `ahe-*` skill 时，skill 至少应明确：
