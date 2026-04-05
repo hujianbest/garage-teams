@@ -101,14 +101,17 @@ branches:
 |---|---|---|
 | `ahe-spec-review` | `通过` | 规格真人确认 |
 | `ahe-spec-review` | `需修改` / `阻塞` | `ahe-specify` |
+| `ahe-spec-review` | `阻塞`（需重编排） | `ahe-workflow-starter` |
 | 规格真人确认 | 确认通过 | `ahe-design` |
 | 规格真人确认 | 要求修改 / 未确认 | `ahe-specify` |
 | `ahe-design-review` | `通过` | 设计真人确认 |
 | `ahe-design-review` | `需修改` / `阻塞` | `ahe-design` |
+| `ahe-design-review` | `阻塞`（需重编排） | `ahe-workflow-starter` |
 | 设计真人确认 | 确认通过 | `ahe-tasks` |
 | 设计真人确认 | 要求修改 / 未确认 | `ahe-design` |
 | `ahe-tasks-review` | `通过` | 任务真人确认 |
 | `ahe-tasks-review` | `需修改` / `阻塞` | `ahe-tasks` |
+| `ahe-tasks-review` | `阻塞`（需重编排） | `ahe-workflow-starter` |
 | 任务真人确认 | 确认通过 | `ahe-test-driven-dev` |
 | 任务真人确认 | 要求修改 / 未确认 | `ahe-tasks` |
 | `ahe-test-driven-dev` | 实现完成 | `ahe-bug-patterns` |
@@ -131,6 +134,7 @@ branches:
 |---|---|---|
 | `ahe-tasks-review` | `通过` | 任务真人确认 |
 | `ahe-tasks-review` | `需修改` / `阻塞` | `ahe-tasks` |
+| `ahe-tasks-review` | `阻塞`（需重编排） | `ahe-workflow-starter` |
 | 任务真人确认 | 确认通过 | `ahe-test-driven-dev` |
 | 任务真人确认 | 要求修改 / 未确认 | `ahe-tasks` |
 | `ahe-test-driven-dev` | 实现完成 | `ahe-bug-patterns` |
@@ -153,6 +157,7 @@ branches:
 |---|---|---|
 | `ahe-tasks-review` | `通过` | 任务真人确认 |
 | `ahe-tasks-review` | `需修改` / `阻塞` | `ahe-tasks` |
+| `ahe-tasks-review` | `阻塞`（需重编排） | `ahe-workflow-starter` |
 | 任务真人确认 | 确认通过 | `ahe-test-driven-dev` |
 | 任务真人确认 | 要求修改 / 未确认 | `ahe-tasks` |
 | `ahe-test-driven-dev` | 实现完成 | `ahe-regression-gate` |

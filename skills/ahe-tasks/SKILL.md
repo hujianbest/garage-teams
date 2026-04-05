@@ -275,10 +275,12 @@ direct invoke 常见信号：
 3. 启动独立 reviewer subagent，并在该 subagent 中调用 `ahe-tasks-review`
 4. 由 reviewer subagent 写 review 记录并回传结构化摘要
 5. 父会话读取 reviewer 返回结果后继续：
-   - 若结论为 `通过`，先将通过结论与批准结果写入任务计划或等价评审工件，再进入 `ahe-test-driven-dev`
-   - 若结论为 `需修改` 或 `阻塞`，携带关键 findings 回到本 skill 修订
+   - 若结论为 `通过`，先进入 `任务真人确认`；只有真人确认通过后，才把批准结果写入任务计划或等价评审工件，并进入 `ahe-test-driven-dev`
+   - 若结论为 `需修改`，携带关键 findings 回到本 skill 修订
+   - 若结论为 `阻塞` 且 `reroute_via_starter=true` 或 `next_action_or_recommended_skill=ahe-workflow-starter`，回到 `ahe-workflow-starter` 重编排
+   - 其他 `阻塞`，携带关键 findings 回到本 skill 补条件或修订
 
-建议的首个活跃任务应先写在任务计划正文中；只有在 `ahe-tasks-review` 通过并写入批准记录后，再把权威版 `Current Active Task` 写入 `task-progress.md` 或等价状态工件。
+建议的首个活跃任务应先写在任务计划正文中；只有在 `ahe-tasks-review` 通过且 `任务真人确认` 完成后，再把权威版 `Current Active Task` 写入 `task-progress.md` 或等价状态工件。
 
 ## Output Contract
 
@@ -302,7 +304,7 @@ direct invoke 常见信号：
 推荐下一步 skill: `ahe-tasks-review`
 ```
 
-注意：只有 `ahe-tasks-review` 返回 `通过`，且批准结论已写入任务计划或等价评审工件后，才进入 `ahe-test-driven-dev`。
+注意：只有 `ahe-tasks-review` 返回 `通过`，且 `任务真人确认` 已完成、批准结论已写入任务计划或等价评审工件后，才进入 `ahe-test-driven-dev`。
 
 如果计划仍未达到评审门槛，不要伪造 handoff；明确缺口，再继续本节点修订。
 

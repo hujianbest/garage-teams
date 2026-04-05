@@ -276,7 +276,9 @@ direct invoke 常见信号：
 4. 由 reviewer subagent 写 review 记录并回传结构化摘要
 5. 父会话读取 reviewer 返回结果后继续：
    - 若结论为 `通过`，由父会话发起真人批准确认
-   - 若结论为 `需修改` 或 `阻塞`，携带关键 findings 回到本 skill 修订
+   - 若结论为 `需修改`，携带关键 findings 回到本 skill 修订
+   - 若结论为 `阻塞` 且 `reroute_via_starter=true` 或 `next_action_or_recommended_skill=ahe-workflow-starter`，回到 `ahe-workflow-starter` 重编排
+   - 其他 `阻塞`，携带关键 findings 回到本 skill 补条件或修订
 
 不要在 `ahe-design` 阶段请求真人批准设计；真人确认只发生在 `ahe-design-review` 返回“通过”之后。
 
