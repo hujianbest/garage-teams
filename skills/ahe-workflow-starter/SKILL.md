@@ -41,6 +41,8 @@ description: 在 workflow 场景中先判断当前阶段，再把软件工作路
 - 用户明确点名某个 `ahe-*` 能力 skill，但仍需要由 workflow 判断它是否是当前正确的下一步
 - 主链、变更支线、热修复支线之间需要做受控切换
 
+当当前推荐节点是 review 节点时，本 skill 还负责把该 review 动作派发给独立 reviewer subagent，而不是在父会话里直接内联执行评审判断。
+
 能力型 skill 只负责完成本类检查并给出结论；至于当前会话应不应该进入它、之后该进入哪里，由本 skill 统一编排。
 
 ## 状态机原则
@@ -51,6 +53,7 @@ description: 在 workflow 场景中先判断当前阶段，再把软件工作路
 - 当前推荐节点必须由最新工件证据、review / gate 结论和用户请求共同决定
 - 推荐节点必须在当前 profile 的合法节点集合内
 - 下游 skill 不负责自行挑选下一步；它们只负责完成本节点职责并返回结论
+- review 节点保留原 canonical 节点名，但其实际执行方式是：父会话派发 reviewer subagent，reviewer 在 fresh context 中调用对应 `ahe-*review`
 - 任何新的用户请求、证据冲突、review / gate 结论、变更信号、热修复信号，都会触发本 skill 重新编排
 
 如果你发现自己在没有重新经过本 skill 的情况下，就直接把会话从一个节点切到另一个节点，这通常说明你已经绕开了状态机。
@@ -243,8 +246,8 @@ branches:
 
 只有以下场景才暂停执行并等待用户输入：
 
-1. **规格真人确认**：`ahe-spec-review` 结论为"通过"后，必须向用户展示评审结论并等待用户明确批准
-2. **设计真人确认**：`ahe-design-review` 结论为"通过"后，必须向用户展示评审结论并等待用户明确批准
+1. **规格真人确认**：reviewer subagent 返回 `ahe-spec-review` 结论为"通过"后，必须由父会话向用户展示评审结论并等待用户明确批准
+2. **设计真人确认**：reviewer subagent 返回 `ahe-design-review` 结论为"通过"后，必须由父会话向用户展示评审结论并等待用户明确批准
 3. **测试用例设计确认**：`ahe-test-driven-dev` 在进入 Red-Green-Refactor 前，必须向用户展示测试用例设计并等待用户确认
 4. **规格评审 / 设计评审未通过**：`ahe-spec-review` 或 `ahe-design-review` 返回 `需修改` / `阻塞` 时，必须先向用户展示评审结论和修订重点，再回到相应上游修订 skill
 5. **证据冲突需澄清**：工件状态互相矛盾，且无法用保守原则自动解决时
@@ -263,6 +266,39 @@ branches:
 ### 连续执行的红旗信号
 
 如果你发现自己在非暂停点输出路由报告后停下来等用户回复，这说明你把路由报告当成了用户交互，而不是内部编排步骤。正确做法是把路由说明嵌入执行流中，然后立刻进入目标 skill。
+
+## Review 节点执行方式
+
+review 节点仍然是 workflow 的 canonical 节点，但执行方式与普通执行型 skill 不同。
+
+当当前推荐节点是以下任一 review 节点时：
+
+- `ahe-spec-review`
+- `ahe-design-review`
+- `ahe-tasks-review`
+- `ahe-test-review`
+- `ahe-code-review`
+- `ahe-traceability-review`
+
+不要在父会话里直接展开评审判断。应：
+
+1. 根据节点名选择对应的 `ahe-*review` skill
+2. 组装最小 review request
+3. 启动独立 reviewer subagent
+4. 读取 reviewer 返回的结构化摘要
+5. 再由父会话决定下一步或真人确认
+
+详细协议见：
+
+- `references/review-dispatch-protocol.md`
+- `references/reviewer-return-contract.md`
+
+规则边界：
+
+- review 记录由 reviewer subagent 负责落盘
+- workflow 推进仍由父会话负责
+- `ahe-spec-review`、`ahe-design-review` 的真人确认始终由父会话负责
+- gate 节点当前仍按原有方式执行，不在本轮协议内自动改成 verifier subagent
 
 ## 红旗信号
 
@@ -323,6 +359,8 @@ branches:
 
 - `references/routing-evidence-guide.md`
 - `references/profile-selection-guide.md`
+- `references/review-dispatch-protocol.md`
+- `references/reviewer-return-contract.md`
 
 用它们来先补齐 `AGENTS.md` 中的工件位置、阶段证据来源和 profile 规则，避免后续工作流越来越混乱。
 
@@ -486,6 +524,8 @@ branches:
 
 恢复编排完成后，若下一推荐节点不是暂停点（见"连续执行原则"），立刻在同一轮中进入该节点，不等待用户确认。
 
+若该下一推荐节点是 review 节点，则“进入该节点”的含义是：按 `references/review-dispatch-protocol.md` 派发 reviewer subagent，并按 `references/reviewer-return-contract.md` 消费返回摘要，而不是在父会话内联执行 review。
+
 ## 路由失败模式与恢复
 
 如果出现以下情况，不要继续凭感觉推进：
@@ -537,7 +577,7 @@ branches:
 
 > 路由：standard profile，`ahe-code-review` 通过 → 进入 `ahe-traceability-review`
 
-发出路由说明后，立刻进入目标 skill，不等待用户确认。唯一例外：当路由结果指向暂停点（见"连续执行原则"）时，才需要等待用户输入。
+发出路由说明后，立刻进入目标 skill，不等待用户确认。若目标是 review 节点，则立刻派发 reviewer subagent。唯一例外：当路由结果指向暂停点（见"连续执行原则"）时，才需要等待用户输入。
 
 ## 风险信号
 
