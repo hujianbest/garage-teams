@@ -1,6 +1,6 @@
 # Workflow Profile 选择指南
 
-当 `ahe-workflow-starter` 需要决定当前工作应使用哪个 workflow profile 时，使用本指南。
+当 `ahe-workflow-router` 需要决定当前工作应使用哪个 workflow profile 时，使用本指南。
 
 本指南回答 3 个问题：
 
@@ -18,7 +18,7 @@
 
 说明：
 
-- 这里的节点数按 `ahe-workflow-starter` 主文件中的 canonical route map 统计。
+- 这里的节点数按 `ahe-workflow-router` 主文件中的 canonical route map 统计。
 - `lightweight` 不是“直接实现”，而是保留一条最小可审计主链：`ahe-tasks` → `ahe-tasks-review` → `任务真人确认` → `ahe-test-driven-dev` → `ahe-regression-gate` → `ahe-completion-gate` → `ahe-finalize`。
 
 ## 选择信号矩阵
@@ -94,7 +94,7 @@
 
 1. 在 `task-progress.md` 中更新 Workflow Profile 字段
 2. 在 Session Log 中记录升级原因
-3. 回到本 skill（`ahe-workflow-starter`）重新路由
+3. 回到本 skill（`ahe-workflow-router`）重新路由
 4. 按新 profile 的节点链路进入正确阶段
 
 ### 降级规则
@@ -145,5 +145,5 @@ Profile：full
 初始判断：lightweight（修复一个 CSS 样式问题）
 执行中发现：修复需要修改组件逻辑，且涉及 3 个组件文件
 升级：lightweight → standard
-后续：回到 ahe-workflow-starter 重新路由，从 ahe-tasks 开始
+后续：回到 ahe-workflow-router 重新路由，从 ahe-tasks 开始
 ```

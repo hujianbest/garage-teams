@@ -1,6 +1,6 @@
 # Profile Node And Transition Map
 
-这份参考文档集中保存 `ahe-workflow-starter` 的 profile 合法节点集合、canonical route map、结果驱动迁移表与恢复编排协议。
+这份参考文档集中保存 `ahe-workflow-router` 的 profile 合法节点集合、canonical route map、结果驱动迁移表与恢复编排协议。
 
 当你已经在 starter 主文件中确认：
 
@@ -87,8 +87,8 @@ lightweight:
   -> ahe-regression-gate -> ahe-completion-gate -> ahe-finalize
 
 branches:
-  increment -> ahe-increment -> return via starter
-  hotfix -> ahe-hotfix -> return via starter
+  increment -> ahe-increment -> return via router
+  hotfix -> ahe-hotfix -> return via router
 ```
 
 ## 结果驱动迁移表
@@ -101,17 +101,17 @@ branches:
 |---|---|---|
 | `ahe-spec-review` | `通过` | 规格真人确认 |
 | `ahe-spec-review` | `需修改` / `阻塞` | `ahe-specify` |
-| `ahe-spec-review` | `阻塞`（需重编排） | `ahe-workflow-starter` |
+| `ahe-spec-review` | `阻塞`（需重编排） | `ahe-workflow-router` |
 | 规格真人确认 | 确认通过 | `ahe-design` |
 | 规格真人确认 | 要求修改 / 未确认 | `ahe-specify` |
 | `ahe-design-review` | `通过` | 设计真人确认 |
 | `ahe-design-review` | `需修改` / `阻塞` | `ahe-design` |
-| `ahe-design-review` | `阻塞`（需重编排） | `ahe-workflow-starter` |
+| `ahe-design-review` | `阻塞`（需重编排） | `ahe-workflow-router` |
 | 设计真人确认 | 确认通过 | `ahe-tasks` |
 | 设计真人确认 | 要求修改 / 未确认 | `ahe-design` |
 | `ahe-tasks-review` | `通过` | 任务真人确认 |
 | `ahe-tasks-review` | `需修改` / `阻塞` | `ahe-tasks` |
-| `ahe-tasks-review` | `阻塞`（需重编排） | `ahe-workflow-starter` |
+| `ahe-tasks-review` | `阻塞`（需重编排） | `ahe-workflow-router` |
 | 任务真人确认 | 确认通过 | `ahe-test-driven-dev` |
 | 任务真人确认 | 要求修改 / 未确认 | `ahe-tasks` |
 | `ahe-test-driven-dev` | 实现完成 | `ahe-bug-patterns` |
@@ -134,7 +134,7 @@ branches:
 |---|---|---|
 | `ahe-tasks-review` | `通过` | 任务真人确认 |
 | `ahe-tasks-review` | `需修改` / `阻塞` | `ahe-tasks` |
-| `ahe-tasks-review` | `阻塞`（需重编排） | `ahe-workflow-starter` |
+| `ahe-tasks-review` | `阻塞`（需重编排） | `ahe-workflow-router` |
 | 任务真人确认 | 确认通过 | `ahe-test-driven-dev` |
 | 任务真人确认 | 要求修改 / 未确认 | `ahe-tasks` |
 | `ahe-test-driven-dev` | 实现完成 | `ahe-bug-patterns` |
@@ -157,7 +157,7 @@ branches:
 |---|---|---|
 | `ahe-tasks-review` | `通过` | 任务真人确认 |
 | `ahe-tasks-review` | `需修改` / `阻塞` | `ahe-tasks` |
-| `ahe-tasks-review` | `阻塞`（需重编排） | `ahe-workflow-starter` |
+| `ahe-tasks-review` | `阻塞`（需重编排） | `ahe-workflow-router` |
 | 任务真人确认 | 确认通过 | `ahe-test-driven-dev` |
 | 任务真人确认 | 要求修改 / 未确认 | `ahe-tasks` |
 | `ahe-test-driven-dev` | 实现完成 | `ahe-regression-gate` |
@@ -166,9 +166,9 @@ branches:
 | `ahe-completion-gate` | `通过` | `ahe-finalize` |
 | `ahe-completion-gate` | `需修改` / `阻塞` | `ahe-test-driven-dev` |
 
-如果某个下游 skill 给出的结论无法映射到当前 profile 迁移表中的唯一下一推荐节点，则说明编排信息还不完整，应回到 `ahe-workflow-starter` 重新判断，而不是自行补脑推进。
+如果某个下游 skill 给出的结论无法映射到当前 profile 迁移表中的唯一下一推荐节点，则说明编排信息还不完整，应回到 `ahe-workflow-router` 重新判断，而不是自行补脑推进。
 
-上表主要描述“内容回修型”默认迁移。若 reviewer 返回摘要显式要求 `reroute_via_starter=true`，或把 `next_action_or_recommended_skill` 指向 `ahe-workflow-starter`，该显式重编排信号优先于表内默认下一步。
+上表主要描述“内容回修型”默认迁移。若 reviewer 返回摘要显式要求 `reroute_via_starter=true`，或把 `next_action_or_recommended_skill` 指向 `ahe-workflow-router`，该显式重编排信号优先于表内默认下一步。
 
 ## 恢复编排协议
 

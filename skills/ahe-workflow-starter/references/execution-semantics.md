@@ -1,6 +1,6 @@
 # Execution Semantics
 
-这份参考文档集中保存 `ahe-workflow-starter` 的连续执行原则、暂停点、非暂停点、路由失败模式与执行级红旗信号。
+这份参考文档集中保存 `ahe-workflow-router` 的连续执行原则、暂停点、非暂停点、路由失败模式与执行级红旗信号。
 
 当你已经确认当前路由结果，需要判断：
 
@@ -16,7 +16,7 @@
 
 整条 workflow 链路默认以连续执行模式运行：一个节点完成后，自动判断下一个节点并立刻进入，直到遇到明确 pause point。
 
-即使刚刚回到 `ahe-workflow-starter` 完成重编排，这条规则也不变：只要结果不是暂停点，就应继续在同一轮进入目标 skill，而不是额外停一轮等待用户回复。
+即使刚刚回到 `ahe-workflow-router` 完成重编排，这条规则也不变：只要结果不是暂停点，就应继续在同一轮进入目标 skill，而不是额外停一轮等待用户回复。
 
 ## 暂停点
 
@@ -27,7 +27,7 @@
 3. **任务真人确认**：reviewer subagent 返回 `ahe-tasks-review` 结论为"通过"后，必须由父会话向用户展示评审结论并等待用户明确批准
 4. **测试用例设计确认**：`ahe-test-driven-dev` 在进入 Red-Green-Refactor 前，必须向用户展示测试用例设计并等待用户确认
 5. **规格评审 / 设计评审需修改**：`ahe-spec-review` 或 `ahe-design-review` 返回 `需修改`，或返回内容回修型 `阻塞` 时，必须先向用户展示评审结论和修订重点，再回到相应上游修订 skill
-6. **规格评审 / 设计评审需重编排**：若 `ahe-spec-review` 或 `ahe-design-review` 返回 `阻塞`，且 `reroute_via_starter=true` 或 `next_action_or_recommended_skill=ahe-workflow-starter`，先向用户展示阻塞原因，再回到 `ahe-workflow-starter` 重编排
+6. **规格评审 / 设计评审需重编排**：若 `ahe-spec-review` 或 `ahe-design-review` 返回 `阻塞`，且 `reroute_via_starter=true` 或 `next_action_or_recommended_skill=ahe-workflow-router`，先向用户展示阻塞原因，再回到 `ahe-workflow-router` 重编排
 7. **证据冲突需澄清**：工件状态互相矛盾，且无法用保守原则自动解决时
 8. **其他 review / gate 结论为"需修改"或"阻塞"且修订方向不明确**：需要与用户讨论修订方案
 
@@ -51,22 +51,22 @@
 
 - **证据冲突**：不同工件指向不同阶段时，先报告冲突，再按保守原则回到更上游节点
 - **路由抖动**：同一轮里在两个节点之间来回切换但没有新证据时，停止切换，明确说明缺少哪个决定性证据
-- **迁移表缺口**：若某结论无法映射到唯一下一推荐节点，回到 `ahe-workflow-starter` 重编排，而不是自行补脑
+- **迁移表缺口**：若某结论无法映射到唯一下一推荐节点，回到 `ahe-workflow-router` 重编排，而不是自行补脑
 - **profile 不稳**：若新证据触发 upgrade 条件，先升级 profile 并写明原因，再继续路由
 - **显式交接不可解析**：若 `Next Action Or Recommended Skill` 是自由文本、无法唯一归一化，明确忽略该值并按迁移表 + 工件证据继续编排
 
 如果已经连续两次因为同一类证据缺口而无法稳定路由，应明确把它报告为当前阻塞，而不是继续重复解释同一状态机判断。
 
-## 何时回到 Starter 重编排
+## 何时回到 Router 重编排
 
-以下场景应明确回到 `ahe-workflow-starter`，而不是沿用上一轮印象继续推进：
+以下场景应明确回到 `ahe-workflow-router`，而不是沿用上一轮印象继续推进：
 
 - 用户说"继续"，需要根据当前最新工件重新判断阶段
 - 某个 review / gate 刚完成，需要根据结论和 profile 迁移表恢复编排
 - 用户提出新的范围变化、验收变化或紧急缺陷线索，需要判断是否切到 `ahe-increment` / `ahe-hotfix`
 - 当前证据与既有阶段判断冲突，无法直接延续原路线
 - 需要进行 profile 升级
-- reviewer 显式返回 `reroute_via_starter=true`，或把 `next_action_or_recommended_skill` 指向 `ahe-workflow-starter`
+- reviewer 显式返回 `reroute_via_starter=true`，或把 `next_action_or_recommended_skill` 指向 `ahe-workflow-router`
 
 ## 路由红旗信号
 

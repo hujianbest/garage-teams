@@ -14,9 +14,9 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 - `direct invoke`：当前节点已经足够明确，直接进入某个 leaf skill
 - `route-first`：当前阶段、profile、分支或证据仍不稳定，先交给当前 runtime router
 
-当前迁移阶段里，runtime router 仍然是：
+当前迁移阶段里，runtime router 已经收敛为：
 
-- `ahe-workflow-starter`
+- `ahe-workflow-router`
 
 也就是说，这个 skill 现在是 **public shell**，不是 **authoritative router**。
 
@@ -33,7 +33,7 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 不要在这些场景使用：
 
 - 你已经在某个 leaf skill 内部，且当前节点职责与输入都清楚
-- 你已经确认需要 authoritative route / stage / profile 判断，此时直接交给 `ahe-workflow-starter`
+- 你已经确认需要 authoritative route / stage / profile 判断，此时直接交给 `ahe-workflow-router`
 - 你已经确认当前就是某个 leaf skill 的本地职责，且该 skill 的 standalone contract 已满足
 
 常见触发信号：
@@ -70,7 +70,7 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 
 当前这些 authoritative runtime 情况，统一交给：
 
-- `ahe-workflow-starter`
+- `ahe-workflow-router`
 
 ### 2. 识别请求的主意图
 
@@ -103,7 +103,7 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 
 如果任一条件不满足，不要赌 direct invoke，直接把 authoritative 判断交给：
 
-- `ahe-workflow-starter`
+- `ahe-workflow-router`
 
 ### 4. 应用 family entry bias
 
@@ -111,12 +111,12 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 
 | 用户意图 | 可优先尝试的入口 | 一旦不明确时回哪里 |
 | --- | --- | --- |
-| 规格澄清 / 规格修订 | `ahe-specify` | `ahe-workflow-starter` |
-| 当前活跃任务实现 | `ahe-test-driven-dev` | `ahe-workflow-starter` |
-| review / gate 请求 | 具体 review / gate skill | `ahe-workflow-starter` |
-| closeout / finalize | `ahe-completion-gate` 或 `ahe-finalize` | `ahe-workflow-starter` |
-| 线上问题修复分析 | `ahe-hotfix` | `ahe-workflow-starter` |
-| 范围 / 验收 / 约束变化分析 | `ahe-increment` | `ahe-workflow-starter` |
+| 规格澄清 / 规格修订 | `ahe-specify` | `ahe-workflow-router` |
+| 当前活跃任务实现 | `ahe-test-driven-dev` | `ahe-workflow-router` |
+| review / gate 请求 | 具体 review / gate skill | `ahe-workflow-router` |
+| closeout / finalize | `ahe-completion-gate` 或 `ahe-finalize` | `ahe-workflow-router` |
+| 线上问题修复分析 | `ahe-hotfix` | `ahe-workflow-router` |
+| 范围 / 验收 / 约束变化分析 | `ahe-increment` | `ahe-workflow-router` |
 
 ### 5. 解释 `/ahe-*` 命令时，把命令当作 bias，不当作 authority
 
@@ -132,14 +132,14 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 因此：
 
 - 若节点足够明确，可 direct invoke 对应 skill
-- 若节点不明确、证据冲突或 profile 不稳，交给 `ahe-workflow-starter`
+- 若节点不明确、证据冲突或 profile 不稳，交给 `ahe-workflow-router`
 
 ### 6. 正确结束本 skill
 
 本 skill 的正确输出只有两类：
 
 1. 明确进入一个合法 leaf skill
-2. 明确交给 `ahe-workflow-starter`
+2. 明确交给 `ahe-workflow-router`
 
 不要在这里：
 
@@ -165,9 +165,9 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 
 ### Rule 2. authoritative routing 仍归 router
 
-当前迁移阶段中，router 仍然是：
+当前迁移阶段中，canonical router 是：
 
-- `ahe-workflow-starter`
+- `ahe-workflow-router`
 
 因此，所有以下问题都不应由本 skill 私自决定：
 
@@ -181,7 +181,7 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 
 如果你有一丝疑问“当前节点到底清不清楚”，默认交给：
 
-- `ahe-workflow-starter`
+- `ahe-workflow-router`
 
 不要为了看起来更快，就把 entry skill 变成简化版 router。
 
@@ -190,9 +190,9 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 | 情况 | 首选动作 | 原因 |
 | --- | --- | --- |
 | 新会话，不知道从哪开始 | 用本 skill 做 entry discovery | 先判断是 direct invoke 还是 route-first |
-| 用户说“继续”但当前阶段不明 | 交给 `ahe-workflow-starter` | 这是 runtime recovery，不是简单 entry bias |
+| 用户说“继续”但当前阶段不明 | 交给 `ahe-workflow-router` | 这是 runtime recovery，不是简单 entry bias |
 | 用户说“帮我写 spec”且上下文明确 | direct invoke `ahe-specify` | 当前职责明确，适合 leaf skill |
-| 用户说“帮我 review 一下”但对象不明确 | 交给 `ahe-workflow-starter` | review-only 也需要 authoritative 节点判断 |
+| 用户说“帮我 review 一下”但对象不明确 | 交给 `ahe-workflow-router` | review-only 也需要 authoritative 节点判断 |
 | 用户说“按 TDD 做当前 active task”且前置齐全 | direct invoke `ahe-test-driven-dev` | 节点清楚且本地输入足够 |
 | 用户说“completion gate 过了，帮我收尾”且 gate 记录存在 | direct invoke `ahe-finalize` | 当前职责明确 |
 
@@ -213,7 +213,7 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 - 把 `using-ahe-workflow` 写进 `Next Action Or Recommended Skill`
 - 因为用户点名 leaf skill，就跳过工件检查
 - 在 review / gate 完成后仍停留在本 skill 里做恢复编排
-- 在本 skill 中复制 `ahe-workflow-starter` 的 transition map 或 pause-point rules
+- 在本 skill 中复制 `ahe-workflow-router` 的 transition map 或 pause-point rules
 
 ## Supporting References
 
@@ -222,13 +222,13 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 - `docs/ahe-workflow-entrypoints.md`
 - `docs/ahe-command-entrypoints.md`
 - `docs/ahe-workflow-shared-conventions.md`
-- `skills/ahe-workflow-starter/SKILL.md`
+- `skills/ahe-workflow-router/SKILL.md`
 
 读取规则：
 
 - 需要理解 public entry 与 direct invoke 边界时，先看 `docs/ahe-workflow-entrypoints.md`
 - 需要解释 `/ahe-*` 命令时，读 `docs/ahe-command-entrypoints.md`
-- 需要 authoritative runtime routing 时，进入 `skills/ahe-workflow-starter/SKILL.md`
+- 需要 authoritative runtime routing 时，进入 `skills/ahe-workflow-router/SKILL.md`
 - 不要为了 entry discovery 在这里复制 starter 的 runtime rules
 
 ## Verification
@@ -238,6 +238,6 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 - [ ] 你已经先判断当前是在做 public entry，还是 runtime recovery
 - [ ] 你已经明确区分“可 direct invoke”与“必须 route-first”
 - [ ] 若节点已明确，你进入了合法 leaf skill
-- [ ] 若节点不明确、证据冲突或 profile 不稳，你把 authoritative 判断交给了 `ahe-workflow-starter`
+- [ ] 若节点不明确、证据冲突或 profile 不稳，你把 authoritative 判断交给了 `ahe-workflow-router`
 - [ ] 你没有把 `using-ahe-workflow` 写入任何 runtime handoff 字段
 - [ ] 你没有在本 skill 中复制或取代 router 的 machine contract

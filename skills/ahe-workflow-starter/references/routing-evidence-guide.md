@@ -36,7 +36,7 @@
 
 ## 路由时的证据优先级
 
-在会话开始时，`ahe-workflow-starter` 应按以下顺序判断：
+在会话开始时，`ahe-workflow-router` 应按以下顺序判断：
 
 1. `AGENTS.md` 中与 `ahe-workflow` 相关的映射与审批约定
 2. 需求规格 / 设计文档 / 任务计划的存在情况与批准状态
@@ -50,7 +50,7 @@
 
 ## 推荐路由输入
 
-在会话开始时，`ahe-workflow-starter` 应优先只检查：
+在会话开始时，`ahe-workflow-router` 应优先只检查：
 
 1. `AGENTS.md` 中的 `ahe-workflow` 配置段
 2. 规格 / 设计 / 任务工件的存在情况和批准状态
@@ -135,7 +135,7 @@
 ## 主链流程
 
 ```text
-ahe-workflow-starter
+ahe-workflow-router
 -> ahe-specify
 -> ahe-spec-review
 -> 规格真人确认

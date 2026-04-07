@@ -15,13 +15,17 @@
 
 - `skills/using-ahe-workflow/` — AHE workflow family 的公开入口、命令入口解释层和 discovery shell；它帮助判断应 direct invoke 哪个节点，或何时交给当前 runtime router。
 
+## Runtime router and alias
+
+- `skills/ahe-workflow-router/` — AHE workflow family 的 canonical runtime router，负责 stage / profile / branch / review recovery authority。
+- `skills/ahe-workflow-starter/` — 兼容旧入口、旧 handoff 与旧文档的 compatibility alias；新的 runtime 语义优先写 `ahe-workflow-router`。
+
 ## AHE workflow skills（`ahe-*`）
 
 工作流类能力以 **扁平** 目录 `skills/ahe-*` 维护。每个目录一个 skill，入口仍为该目录下的 `SKILL.md`。
 
 当前工作区已包含的 workflow 成员包括：
 
-- `skills/ahe-workflow-starter/` — 工作流入口与路由
 - `skills/ahe-specify/`、`skills/ahe-design/`、`skills/ahe-tasks/` — 主链产出
 - `skills/ahe-spec-review/`、`skills/ahe-design-review/`、`skills/ahe-tasks-review/` — 上游评审
 - `skills/ahe-test-driven-dev/`、`skills/ahe-hotfix/`、`skills/ahe-increment/`、`skills/ahe-finalize/` — 执行与支线闭环
@@ -30,6 +34,7 @@
 查阅时：
 
 - 新会话、命令入口或 family discovery 优先从 `skills/using-ahe-workflow/SKILL.md` 开始
+- 需要 authoritative runtime routing 或恢复编排时，从 `skills/ahe-workflow-router/SKILL.md` 开始
 - 已进入某个具体 workflow 节点时，从对应目录的 `SKILL.md` 开始
 - 与任务进度、评审、验证配套的文档骨架见 `templates/`（如 `task-progress-template.md`、`review-record-template.md`、`verification-record-template.md`）
 

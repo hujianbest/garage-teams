@@ -127,18 +127,18 @@
 
 | 节点 | `通过` 常见下一步 | `需修改` 常见回流 | `阻塞` 常见去向 |
 |---|---|---|---|
-| `ahe-bug-patterns` | `ahe-test-review`（full / standard） | `ahe-test-driven-dev` | `ahe-test-driven-dev` 或 `ahe-workflow-starter` |
-| `ahe-test-review` | `ahe-code-review` | `ahe-test-driven-dev` | `ahe-test-driven-dev` 或 `ahe-workflow-starter` |
-| `ahe-code-review` | `ahe-traceability-review` | `ahe-test-driven-dev` | `ahe-test-driven-dev` 或 `ahe-workflow-starter` |
-| `ahe-traceability-review` | `ahe-regression-gate` | `ahe-test-driven-dev` | `ahe-test-driven-dev` 或 `ahe-workflow-starter` |
-| `ahe-regression-gate` | `ahe-completion-gate` | `ahe-test-driven-dev` | `ahe-regression-gate`（环境 / 工具链）或 `ahe-workflow-starter` |
-| `ahe-completion-gate` | `ahe-finalize` | `ahe-test-driven-dev` | `ahe-completion-gate`（环境 / 工具链）或 `ahe-workflow-starter` |
+| `ahe-bug-patterns` | `ahe-test-review`（full / standard） | `ahe-test-driven-dev` | `ahe-test-driven-dev` 或 `ahe-workflow-router` |
+| `ahe-test-review` | `ahe-code-review` | `ahe-test-driven-dev` | `ahe-test-driven-dev` 或 `ahe-workflow-router` |
+| `ahe-code-review` | `ahe-traceability-review` | `ahe-test-driven-dev` | `ahe-test-driven-dev` 或 `ahe-workflow-router` |
+| `ahe-traceability-review` | `ahe-regression-gate` | `ahe-test-driven-dev` | `ahe-test-driven-dev` 或 `ahe-workflow-router` |
+| `ahe-regression-gate` | `ahe-completion-gate` | `ahe-test-driven-dev` | `ahe-regression-gate`（环境 / 工具链）或 `ahe-workflow-router` |
+| `ahe-completion-gate` | `ahe-finalize` | `ahe-test-driven-dev` | `ahe-completion-gate`（环境 / 工具链）或 `ahe-workflow-router` |
 
 解释：
 
 - 对 review 节点与 `ahe-bug-patterns`，“回到 `ahe-test-driven-dev`” 适用于内容修订、测试缺口、实现修订、局部证据不足
 - 对 `ahe-regression-gate` / `ahe-completion-gate`，`需修改` 常见回流是 `ahe-test-driven-dev`，但环境 / 工具链类 `阻塞` 通常先重试当前 gate
-- “回到 `ahe-workflow-starter`” 适用于 route / stage / profile / 上游证据冲突，或当前节点已经无法独立决定正确下游
+- “回到 `ahe-workflow-router`” 适用于 route / stage / profile / 上游证据冲突，或当前节点已经无法独立决定正确下游
 
 ## Execution Model Note
 

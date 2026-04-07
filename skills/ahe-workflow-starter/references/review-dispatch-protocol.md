@@ -2,7 +2,7 @@
 
 ## 目的
 
-这份协议说明 `ahe-workflow-starter` 与各上游产出 skill 在遇到 review 节点时，如何把评审动作派发给独立 reviewer subagent，而不是在父会话里内联执行 review。
+这份协议说明 `ahe-workflow-router` 与各上游产出 skill 在遇到 review 节点时，如何把评审动作派发给独立 reviewer subagent，而不是在父会话里内联执行 review。
 
 ## 核心原则
 
@@ -96,4 +96,4 @@ reviewer subagent 不负责：
 - 当前 profile 不再成立
 - 当前 review 输入与 workflow 状态冲突
 
-则 reviewer 应在返回摘要中明确要求父会话经 `ahe-workflow-starter` 重编排，而不是让下游 skill 自行补位推进。
+则 reviewer 应在返回摘要中明确要求父会话经 `ahe-workflow-router` 重编排，而不是让下游 skill 自行补位推进。

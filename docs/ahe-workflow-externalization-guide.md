@@ -155,7 +155,7 @@
 4. 节点所需最小证据已经存在
 5. 调用方理解该节点只完成本地职责，后续编排仍回到父会话 / starter
 
-若任一条件不满足，先走 `ahe-workflow-starter`。
+若任一条件不满足，先走 `ahe-workflow-router`。
 
 ### Direct invoke examples
 
