@@ -2,15 +2,15 @@
 
 ## 仓库定位
 
-这是 `awesome-harness-engineering`（`ahe`）个人工作台，用于维护可复用的 harness 资产、skills、模板、规则草案和研究文档。工作流类 skill 以 **AHE workflow skills** 形式放在扁平目录 `skills/ahe-*` 下（由历史 `mdc-*` 命名迁移，见 `skills/README.md`）；其他自有 skill 仍按需放在 `skills/<skill-name>/`。
+这是 `awesome-harness-engineering`（`ahe`）个人工作台，用于维护可复用的 harness 资产、skills、模板、规则草案和研究文档。工作流类 skill 以 **AHE workflow skills** 形式放在扁平目录 `skills/ahe-*` 下；其他自有 skill 仍按需放在 `skills/<skill-name>/`。
 
 ## 工作方式
 
 1. **先看当前入口**：默认从 `README.md`、`AGENTS.md` 或用户明确指定的文件开始，而不是假设存在历史入口。
-2. **以实际目录为准**：只引用当前仓库中真实存在的路径。不要使用已废弃的 `mdc-*` 目录名或已删除的旧路径（如 `daily-skills/`、`skills/mdc-workflow/`、`playbooks/`）；workflow 能力统一通过 `skills/ahe-*` 下的 `SKILL.md` 查阅。
+2. **以实际目录为准**：只引用当前仓库中真实存在的路径。不要使用已废弃目录名或已删除的旧路径；workflow 能力统一通过 `skills/ahe-*` 下的 `SKILL.md` 查阅。
 3. **从局部入口继续深入**：查看 skill 时从 `skills/<skill-name>/SKILL.md` 开始（workflow 族为 `skills/ahe-*/SKILL.md`）；查看模板时从 `templates/` 开始；查看长文资料时从 `docs/` 开始。
 4. **控制改动范围**：只修改当前任务涉及的目录与文档，不为了“统一整理”去批量改写无关分析资料。
-5. **保持资产可复用**：模板保持通用、说明保持简洁、路径保持稳定；新增或引用 workflow 约定时使用 `ahe-*` 命名，不重新引入 `mdc-*` 目录。
+5. **保持资产可复用**：模板保持通用、说明保持简洁、路径保持稳定；新增或引用 workflow 约定时统一使用 `ahe-*` 命名。
 
 ## 路径速查
 

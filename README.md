@@ -1,6 +1,6 @@
 # awesome-harness-engineering (AHE)
 
-`awesome-harness-engineering`，简称 `ahe`，是一个面向个人使用的 harness engineering 工作台。它用于沉淀可复用的 agent 资产、工作约定、模板和参考分析；工作流类能力以 **AHE workflow skills** 的形式维护在扁平目录 `skills/ahe-*` 下（由历史 `mdc-*` 命名迁移而来，见 `skills/README.md`）。
+`awesome-harness-engineering`，简称 `ahe`，是一个面向个人使用的 harness engineering 工作台。它用于沉淀可复用的 agent 资产、工作约定、模板和参考分析；工作流类能力以 **AHE workflow skills** 的形式维护在扁平目录 `skills/ahe-*` 下，见 `skills/README.md`。
 
 ## 仓库结构
 
@@ -28,7 +28,7 @@
 
 ## 当前约束
 
-- 以当前实际目录结构为准；引用 workflow 能力时使用 `skills/ahe-*`，不要使用已废弃的 `mdc-*` 目录名或仓库中不存在的路径。
+- 以当前实际目录结构为准；引用 workflow 能力时使用 `skills/ahe-*` 和仓库中真实存在的路径。
 - 这个仓库没有业务应用构建流程、数据库或 CI 流水线。
 - 仓库中的大多数内容是 Markdown 资产；变更时优先保持路径清晰、引用准确、内容可复用。
 

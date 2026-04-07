@@ -2,7 +2,7 @@
 
 - 状态: 草稿
 - 日期: 2026-04-03
-- 定位: 本文把旧 `mdc-workflow` 多 agent 草稿重构为面向现有 `ahe-*` skill 家族的设计蓝图。
+- 定位: 本文面向现有 `ahe-*` skill 家族，给出多 agent 运行模型的设计蓝图。
 - 关联入口:
   - `README.md`
   - `skills/README.md`
@@ -16,18 +16,18 @@
 
 - `workflow-board`、lease、outcome、snapshot 仍然是**运行时对象**，不是 skill
 - 任何需要由 agent 主动执行、写回结果、承担边界责任的角色，都应变成 `skills/ahe-*/SKILL.md`
-- 已经存在且职责清晰的执行 / 质量节点，继续沿用现有 `ahe-*` 命名，不回退到 `mdc-*`
+- 已经存在且职责清晰的执行 / 质量节点，继续沿用现有 `ahe-*` 命名
 
-换句话说，本方案不是把旧 `mdc-*` 名称机械替换成 `ahe-*`，而是把“抽象角色图”收敛成一套真实可落地、路径真实存在、边界明确的 AHE workflow skills。
+换句话说，本方案的目标不是再维护一套平行命名体系，而是把“抽象角色图”收敛成一套真实可落地、路径真实存在、边界明确的 AHE workflow skills。
 
 ## 设计目标
 
 1. 让多 agent 方案直接对齐现有 `skills/ahe-*` 家族，而不是再维护一套平行命名体系。
-2. 让 coordination、execution、quality、human confirmation、archive 都有清晰 skill 边界。
+2. 让 coordination、execution、quality、human confirmation、archive 都有清晰职责边界。
 3. 让 `workflow-board` 成为可恢复的运行时事实源，但在迁移期继续与工件视图 dual-read / dual-write。
 4. 保留 AHE 当前最重要的纪律：先路由、再执行；profile 只调密度，不降门禁；fresh evidence 先于完成结论。
 5. 让 `ahe-test-driven-dev` 继续作为唯一实现入口，而不是重新拆出第二个实现 skill。
-6. 让 `ahe-finalize` 从“最终终点”回归为 closeout 节点，把归档冻结交给独立的 `ahe-archive`。
+6. 让 `ahe-finalize` 从“最终终点”回归为 closeout 节点，把归档冻结交给独立的 archive responsibility。
 
 ## 非目标
 
@@ -37,21 +37,21 @@
 - 不追求一上来就让所有节点并行；主工件仍保持单写。
 - 不要求第一批就重写全部已有 skill；先补协调层，再做 contract-first 对齐。
 
-## 从旧稿到 AHE 的映射规则
+## 运行模型元素对应关系
 
-| 旧概念 | AHE 重构后形态 | 说明 |
+| 当前组件 / 职责 | 形态 | 说明 |
 | --- | --- | --- |
-| `mdc-workflow` | `ahe-*` workflow family | 整个 workflow 家族以扁平 `skills/ahe-*` 目录存在 |
-| `mdc-workflow-starter` | `skills/ahe-workflow-starter/` | 保留为 intake / router 入口 |
+| `ahe-*` workflow family | workflow skills family | 整个 workflow 家族以扁平 `skills/ahe-*` 目录存在 |
+| `skills/ahe-workflow-starter/` | intake / router 入口 | 保留为新请求识别与恢复入口 |
 | `Board Governor` | 协调层运行时角色 | 在本版文档中作为 runtime coordination responsibility 描述，不落成新的 skill 修改 |
 | `Human Confirmation Bridge` | 协调层运行时角色 | 统一承接暂停点 / 审批证据桥接职责，但本次仅体现在文档设计中 |
-| `archive` 节点 | 运行时 closeout / archive responsibility | 作为会话冻结与审计归档职责描述，不在本次改动中修改现有 skill |
+| `archive responsibility` | 运行时 closeout / archive responsibility | 作为会话冻结与审计归档职责描述，不在本次改动中修改现有 skill |
 | `workflow-board` | 运行时对象 | 逻辑对象，不直接等同于某个 skill 目录 |
-| `mdc-test-driven-dev` / `implement` | `skills/ahe-test-driven-dev/` | 继续作为唯一实现入口 |
-| `mdc-increment` | `skills/ahe-increment/` | 变更支线 skill |
-| `mdc-hotfix` | `skills/ahe-hotfix/` | 热修复支线 skill |
-| `mdc-finalize` | `skills/ahe-finalize/` | 当前现有 closeout 节点 |
-| `mdc-bug-patterns` / `mdc-test-review` / `mdc-code-review` | `skills/ahe-bug-patterns/` / `skills/ahe-test-review/` / `skills/ahe-code-review/` | quality fan-out 首批并行节点 |
+| `skills/ahe-test-driven-dev/` | 实现入口 | 继续作为唯一实现入口 |
+| `skills/ahe-increment/` | 变更支线 skill | 负责变更支线推进 |
+| `skills/ahe-hotfix/` | 热修复支线 skill | 负责热修复支线推进 |
+| `skills/ahe-finalize/` | closeout 节点 | 当前现有 closeout 节点 |
+| `skills/ahe-bug-patterns/` / `skills/ahe-test-review/` / `skills/ahe-code-review/` | quality fan-out 首批并行节点 | 负责首批并行质量检查 |
 
 ## Skill 家族拆分
 
@@ -534,7 +534,7 @@ hotfix-request
 
 目标：
 
-- 先把旧 `mdc-workflow` 概念稿改写为 AHE 命名与职责拆分
+- 先把多 agent 概念稿收敛为 AHE 命名与职责拆分
 - 把 `workflow-board` / lease / outcome / archive 作为明确运行时对象描述清楚
 - 让现有 `ahe-workflow-starter`、`ahe-test-driven-dev`、质量层和支线 skill 有一致的目标态对齐坐标
 
@@ -599,4 +599,4 @@ hotfix-request
 
 ## 一句话总结
 
-推荐把旧 `mdc-workflow` 多 agent 草稿收敛为一套以现有 `ahe-*` skill 家族为基础的运行模型：由 `ahe-workflow-starter` 负责 intake，由 `workflow-board` 承担运行时事实源，由 coordination layer 管理 lease、fan-out、pause 与 archive，并由既有 execution / quality skills 承担节点职责，从而把抽象角色图重构成可落地的 AHE workflow operating model。
+推荐把多 agent 运行方案收敛为一套以现有 `ahe-*` skill 家族为基础的运行模型：由 `ahe-workflow-starter` 负责 intake，由 `workflow-board` 承担运行时事实源，由 coordination layer 管理 lease、fan-out、pause 与 archive，并由既有 execution / quality skills 承担节点职责，从而把抽象角色图重构成可落地的 AHE workflow operating model。

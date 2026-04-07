@@ -11,7 +11,7 @@
 
 ## AHE workflow skills（`ahe-*`）
 
-工作流类能力以 **扁平** 目录 `skills/ahe-*` 维护，作为原 `mdc-*` workflow skills 在 AHE 品牌下的延续（命名迁移为 `ahe-*`，不再使用 `mdc-*` 目录名）。每个目录一个 skill，入口仍为该目录下的 `SKILL.md`。
+工作流类能力以 **扁平** 目录 `skills/ahe-*` 维护。每个目录一个 skill，入口仍为该目录下的 `SKILL.md`。
 
 当前工作区已包含的 workflow 成员包括：
 
@@ -33,5 +33,5 @@
 
 ## 命名与路径约定
 
-- **Workflow 族**：使用 `skills/ahe-*`，不要使用已废弃的 `mdc-*` 目录名。
-- **旧结构**：不要引用 `skills/mdc-workflow/...`、`daily-skills/`、`playbooks/` 等已移除路径；若文档中仍出现，应改为当前扁平 `skills/ahe-*` 或真实存在的路径。
+- **Workflow 族**：使用 `skills/ahe-*`。
+- **旧结构**：不要引用已移除路径；若文档中仍出现，应改为当前扁平 `skills/ahe-*` 或真实存在的路径。

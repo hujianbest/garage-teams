@@ -16,7 +16,7 @@
 
 - 文档中写出的路径必须与仓库当前结构一致。
 - 历史目录已移除时，应直接更新引用，而不是保留“兼容性”假设。
-- 不要使用 `daily-skills/`、`skills/mdc-workflow/`、`playbooks/` 等不存在路径；workflow 能力应指向 `skills/ahe-*` 下真实目录（见 `skills/README.md`）。
+- 不要使用不存在的路径；workflow 能力应指向 `skills/ahe-*` 下真实目录（见 `skills/README.md`）。
 
 ## 4. 入口必须清晰
 
