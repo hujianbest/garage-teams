@@ -9,6 +9,12 @@
 - `skills/<skill-name>/SKILL.md`：单个 skill 的入口文件
 - `skills/<skill-name>/references/`：该 skill 的补充说明、模板或参考资料
 
+## Public entry skill
+
+除 `ahe-*` workflow 节点外，AHE 还包含一层公开入口：
+
+- `skills/using-ahe-workflow/` — AHE workflow family 的公开入口、命令入口解释层和 discovery shell；它帮助判断应 direct invoke 哪个节点，或何时交给当前 runtime router。
+
 ## AHE workflow skills（`ahe-*`）
 
 工作流类能力以 **扁平** 目录 `skills/ahe-*` 维护。每个目录一个 skill，入口仍为该目录下的 `SKILL.md`。
@@ -21,7 +27,11 @@
 - `skills/ahe-test-driven-dev/`、`skills/ahe-hotfix/`、`skills/ahe-increment/`、`skills/ahe-finalize/` — 执行与支线闭环
 - `skills/ahe-bug-patterns/`、`skills/ahe-test-review/`、`skills/ahe-code-review/`、`skills/ahe-traceability-review/`、`skills/ahe-regression-gate/`、`skills/ahe-completion-gate/` — 质量与门禁
 
-查阅时从对应目录的 `SKILL.md` 开始；与任务进度、评审、验证配套的文档骨架见 `templates/`（如 `task-progress-template.md`、`review-record-template.md`、`verification-record-template.md`）。
+查阅时：
+
+- 新会话、命令入口或 family discovery 优先从 `skills/using-ahe-workflow/SKILL.md` 开始
+- 已进入某个具体 workflow 节点时，从对应目录的 `SKILL.md` 开始
+- 与任务进度、评审、验证配套的文档骨架见 `templates/`（如 `task-progress-template.md`、`review-record-template.md`、`verification-record-template.md`）
 
 ## 新增 skill 时的建议
 

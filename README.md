@@ -2,6 +2,12 @@
 
 `awesome-harness-engineering`，简称 `ahe`，是一个面向个人使用的 harness engineering 工作台。它用于沉淀可复用的 agent 资产、工作约定、模板和参考分析；工作流类能力以 **AHE workflow skills** 的形式维护在扁平目录 `skills/ahe-*` 下，见 `skills/README.md`。
 
+## AHE workflow 入口
+
+- 新会话默认先走 `skills/using-ahe-workflow/SKILL.md`。
+- 若当前属于 runtime 恢复编排、阶段判断、profile 判断或 evidence 冲突，再交给 `skills/ahe-workflow-starter/SKILL.md`。
+- 只有当前节点、前置工件和批准状态都已经明确时，才 direct invoke 某个具体 `ahe-*` skill。
+
 ## 仓库结构
 
 | 路径 | 作用 |
@@ -21,10 +27,12 @@
 ## 使用方式
 
 1. 优先从 `README.md` 和 `AGENTS.md` 了解仓库定位与规则。
-2. 需要查看参考材料时，进入 `docs/`。
-3. 需要维护仓库自有 skill 时，进入 `skills/`：工作流类从 `skills/ahe-*` 各目录的 `SKILL.md` 入手；其他 skill 同样使用 `skills/<skill-name>/SKILL.md` 约定。
-4. 需要复用文档骨架时，进入 `templates/`。
-5. 需要做 skill 校验、打包或评测时，以 `.cursor/skills/skill-creator/` 为工作目录执行脚本。
+2. 需要进入 AHE workflow 时，先读 `docs/ahe-workflow-entrypoints.md`，再从 `skills/using-ahe-workflow/SKILL.md` 进入。
+3. 若当前属于 runtime 恢复编排、阶段判断、profile 判断或 evidence 冲突，再交给 `skills/ahe-workflow-starter/SKILL.md`。
+4. 需要查看参考材料时，进入 `docs/`。
+5. 需要维护仓库自有 skill 时，进入 `skills/`：工作流类从 `skills/ahe-*` 各目录的 `SKILL.md` 入手；其他 skill 同样使用 `skills/<skill-name>/SKILL.md` 约定。
+6. 需要复用文档骨架时，进入 `templates/`。
+7. 需要做 skill 校验、打包或评测时，以 `.cursor/skills/skill-creator/` 为工作目录执行脚本。
 
 ## 当前约束
 

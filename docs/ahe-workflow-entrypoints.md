@@ -4,36 +4,51 @@
 
 本文定义 `ahe-*` family 的入口策略，回答三个问题：
 
-1. 什么时候必须先走 `ahe-workflow-starter`
-2. 什么时候允许 direct invoke 某个具体 `ahe-*` skill
-3. starter 编排模式与 direct invoke 模式在输入、输出和责任边界上有什么差异
+1. 什么时候先走 `using-ahe-workflow`
+2. 什么时候应直接交给当前 runtime router `ahe-workflow-starter`
+3. 什么时候允许 direct invoke 某个具体 `ahe-*` skill
 
 ## One-Line Rule
 
-默认先走 `ahe-workflow-starter`。
+新会话默认先走 `using-ahe-workflow`。
+
+若当前已经进入 runtime recovery、需要 authoritative route / stage / profile 判断，或 evidence 冲突，则交给当前 router `ahe-workflow-starter`。
 
 direct invoke 不是主路径替代品，而是在“当前节点已经足够明确、前置条件已经满足、且 route / stage / profile 不存在冲突”时允许使用的受控捷径。
 
-## Always Start With `ahe-workflow-starter`
+## Start With `using-ahe-workflow`
 
-以下场景默认都应先经过 starter：
+以下场景默认先经过 `using-ahe-workflow`：
 
 - 开始新的需求、功能、项目或一轮新工作周期
-- 用户说“继续”“推进”“开始做”“先处理这个”
-- 用户点名某个 `ahe-*` skill，但当前仍需确认它是不是正确节点
-- 用户只说“帮我 review / gate 一下”，但还没明确是哪一个 review / gate 节点
+- 用户说“继续”“推进”“开始做”“先处理这个”，但当前 canonical 节点还没确定
+- 用户点名某个 `ahe-*` skill，但当前仍需确认它是不是合法 direct invoke
+- 用户想通过 `/ahe-spec`、`/ahe-build`、`/ahe-review`、`/ahe-closeout` 这类命令意图进入 AHE
+- 用户需要 family-level 入口解释，而不是直接做 runtime recovery
+
+理由：
+
+- `using-ahe-workflow` 是公开入口层
+- 它帮助判断当前应 direct invoke 哪个 leaf skill，或何时交给 router
+- 它降低新会话和命令入口的认知摩擦
+- 它避免继续把 `ahe-workflow-starter` 同时当作 public shell 和 runtime kernel
+
+## Go Directly To Current Router `ahe-workflow-starter`
+
+以下场景不应停留在 entry layer，而应直接交给当前 runtime router `ahe-workflow-starter`：
+
+- review / gate 刚完成，需要恢复后续编排
 - 当前存在 route / stage / profile 不确定性
 - 当前工件证据冲突
 - 用户提出需求变更、范围变化、验收变化
 - 用户提出紧急缺陷修复
-- 某个 review / gate 刚完成，需要恢复后续编排
 
 理由：
 
-- starter 负责决定 `Workflow Profile`
-- starter 负责决定当前 canonical 节点
-- starter 负责在主链、increment、hotfix 之间做受控切换
-- starter 负责在命中 review 节点时派发 reviewer subagent
+- 当前 starter 仍负责决定 `Workflow Profile`
+- 当前 starter 仍负责决定当前 canonical 节点
+- 当前 starter 仍负责在主链、increment、hotfix 之间做受控切换
+- 当前 starter 仍负责在命中 review 节点时派发 reviewer subagent
 
 ## Direct Invoke Is Allowed Only When
 
@@ -45,13 +60,14 @@ direct invoke 不是主路径替代品，而是在“当前节点已经足够明
 4. 没有 profile 冲突、批准状态冲突或证据冲突
 5. 调用方接受“本 skill 只完成本节点职责，后续编排仍回到父会话 / starter”
 
-若任一条件不满足，回到 `ahe-workflow-starter`。
+若任一条件不满足，交给 `ahe-workflow-starter`。
 
 ## Entrypoint Matrix
 
 | 节点类别 | 代表 skill | 典型入口条件 | 不该这样进入的典型情况 |
 |---|---|---|---|
-| Orchestrator | `ahe-workflow-starter` | 阶段不清、需要恢复编排、需要判断 profile 或下一步 | 无；它就是默认入口 |
+| Public Entry | `using-ahe-workflow` | 新会话、命令入口、family discovery、需要判断 direct invoke 还是 route-first | 当前已经进入 runtime recovery、需要 authoritative route / stage / profile 判断 |
+| Orchestrator | `ahe-workflow-starter` | 阶段不清、需要恢复编排、需要判断 profile 或下一步 | 把它当成每次新会话都必须直接暴露给用户的 public shell |
 | Authoring | `ahe-specify` / `ahe-design` / `ahe-tasks` | 当前明确是在补齐规格、设计或任务计划正文；上游前置条件满足 | 阶段不清、其实该做 review、其实该走支线、或已进入实现 |
 | Review | `ahe-spec-review` / `ahe-design-review` / `ahe-tasks-review` / downstream reviews | 当前明确是 review-only，请求和工件都指向一个具体 review 节点 | 没有可评审草稿 / 记录、其实需要继续产出正文、或 route / stage 冲突 |
 | Implementation | `ahe-test-driven-dev` | 已有唯一活跃任务，且任务计划已批准，或已有 hotfix handoff / 回流 findings | 无唯一活跃任务、批准状态冲突、其实要做 review / gate |
@@ -73,19 +89,28 @@ review skills 有双重入口语义：
 - 无论是 direct invoke 还是 chain invoke，review 的实际执行都仍遵循 `skills/ahe-workflow-starter/references/review-dispatch-protocol.md`：由父会话构造 review request，并派发 reviewer subagent
 - 无论哪种模式，review skill 只负责给出 review 记录与结构化摘要，不负责推进主链
 
-## Starter Mode vs Direct Invoke
+## Public Entry Mode vs Starter Mode vs Direct Invoke
 
-| 维度 | Starter 编排模式 | Direct invoke 模式 |
-|---|---|---|
-| 目标 | 决定当前应该进入哪个节点 | 完成某一个已经明确的节点职责 |
-| 最小输入 | 用户请求 + `AGENTS.md` + 上游工件状态 + `task-progress.md` + review / gate / verification 证据 | 当前节点所需最小工件 + 当前请求 |
-| 是否判断 profile | 是 | 否；若 profile 不清，回 starter |
-| 是否判断 route / stage | 是 | 否；若 route / stage 不清，回 starter |
-| 是否决定下一节点 | 是 | 否；只写 canonical handoff，后续编排交回父会话 / starter |
-| review 如何执行 | 一旦进入 review 节点，统一由父会话按 review-dispatch protocol 派发 reviewer subagent | 与 starter 模式相同；差别只在于 review 节点是由调用方直接选定，还是由 starter 先判定出来 |
-| 输出 | 当前阶段判断、选定 profile、推荐节点，并立即继续执行或命中暂停点 | 节点本地工件、状态更新、canonical handoff、必要的 review / verification record |
+| 维度 | Public entry 模式 | Starter 编排模式 | Direct invoke 模式 |
+|---|---|---|---|
+| 目标 | 判断当前应 direct invoke 哪个 leaf skill，或交给 router | 决定当前应该进入哪个节点 | 完成某一个已经明确的节点职责 |
+| 最小输入 | 用户请求 + 最少 family entry context | 用户请求 + `AGENTS.md` + 上游工件状态 + `task-progress.md` + review / gate / verification 证据 | 当前节点所需最小工件 + 当前请求 |
+| 是否判断 profile | 否；若需要 authoritative 判断，交给 starter | 是 | 否；若 profile 不清，回 starter |
+| 是否判断 route / stage | 只判断“需不需要 router”，不做 authoritative recovery | 是 | 否；若 route / stage 不清，回 starter |
+| 是否决定下一节点 | 只决定“leaf skill 还是 starter” | 是 | 否；只写 canonical handoff，后续编排交回父会话 / starter |
+| review 如何执行 | 只判断是否可以进入某个 review 节点；一旦进入 review，实际执行仍按 review-dispatch protocol | 一旦进入 review 节点，统一由父会话按 review-dispatch protocol 派发 reviewer subagent | 与 starter 模式相同；差别只在于 review 节点是由调用方直接选定，还是由上游先判定出来 |
+| 输出 | 进入某个 leaf skill，或交给 `ahe-workflow-starter` | 当前阶段判断、选定 profile、推荐节点，并立即继续执行或命中暂停点 | 节点本地工件、状态更新、canonical handoff、必要的 review / verification record |
 
 ## Input Differences
+
+### Public entry 应优先读取
+
+- 用户当前请求
+- `docs/ahe-workflow-entrypoints.md`
+- 与入口判断直接相关的少量工件线索
+- 命令 bias 或用户点名的 skill 意图
+
+public entry 阶段不应复制 starter 的 runtime 判断，也不应先做大范围代码探索。
 
 ### Starter 应优先读取
 
@@ -106,6 +131,15 @@ starter 阶段不应先做大范围代码探索。
 direct invoke 不应顺手接管 orchestrator 职责。
 
 ## Output Differences
+
+### Public entry 输出
+
+public entry 的最小输出是二选一：
+
+1. 进入一个合法 leaf skill
+2. 交给 `ahe-workflow-starter`
+
+它不输出 runtime canonical handoff，不替代 starter 的恢复编排。
 
 ### Starter 输出
 
@@ -151,8 +185,9 @@ direct invoke 的 handoff 只表达“本节点之后推荐谁”，不替代 st
 - 让 authoring skill 顺手决定完整下游链路
 - 让 review skill 顺手开始修文档或做实现
 - 让 finalize 在 gate 未通过时提前收尾
+- 把 `using-ahe-workflow` 写进 `Next Action Or Recommended Skill`
 - 在 route / stage / profile 冲突下继续硬做当前 skill
 
 ## Practical Rule Of Thumb
 
-若你有一丝疑问“现在到底是不是这个节点”，就不要赌 direct invoke，直接回到 `ahe-workflow-starter`。
+若是新会话且你有一丝疑问“现在到底该从哪个 AHE 入口开始”，先走 `using-ahe-workflow`；若 authoritative runtime 判断仍不清，就交给 `ahe-workflow-starter`。
