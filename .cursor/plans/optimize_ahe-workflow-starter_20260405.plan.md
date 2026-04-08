@@ -1,22 +1,22 @@
-# 优化 `ahe-workflow-starter` 方案（归档）
+# 优化 workflow router kernel 方案（归档）
 
-> **Historical：** 本计划针对已移除的独立 `ahe-workflow-starter` skill。当前 canonical runtime 为 **`ahe-workflow-router`**；公开家族入口为 **`using-ahe-workflow`**。下文中路径与 skill 名在今日应读作对 **`skills/ahe-workflow-router/SKILL.md`** 的同类优化思路。
+> **Historical：** 本文件归档时的旧名见当前磁盘文件名，针对已移除的 **pre-split legacy 合并 router** skill。当前 canonical runtime 为 **`ahe-workflow-router`**；公开家族入口为 **`using-ahe-workflow`**。下文路径与对象在今日应读作对 **`skills/ahe-workflow-router/SKILL.md`** 的同类优化思路。
 
 ## 目标
 
-把 `skills/ahe-workflow-router/SKILL.md`（计划撰写时：`skills/ahe-workflow-starter/SKILL.md`）从“能工作的一套状态机说明”提升为“能稳定做出高质量路由 / 恢复编排决策的 workflow kernel skill”。
+把 `skills/ahe-workflow-router/SKILL.md`（计划撰写时位于 legacy 合并 router 目录下的同名入口）从“能工作的一套状态机说明”提升为“能稳定做出高质量路由 / 恢复编排决策的 workflow kernel skill”。
 
 本次优化不会改变 AHE 的核心状态机事实：
 
 - 仍然只有一个当前 workflow profile 和一个当前推荐节点
-- 仍然由 `ahe-workflow-router` 统一拥有路由与恢复编排权（历史写法：`ahe-workflow-starter`）
+- 仍然由 `ahe-workflow-router` 统一拥有路由与恢复编排权
 - 仍然遵守 `通过 | 需修改 | 阻塞` 的 review / gate 迁移语义
 - 仍然保持非暂停点连续执行、暂停点等待用户
 - 仍然以 `ahe-test-driven-dev` 作为实现阶段统一入口
 
 ## 当前问题
 
-当前 `ahe-workflow-router`（计划撰写时：`ahe-workflow-starter`）已经信息很全，但还存在几个高价值短板：
+当前 `ahe-workflow-router`（计划撰写时的对象即 legacy 合并 router）已经信息很全，但还存在几个高价值短板：
 
 - 核心状态机主要靠长篇线性文字表达，不够 glanceable
 - 缺少一套显式的“决策分类”，导致证据冲突、边界场景时容易不一致
@@ -121,7 +121,7 @@
 
 ## 计划中的实际改动
 
-会对 `skills/ahe-workflow-router/SKILL.md`（历史：`ahe-workflow-starter`）做一轮聚焦增强，预计包括：
+会对 `skills/ahe-workflow-router/SKILL.md` 做一轮聚焦增强，预计包括：
 
 - 增加 canonical 路由图
 - 增加决策分类
@@ -131,7 +131,7 @@
 
 ## 预期效果
 
-优化后的 `ahe-workflow-router`（历史目标名：`ahe-workflow-starter`）应该具备这些特征：
+优化后的 `ahe-workflow-router` 应该具备这些特征：
 
 - 更像一个稳定可执行的状态机入口，而不是一篇很长的流程说明
 - 在 “继续 / review 完成 / gate 回流 / 支线切换” 场景下更少走错

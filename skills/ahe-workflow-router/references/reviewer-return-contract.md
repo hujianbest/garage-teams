@@ -20,8 +20,6 @@
 }
 ```
 
-历史 reviewer 摘要或旧文档若仍使用字段名 `reroute_via_starter`，应与 `reroute_via_router` **按同一语义读取**（见下文「兼容字段」）。
-
 ## 字段说明
 
 | 字段 | 说明 |
@@ -102,16 +100,11 @@
 - 当前输入证据与 profile / stage 明显冲突
 - 当前问题本质上需要回到 `ahe-workflow-router` 重新决定分支
 
-#### 兼容字段
-
-- **新写法**：`reroute_via_router`（canonical）。
-- **旧写法**：部分历史工件仍可能出现 `reroute_via_starter`；读取时与 `reroute_via_router` **等价**，均表示“父会话应经 `ahe-workflow-router` 重编排”。
-
 ## 父会话消费规则
 
 父会话收到该摘要后，先检查 `references/execution-semantics.md` 中定义的暂停点与“先向用户展示”的义务，再按以下顺序处理：
 
-1. 若 `reroute_via_router=true`（或历史字段 `reroute_via_starter=true`），先经 `ahe-workflow-router` 重编排。
+1. 若 `reroute_via_router=true`，先经 `ahe-workflow-router` 重编排。
 2. 否则若 `conclusion=通过` 且 `needs_human_confirmation=true`，进入真人确认。
 3. 否则若 `conclusion=通过` 且无需真人确认，进入 `next_action_or_recommended_skill`。
 4. 否则若 `conclusion=需修改` 或 `阻塞`，按 `next_action_or_recommended_skill` 回修或补条件。

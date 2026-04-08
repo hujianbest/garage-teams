@@ -27,7 +27,7 @@
 3. **任务真人确认**：reviewer subagent 返回 `ahe-tasks-review` 结论为"通过"后，必须由父会话向用户展示评审结论并等待用户明确批准
 4. **测试用例设计确认**：`ahe-test-driven-dev` 在进入 Red-Green-Refactor 前，必须向用户展示测试用例设计并等待用户确认
 5. **规格评审 / 设计评审需修改**：`ahe-spec-review` 或 `ahe-design-review` 返回 `需修改`，或返回内容回修型 `阻塞` 时，必须先向用户展示评审结论和修订重点，再回到相应上游修订 skill
-6. **规格评审 / 设计评审需重编排**：若 `ahe-spec-review` 或 `ahe-design-review` 返回 `阻塞`，且 `reroute_via_router=true`（历史工件中的 `reroute_via_starter=true` 与之等价）或 `next_action_or_recommended_skill=ahe-workflow-router`，先向用户展示阻塞原因，再回到 `ahe-workflow-router` 重编排
+6. **规格评审 / 设计评审需重编排**：若 `ahe-spec-review` 或 `ahe-design-review` 返回 `阻塞`，且 `reroute_via_router=true` 或 `next_action_or_recommended_skill=ahe-workflow-router`，先向用户展示阻塞原因，再回到 `ahe-workflow-router` 重编排
 7. **证据冲突需澄清**：工件状态互相矛盾，且无法用保守原则自动解决时
 8. **其他 review / gate 结论为"需修改"或"阻塞"且修订方向不明确**：需要与用户讨论修订方案
 
@@ -66,7 +66,7 @@
 - 用户提出新的范围变化、验收变化或紧急缺陷线索，需要判断是否切到 `ahe-increment` / `ahe-hotfix`
 - 当前证据与既有阶段判断冲突，无法直接延续原路线
 - 需要进行 profile 升级
-- reviewer 显式返回 `reroute_via_router=true`（或历史字段 `reroute_via_starter=true`），或把 `next_action_or_recommended_skill` 指向 `ahe-workflow-router`
+- reviewer 显式返回 `reroute_via_router=true`，或把 `next_action_or_recommended_skill` 指向 `ahe-workflow-router`
 
 ## 路由红旗信号
 

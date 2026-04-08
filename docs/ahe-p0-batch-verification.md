@@ -9,7 +9,7 @@
 - P0-5 upstream reviewer skeleton
 - P0-5 downstream reviewer / bug-patterns
 - P0-5 branch / re-entry contract
-- P0-6 router-era kernel / entry split（历史上曾记为 pre-split `ahe-workflow-starter` 第二轮瘦身；现状以 `ahe-workflow-router` + `using-ahe-workflow` 为准）
+- P0-6 router-era kernel / entry split（历史上曾记为对 pre-split **legacy 合并 router** 的第二轮瘦身；现状以 `ahe-workflow-router` + `using-ahe-workflow` 为准）
 - reviewer handoff canonical field rollout
 - progress schema canonical naming rollout
 

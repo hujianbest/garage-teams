@@ -3,7 +3,7 @@
 ## 结论摘要
 
 - `agent-skills-main` 仍然更像一个“可分发、可移植、可快速上手”的通用工程 skill 产品包。它的核心优势依旧是统一 anatomy、元 skill 路由、命令/agent/hook 配套，以及天然兼容“单 skill 独立调用 + 多 skill 串联调用”。主要依据仍是 `references/agent-skills-main/README.md`、`references/agent-skills-main/docs/skill-anatomy.md`、`references/agent-skills-main/skills/using-agent-skills/SKILL.md`。
-- `ahe-*` 当前已经不再只是“只能串联调用的 workflow 节点集合”。本轮修改之后，它更准确的定位是“以 **`ahe-workflow-router`** 为 runtime kernel、以 **`using-ahe-workflow`** 为家族公开入口的软件交付 workflow family”（pre-split 时期曾由单一 `ahe-workflow-starter` 兼任两者），并开始具备“条件式独立调用 + 强约束串联调用”的双模式能力。关键依据在 `skills/ahe-workflow-router/SKILL.md`、`skills/using-ahe-workflow/SKILL.md`、`skills/ahe-specify/SKILL.md`、`skills/ahe-design/SKILL.md`、`skills/ahe-tasks/SKILL.md`、`skills/ahe-test-review/SKILL.md`、`skills/ahe-bug-patterns/SKILL.md`。
+- `ahe-*` 当前已经不再只是“只能串联调用的 workflow 节点集合”。本轮修改之后，它更准确的定位是“以 **`ahe-workflow-router`** 为 runtime kernel、以 **`using-ahe-workflow`** 为家族公开入口的软件交付 workflow family”（pre-split 时期曾由单一 **legacy 合并入口/router** 兼任两者），并开始具备“条件式独立调用 + 强约束串联调用”的双模式能力。关键依据在 `skills/ahe-workflow-router/SKILL.md`、`skills/using-ahe-workflow/SKILL.md`、`skills/ahe-specify/SKILL.md`、`skills/ahe-design/SKILL.md`、`skills/ahe-tasks/SKILL.md`、`skills/ahe-test-review/SKILL.md`、`skills/ahe-bug-patterns/SKILL.md`。
 - AHE 当前最突出的新变化有三点：一是 `ahe-workflow-router` 的连续执行、迁移表和恢复编排协议更完整；二是 review 节点已经明确走 reviewer subagent 协议；三是家族开始朝“独立调用 + 串联调用”双模式收敛，但 live skills 尚未完全统一成同一套 section-level contract。
 - 因此，AHE 现在最需要借鉴 `agent-skills-main` 的，不再是“有没有双模式”本身，而是“如何把已经开始出现的双模式能力，收敛成统一 anatomy、统一入口心智、统一 collateral 文档”。
 

@@ -10,7 +10,7 @@
 
 ## 概述
 
-本设计的目标，不再是描述一个抽象的“多 agent workflow OS”，而是把真正会被 agent 主动领取的协调职责显式落成 `ahe-*` skills，让 AHE workflow 从以 **`ahe-workflow-router`**（runtime 恢复 / 编排；公开入口为 **`using-ahe-workflow`**）为中枢的强约束串行流程，演进为“协调层 skills + specialist skills + `workflow-board` 运行时对象”的板式运行模型。（Pre-split 时期曾由单一 `ahe-workflow-starter` 同时承担入口与 kernel，现已拆分并移除该独立 skill。）
+本设计的目标，不再是描述一个抽象的“多 agent workflow OS”，而是把真正会被 agent 主动领取的协调职责显式落成 `ahe-*` skills，让 AHE workflow 从以 **`ahe-workflow-router`**（runtime 恢复 / 编排；公开入口为 **`using-ahe-workflow`**）为中枢的强约束串行流程，演进为“协调层 skills + specialist skills + `workflow-board` 运行时对象”的板式运行模型。（Pre-split 时期曾由单一 **legacy 合并入口/router** skill 同时承担入口与 kernel，现已拆分；历史常用名见 `docs/ahe-workflow-shared-conventions.md`。）
 
 这里有一个关键重构原则：
 

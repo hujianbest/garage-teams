@@ -31,7 +31,7 @@ direct invoke 不是主路径替代品，而是在“当前节点已经足够明
 - `using-ahe-workflow` 是公开入口层
 - 它帮助判断当前应 direct invoke 哪个 leaf skill，或何时交给 router
 - 它降低新会话和命令入口的认知摩擦
-- 它避免继续把 `ahe-workflow-starter` 同时当作 public shell 和 runtime kernel
+- 它避免继续把公开入口层与 runtime kernel 混在同一职责里
 
 ## Go Directly To Current Router `ahe-workflow-router`
 
@@ -86,7 +86,7 @@ review skills 有双重入口语义：
 差异：
 
 - direct invoke 时，调用方需要自己先确认这真的是 review-only 场景
-- 无论是 direct invoke 还是 chain invoke，review 的实际执行都仍遵循 `skills/ahe-workflow-router/references/review-dispatch-protocol.md`：由父会话构造 review request，并派发 reviewer subagent（旧工件若仍引用 `ahe-workflow-starter/.../review-dispatch-protocol.md`，语义等价，按 legacy 路径理解即可）
+- 无论是 direct invoke 还是 chain invoke，review 的实际执行都仍遵循 `skills/ahe-workflow-router/references/review-dispatch-protocol.md`：由父会话构造 review request，并派发 reviewer subagent（旧工件若仍引用 legacy 路径前缀下的同文件，语义等价，按读时归一化理解即可）
 - 无论哪种模式，review skill 只负责给出 review 记录与结构化摘要，不负责推进主链
 
 ## Public Entry Mode vs Router Mode vs Direct Invoke

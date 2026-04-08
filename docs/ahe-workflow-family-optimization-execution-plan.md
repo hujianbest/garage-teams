@@ -2,7 +2,7 @@
 
 ## Router-era 说明
 
-下文大量条款成稿于 **pre-split `ahe-workflow-starter` 时代**。当前 canonical runtime 为 **`ahe-workflow-router`**，家族公开入口为 **`using-ahe-workflow`**；独立 `ahe-workflow-starter` skill 已移除。阅读时请将文中的 “starter / `ahe-workflow-starter`” **默认映射为今日的 router + 公开入口分层**，除非小节明确在回顾历史批次。
+下文大量条款成稿于 **pre-split legacy 合并入口/router 时代**（历史旧 skill 目录已移除）。当前 canonical runtime 为 **`ahe-workflow-router`**，家族公开入口为 **`using-ahe-workflow`**。阅读时请将文中的 “legacy 合并 skill” **默认映射为今日的 router + 公开入口分层**，除非小节明确在回顾历史批次。
 
 ## 背景
 
@@ -54,7 +54,7 @@
 ### 当前已知结构性问题
 
 - 家族级公共约定分散在多个 `ahe-*` skill 中重复表达。
-- （历史）`ahe-workflow-starter` 曾把家族级说明压在单一入口上，导致认知负担偏高；现状应靠 `using-ahe-workflow` / docs 减负，保持 `ahe-workflow-router` 偏 kernel。
+- （历史）legacy 合并入口曾把家族级说明压在单一 skill 上，导致认知负担偏高；现状应靠 `using-ahe-workflow` / docs 减负，保持 `ahe-workflow-router` 偏 kernel。
 - 各 skill 的固定骨架相似但尚未完全标准化，长期维护容易继续漂移。
 - 当前家族虽然已经出现 direct invoke 雏形，但节点 skill 的独立调用契约、前置条件自检和 fallback 行为还没有被统一定义。
 - live skills 与周边文档对 canonical progress schema、reviewer handoff contract 的 adopt 还没有完全完成。
@@ -106,7 +106,7 @@
 
 | 阶段 | 核心目标 | 主要结果 | 变更性质 |
 | --- | --- | --- | --- |
-| `P0` 结构收敛 | 在已建立 anatomy 基础上关闭现存矛盾、统一双模式 contract、降低 router 主文件负担 | collateral 对齐、canonical progress schema 落地、router kernel 瘦身（历史批次曾称 starter 二次瘦身）、核心 skill contract adoption | 文档优先 + 小范围 skill/template 重构 |
+| `P0` 结构收敛 | 在已建立 anatomy 基础上关闭现存矛盾、统一双模式 contract、降低 router 主文件负担 | collateral 对齐、canonical progress schema 落地、router kernel 瘦身（历史批次曾称 pre-split 合并 router 二次瘦身）、核心 skill contract adoption | 文档优先 + 小范围 skill/template 重构 |
 | `P1` 降摩擦与共享约定 | 降低维护重复，并让 direct invoke 与 chain invoke 的入口都更低摩擦 | shared conventions、entrypoint 文档、可选 meta-skill / persona / command 约定 | 先文档，后按需小幅扩展 |
 | `P2` 对外化准备 | 在真实需求出现后，为跨仓库采用建立映射、包装边界与双模式接入说明 | externalization guide、core vs extensions、可选 setup/hook 示例 | 条件触发，非当前刚需 |
 
@@ -158,7 +158,7 @@
 
 - 无前置依赖，应作为整个计划的第一批输出。
 
-### `P0-2` 对齐 router collateral 与主文件（历史批次名：starter collateral）
+### `P0-2` 对齐 router collateral 与主文件（历史批次名：pre-split 合并 router collateral）
 
 目标：
 
@@ -258,7 +258,7 @@
 
 重点不是把所有 skill 写成同一个样子，而是统一 verdict、handoff、record-path、evidence、边界说明，以及独立调用 / 串联调用的表达方式。
 
-### `P0-6` 对 router kernel 做第二轮瘦身（历史：对 `ahe-workflow-starter` 的第二轮瘦身）
+### `P0-6` 对 router kernel 做第二轮瘦身（历史：对 pre-split 合并 router 的第二轮瘦身）
 
 目标：
 
@@ -280,7 +280,7 @@
 ### `P0` 建议执行顺序
 
 1. 已完成：写 `docs/ahe-workflow-skill-anatomy.md`
-2. 已完成：修正 router collateral 与 router 主文件之间的关键冲突（历史表述：starter collateral）
+2. 已完成：修正 router collateral 与 router 主文件之间的关键冲突（历史表述：pre-split 合并 router collateral）
 3. 已完成：在 anatomy 里冻结并落实 canonical `task-progress` schema
 4. 已完成：更新 `templates/task-progress-template.md`
 5. 统一核心主链 skills 的 dual-mode contract
@@ -525,7 +525,7 @@
 | Batch 4 | `ahe-specify` / `ahe-design` / `ahe-tasks` | core chain normalization + dual-mode contract |
 | Batch 5 | `ahe-test-driven-dev` / `ahe-regression-gate` / `ahe-completion-gate` / `ahe-finalize` | core chain normalization + dual-mode contract |
 | Batch 6 | review / branch skills sweep | secondary normalization + dual-mode contract |
-| Batch 7 | `skills/ahe-workflow-router/SKILL.md` 第二轮瘦身（历史：starter 第二轮瘦身） | kernel slimming |
+| Batch 7 | `skills/ahe-workflow-router/SKILL.md` 第二轮瘦身（历史：pre-split 合并 router 第二轮瘦身） | kernel slimming |
 | Batch 8 | shared conventions + entrypoints docs | friction reduction |
 | Batch 9 | externalization docs 与可选包装层 | conditional |
 

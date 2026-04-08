@@ -11,7 +11,7 @@
 
 同时明确一个边界：**当前 live workflow 已采用 reviewer subagent 执行 review 节点**。父会话负责编排、派发和消费 return contract；实现、回修和真人确认仍受主链门禁约束。
 
-**当前 AHE 分层（router era）：** 家族公开入口为 `using-ahe-workflow`；runtime 路由、恢复编排与 profile/stage 判断的权威为 `ahe-workflow-router`。下文若仍出现历史名称 `ahe-workflow-starter`，请等同理解为上述职责在 pre-split 时期的合并形态；canonical reroute 字段为 `reroute_via_router`（legacy：`reroute_via_starter`）。
+**当前 AHE 分层（router era）：** 家族公开入口为 `using-ahe-workflow`；runtime 路由、恢复编排与 profile/stage 判断的权威为 `ahe-workflow-router`。下文若仍出现 **legacy 合并入口/router** 旧称，请等同理解为上述职责在 pre-split 时期的合并形态；canonical reroute 字段为 `reroute_via_router`（读时 legacy reroute 字段映射见 `docs/ahe-workflow-shared-conventions.md`）。
 
 ## 2. 设计目标与非目标
 
@@ -173,7 +173,7 @@ flowchart TD
     router --> workHotfix
 ```
 
-注：这张图只展示默认主链与默认回修方向。若 reviewer 返回 `reroute_via_router=true`（legacy：`reroute_via_starter`），或把 `next_action_or_recommended_skill` 明确指向 `ahe-workflow-router`，父会话必须先回 router 重编排，而不是机械沿图中默认回修箭头推进。用户面向的家族入口通常是 `using-ahe-workflow`，图中省略仅为了避免重复节点。
+注：这张图只展示默认主链与默认回修方向。若 reviewer 返回 `reroute_via_router=true`（或读时等价的 legacy reroute 字段），或把 `next_action_or_recommended_skill` 明确指向 `ahe-workflow-router`，父会话必须先回 router 重编排，而不是机械沿图中默认回修箭头推进。用户面向的家族入口通常是 `using-ahe-workflow`，图中省略仅为了避免重复节点。
 
 ### 5.1 第一层：`ahe-workflow-router`（+ 公开入口 `using-ahe-workflow`）
 
@@ -697,7 +697,7 @@ flowchart TD
 
 注：图中的箭头表示 `ahe-workflow-router` 根据当前结论恢复出的合法默认下一节点，不表示当前 skill 在内部直接调用下游 skill。
 
-如果 reviewer 返回 `reroute_via_router=true`（legacy：`reroute_via_starter`），或把 `next_action_or_recommended_skill` 指向 `ahe-workflow-router`，则该显式重编排信号优先于图中的默认回修箭头。
+如果 reviewer 返回 `reroute_via_router=true`（或读时等价的 legacy reroute 字段），或把 `next_action_or_recommended_skill` 指向 `ahe-workflow-router`，则该显式重编排信号优先于图中的默认回修箭头。
 
 ## 8.2 支线路由
 

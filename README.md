@@ -8,7 +8,7 @@
 
 1. 初次进入仓库时，先读 `README.md` 和 `AGENTS.md`。
 2. 需要进入 AHE workflow 时，先读 `docs/ahe-workflow-entrypoints.md`，再进入 `skills/using-ahe-workflow/SKILL.md`。
-3. 若当前属于 runtime 恢复编排、阶段判断、profile 判断或证据冲突，再进入 `skills/ahe-workflow-router/SKILL.md`。（旧文档或旧 handoff 若仍写 `ahe-workflow-starter`，按 legacy 别名读作同一路由语义。）
+3. 若当前属于 runtime 恢复编排、阶段判断、profile 判断或证据冲突，再进入 `skills/ahe-workflow-router/SKILL.md`。（旧文档或旧 handoff 若仍使用 **legacy 合并路由** 旧名称，按 `docs/ahe-workflow-shared-conventions.md` 的读时归一化规则，等同当前 router 语义。）
 4. 需要理解 progress、evidence、review verdict 和记录格式时，读 `docs/ahe-workflow-shared-conventions.md`。
 5. 需要维护某个 skill 时，先读 `skills/README.md`，再进入目标 `skills/<skill-name>/SKILL.md`。
 6. 需要复用文档骨架时，进入 `templates/`。
@@ -44,7 +44,7 @@
 | 类别 | Skills | 作用 |
 | --- | --- | --- |
 | Public Entry | `using-ahe-workflow` | 新会话入口、命令入口与 family discovery |
-| Orchestrator | `ahe-workflow-router` | 当前 runtime router、恢复编排、路由与阶段判断（`ahe-workflow-starter` 仅作历史兼容别名，不作为当前入口） |
+| Orchestrator | `ahe-workflow-router` | 当前 runtime router、恢复编排、路由与阶段判断；旧资料中的 legacy 别名读法见 `docs/ahe-workflow-shared-conventions.md` |
 | Authoring | `ahe-specify`、`ahe-design`、`ahe-tasks` | 产出主链规格、设计和任务工件 |
 | Upstream Review | `ahe-spec-review`、`ahe-design-review`、`ahe-tasks-review` | 评审上游主工件并给出结构化结论 |
 | Implementation And Branches | `ahe-test-driven-dev`、`ahe-hotfix`、`ahe-increment`、`ahe-finalize` | 实现、支线分析与收尾闭环 |

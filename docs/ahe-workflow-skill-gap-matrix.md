@@ -1,6 +1,6 @@
 # AHE workflow skill gap matrix
 
-**Router-era 注：** 矩阵中曾用 `ahe-workflow-starter` 指代的“过重 orchestrator”问题，现应理解为 **`ahe-workflow-router`**（kernel）与 **`using-ahe-workflow`**（公开入口）分层后的剩余 gap；独立 starter skill 已移除。
+**Router-era 注：** 矩阵中曾把“过重 orchestrator”记在 pre-split **legacy 合并入口/router** 名下；现应理解为 **`ahe-workflow-router`**（kernel）与 **`using-ahe-workflow`**（公开入口）分层后的剩余 gap。
 
 ## 目的
 
@@ -54,7 +54,7 @@
 
 ## 逐项说明
 
-### 1. `ahe-workflow-router`（历史表述：`ahe-workflow-starter`）
+### 1. `ahe-workflow-router`（历史表述：pre-split 合并 router）
 
 当前最大问题不是能力不够，而是 router 主文件过重、与公开入口分层后仍易把解释层堆回 kernel、目标态 skeleton 不够清晰。
 
