@@ -38,7 +38,7 @@
 - 新会话、命令入口或 family discovery 优先从 `skills/using-ahe-workflow/SKILL.md` 开始
 - 需要 authoritative runtime routing 或恢复编排时，从 `skills/ahe-workflow-router/SKILL.md` 开始
 - 已进入某个具体 workflow 节点时，从对应目录的 `SKILL.md` 开始
-- 与任务进度、评审、验证配套的文档骨架见 `skills/templates/`（如 `task-progress-template.md`、`review-record-template.md`、`verification-record-template.md`）
+- 与任务进度、task queue、评审、验证配套的文档骨架见 `skills/templates/`（如 `task-progress-template.md`、`task-board-template.md`、`review-record-template.md`、`verification-record-template.md`）
 
 ## 新增 skill 时的建议
 

@@ -69,6 +69,7 @@
 
 - `templates/AGENTS-template.md`
 - `skills/templates/task-progress-template.md`
+- `skills/templates/task-board-template.md`
 - `skills/templates/review-record-template.md`
 - `skills/templates/verification-record-template.md`
 

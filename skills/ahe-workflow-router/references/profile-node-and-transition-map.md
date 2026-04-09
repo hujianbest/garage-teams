@@ -81,23 +81,34 @@ full:
   -> ahe-design -> ahe-design-review -> 设计真人确认
   -> ahe-tasks -> ahe-tasks-review -> 任务真人确认 -> ahe-test-driven-dev
   -> ahe-bug-patterns -> ahe-test-review -> ahe-code-review
-  -> ahe-traceability-review -> ahe-regression-gate
-  -> ahe-completion-gate -> ahe-finalize
+  -> ahe-traceability-review -> ahe-regression-gate -> ahe-completion-gate
+  -> if unique next-ready task exists: ahe-workflow-router -> ahe-test-driven-dev
+  -> else: ahe-finalize
 
 standard:
   ahe-tasks -> ahe-tasks-review -> 任务真人确认 -> ahe-test-driven-dev
   -> ahe-bug-patterns -> ahe-test-review -> ahe-code-review
-  -> ahe-traceability-review -> ahe-regression-gate
-  -> ahe-completion-gate -> ahe-finalize
+  -> ahe-traceability-review -> ahe-regression-gate -> ahe-completion-gate
+  -> if unique next-ready task exists: ahe-workflow-router -> ahe-test-driven-dev
+  -> else: ahe-finalize
 
 lightweight:
   ahe-tasks -> ahe-tasks-review -> 任务真人确认 -> ahe-test-driven-dev
-  -> ahe-regression-gate -> ahe-completion-gate -> ahe-finalize
+  -> ahe-regression-gate -> ahe-completion-gate
+  -> if unique next-ready task exists: ahe-workflow-router -> ahe-test-driven-dev
+  -> else: ahe-finalize
 
 branches:
   increment -> ahe-increment -> return via router
   hotfix -> ahe-hotfix -> return via router
 ```
+
+说明：
+
+- `ahe-test-driven-dev` 到 `ahe-completion-gate` 描述的是“单个 `Current Active Task` 的实现与质量闭环”
+- `ahe-completion-gate` 返回 `通过` 后，不默认等于“整个 workflow 已完成”；父会话必须先判断是否仍有 approved 且 dependency-ready 的剩余任务
+- 若存在唯一 `next-ready task`，先回到 `ahe-workflow-router` 锁定新的 `Current Active Task`，再重新进入 `ahe-test-driven-dev`
+- 只有在没有剩余任务时，才进入 `ahe-finalize`
 
 ## 结果驱动迁移表
 
@@ -133,7 +144,9 @@ branches:
 | `ahe-traceability-review` | `需修改` / `阻塞` | `ahe-test-driven-dev` |
 | `ahe-regression-gate` | `通过` | `ahe-completion-gate` |
 | `ahe-regression-gate` | `需修改` / `阻塞` | `ahe-test-driven-dev` |
-| `ahe-completion-gate` | `通过` | `ahe-finalize` |
+| `ahe-completion-gate` | `通过`（仍有唯一 next-ready task） | `ahe-workflow-router` |
+| `ahe-completion-gate` | `通过`（主链任务全部完成） | `ahe-finalize` |
+| `ahe-completion-gate` | `通过`（仍有剩余任务，但下一任务不唯一或 ready 判定冲突） | `ahe-workflow-router` |
 | `ahe-completion-gate` | `需修改` / `阻塞` | `ahe-test-driven-dev` |
 
 ### standard profile 迁移表
@@ -156,7 +169,9 @@ branches:
 | `ahe-traceability-review` | `需修改` / `阻塞` | `ahe-test-driven-dev` |
 | `ahe-regression-gate` | `通过` | `ahe-completion-gate` |
 | `ahe-regression-gate` | `需修改` / `阻塞` | `ahe-test-driven-dev` |
-| `ahe-completion-gate` | `通过` | `ahe-finalize` |
+| `ahe-completion-gate` | `通过`（仍有唯一 next-ready task） | `ahe-workflow-router` |
+| `ahe-completion-gate` | `通过`（主链任务全部完成） | `ahe-finalize` |
+| `ahe-completion-gate` | `通过`（仍有剩余任务，但下一任务不唯一或 ready 判定冲突） | `ahe-workflow-router` |
 | `ahe-completion-gate` | `需修改` / `阻塞` | `ahe-test-driven-dev` |
 
 ### lightweight profile 迁移表
@@ -171,10 +186,12 @@ branches:
 | `ahe-test-driven-dev` | 实现完成 | `ahe-regression-gate` |
 | `ahe-regression-gate` | `通过` | `ahe-completion-gate` |
 | `ahe-regression-gate` | `需修改` / `阻塞` | `ahe-test-driven-dev` |
-| `ahe-completion-gate` | `通过` | `ahe-finalize` |
+| `ahe-completion-gate` | `通过`（仍有唯一 next-ready task） | `ahe-workflow-router` |
+| `ahe-completion-gate` | `通过`（主链任务全部完成） | `ahe-finalize` |
+| `ahe-completion-gate` | `通过`（仍有剩余任务，但下一任务不唯一或 ready 判定冲突） | `ahe-workflow-router` |
 | `ahe-completion-gate` | `需修改` / `阻塞` | `ahe-test-driven-dev` |
 
-如果某个下游 skill 给出的结论无法映射到当前 profile 迁移表中的唯一下一推荐节点，则说明编排信息还不完整，应回到 `ahe-workflow-router` 重新判断，而不是自行补脑推进。
+如果某个下游 skill 给出的结论无法映射到当前 profile 迁移表中的唯一下一推荐节点，或 `ahe-completion-gate=通过` 后仍无法唯一决定“next-ready task vs finalize”，则说明编排信息还不完整，应回到 `ahe-workflow-router` 重新判断，而不是自行补脑推进。
 
 上表主要描述“内容回修型”默认迁移。若 reviewer 返回摘要显式要求 `reroute_via_router=true`，或把 `next_action_or_recommended_skill` 指向 `ahe-workflow-router`，该显式重编排信号优先于表内默认下一步。
 
@@ -186,10 +203,64 @@ branches:
 2. 确认当前 workflow profile（从 `task-progress.md` 读取）
 3. 若 `task-progress.md` 或等价工件已经写入合法或可归一化的 `Next Action Or Recommended Skill`，且它来自上一个已完成节点并与最新证据不冲突，优先采用这个显式下一步
 4. 否则检查该结论对应的上游 / 下游迁移是否在当前 profile 迁移表中有明确规则
-5. 根据当前会话上下文判断用户是否已经提出了新范围、新缺陷或新阻塞（基于已有信息判断，不主动询问用户）
-6. 若有范围变化，优先判断是否切到 `ahe-increment`
-7. 若有紧急缺陷，优先判断是否切到 `ahe-hotfix`
-8. 若没有新的支线信号，则按当前 profile 迁移表进入唯一下一推荐节点
+5. 若当前结论是 `ahe-completion-gate=通过`，优先检查已批准任务计划或 `Task Board Path` 指向的等价工件：
+   - 若存在唯一 `next-ready task`，先把 `Current Active Task` 切换到该任务，并把显式下一步锁定为 `ahe-test-driven-dev`
+   - 若不存在剩余 ready / pending task，才把下一步视为 `ahe-finalize`
+   - 若剩余任务候选不唯一、依赖状态冲突或 ready 判定不稳定，回到 `ahe-workflow-router` 作为 hard stop
+6. 根据当前会话上下文判断用户是否已经提出了新范围、新缺陷或新阻塞（基于已有信息判断，不主动询问用户）
+7. 若有范围变化，优先判断是否切到 `ahe-increment`
+8. 若有紧急缺陷，优先判断是否切到 `ahe-hotfix`
+9. 若没有新的支线信号，则按当前 profile 迁移表进入唯一下一推荐节点
+
+### 最小示例：T1 完成后切到 T2
+
+前提工件：
+
+```markdown
+# task-progress.md
+
+- Current Stage: ahe-completion-gate
+- Workflow Profile: standard
+- Execution Mode: auto
+- Current Active Task: T1
+- Next Action Or Recommended Skill: ahe-completion-gate
+- Task Board Path: `docs/tasks/2026-04-09-parser-task-board.md`
+```
+
+```markdown
+# docs/tasks/2026-04-09-parser-task-board.md
+
+## Task Queue
+
+| Task ID | Status | Depends On | Ready When | Selection Priority |
+|---|---|---|---|---|
+| T1 | in_progress | - | spec / design / tasks approval 已完成 | P1 |
+| T2 | pending | T1 | T1=`done` | P2 |
+```
+
+当 T1 的 `ahe-completion-gate` 返回 `通过` 后，父会话 / router 恢复顺序应为：
+
+1. 读取 completion gate 结论，确认当前 task 完成为 `T1`
+2. 读取 task board，先把 T1 投影为 `done`
+3. 根据 `Depends On` + `Ready When` 判断，T2 成为唯一 `next-ready task`
+4. 更新 `Current Active Task: T2`
+5. 将 `Next Action Or Recommended Skill` 锁定为 `ahe-test-driven-dev`
+6. 因为这不是 approval node，也不是 hard stop，所以在同一轮继续进入 `ahe-test-driven-dev`
+
+### 最小示例：最后一个任务完成后进入 finalize
+
+若同样的恢复编排发生在最后一个任务：
+
+```markdown
+## Task Queue
+
+| Task ID | Status | Depends On | Ready When | Selection Priority |
+|---|---|---|---|---|
+| T1 | done | - | spec / design / tasks approval 已完成 | P1 |
+| T2 | done | T1 | T1=`done` | P2 |
+```
+
+此时 router 读取 queue 后发现不存在剩余 `ready` / `pending` task，才把下一步收敛为 `ahe-finalize`，而不是再回到实现节点。
 
 不要跳过第 2 步、第 3 步和第 4 步。
 

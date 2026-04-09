@@ -258,7 +258,7 @@ entry 层职责：
 | 用户说“帮我写 spec”且上下文明确                     | direct invoke `ahe-specify`         | 当前职责明确，适合 leaf skill                |
 | 用户说“帮我 review 一下”但对象不明确                 | 交给 `ahe-workflow-router`            | review-only 也需要 authoritative 节点判断  |
 | 用户说“按 TDD 做当前 active task”且前置齐全         | direct invoke `ahe-test-driven-dev` | 节点清楚且本地输入足够                         |
-| 用户说“completion gate 过了，帮我收尾”且 gate 记录存在 | direct invoke `ahe-finalize`        | 当前职责明确                              |
+| 用户说“completion gate 过了，帮我收尾”且 gate 记录存在、已无剩余 approved task | direct invoke `ahe-finalize`        | 当前职责明确                              |
 
 
 ## Common Rationalizations

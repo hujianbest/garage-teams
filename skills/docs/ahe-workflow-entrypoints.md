@@ -77,7 +77,7 @@ direct invoke 不是主路径替代品，而是在“当前节点已经足够明
 | Implementation | `ahe-test-driven-dev` | 已有唯一活跃任务，且任务计划已批准，或已有 hotfix handoff / 回流 findings | 无唯一活跃任务、批准状态冲突、其实要做 review / gate |
 | Quality analysis | `ahe-bug-patterns` | 已有实现交接块或明确改动范围，当前需要专项缺陷模式排查 | 缺实现范围、其实要继续实现、其实只是一般 review / gate |
 | Gates | `ahe-regression-gate` / `ahe-completion-gate` | 上游记录已落盘，当前就是要跑正式门禁 | 缺上游 handoff / verification 输入、缺环境、其实该回到实现或 router |
-| Finalize | `ahe-finalize` | completion gate 已允许收尾，当前要做状态 / 文档 / 发布说明收口 | 仍需补实现或补验证、gate 记录缺失或不支持 finalize |
+| Finalize | `ahe-finalize` | completion gate 已允许收尾，且已无剩余 approved task，当前要做状态 / 文档 / 发布说明收口 | 仍需补实现或补验证、仍有剩余任务、gate 记录缺失或不支持 finalize |
 | Branch analysis | `ahe-hotfix` / `ahe-increment` | 问题明确属于 hotfix 或 increment，当前要做影响分析与 re-entry，而不是直接改代码 | 阶段不清、输入证据冲突、其实已经明确进入实现 |
 
 ## Special Rule For Review Skills
@@ -183,7 +183,7 @@ direct invoke 的 handoff 只表达“本节点之后推荐谁”，不替代 ro
 - “帮我 review 这份 spec 草稿” -> 若规格草稿已存在且这是 review-only 请求，可 direct invoke `ahe-spec-review`
 - “按 TDD 实现当前 active task” -> 若任务计划已批准且活跃任务唯一，可 direct invoke `ahe-test-driven-dev`
 - “这是线上 bug，先收敛 root cause 和最小修复边界” -> 可 direct invoke `ahe-hotfix`
-- “completion gate 过了，帮我做收尾和 release notes” -> 若 gate 记录已落盘，可 direct invoke `ahe-finalize`
+- “completion gate 过了，帮我做收尾和 release notes” -> 若 gate 记录已落盘且已无剩余 approved task，可 direct invoke `ahe-finalize`
 
 ## Anti-Patterns
 

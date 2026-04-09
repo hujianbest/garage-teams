@@ -7,6 +7,7 @@
 - 建议保存在仓库根目录或 `docs/` 下的合适位置。
 - 若当前项目采用 `ahe-*` workflow，优先使用下面的 canonical 字段名，不再把 `Current Task` / `Next Action` 当作主字段。
 - 该模板定义的是 minimal canonical core；项目可按需追加附加工件区块，但不应改写核心字段名。
+- 若 workflow 需要 task-to-task 自动推进，建议额外提供 `Task Board Path` 或等价队列投影视图；`Current Active Task` 只记录当前锁定任务，不承担整个任务队列状态。可配合 `skills/templates/task-board-template.md` 使用。
 
 ## Goal
 
@@ -31,6 +32,11 @@
 - Evidence Paths:
 - Session Log:
 - Open Risks:
+
+## Optional Coordination Fields
+
+- Task Board Path:
+- Task Queue Notes:
 
 ## Next Step
 

@@ -38,6 +38,8 @@
 
 即使刚刚回到 `ahe-workflow-router` 完成重编排，这条规则也不变：只要结果不是 `interactive` 下的 approval step，也不是 hard stop，就应继续在同一轮进入目标 skill，而不是额外停一轮等待用户回复。
 
+任务边界本身也不是默认暂停点：若当前任务刚通过 `ahe-completion-gate`，且 router 能唯一锁定下一个 `Current Active Task`，则应在同一轮继续进入新的 `ahe-test-driven-dev`，而不是把“一个任务做完”误当成自然暂停。
+
 ## Approval Step
 
 以下场景属于 canonical approval step；它们在 `interactive` / `auto` 下的处理方式不同，但节点语义都必须保留：
@@ -63,6 +65,7 @@
 4. **证据冲突需澄清**：工件状态互相矛盾，且无法用保守原则自动解决时
 5. **其他 review / gate 结论为 `需修改` 或 `阻塞` 且修订方向不明确**：需要与用户讨论修订方案或显式报告当前阻塞
 6. **Auto policy / 环境阻塞**：`AGENTS.md` 明确禁止当前场景 auto resolve，或缺少最小可路由工件、approval record 落点、验证环境或外部依赖
+7. **下一个任务不唯一或 ready 判定冲突**：`ahe-completion-gate` 已通过，但剩余任务候选不唯一、依赖状态冲突，或 task board / 任务计划无法稳定判断唯一 `next-ready task`
 
 ## 非暂停点
 
@@ -74,6 +77,7 @@
 - `auto` 模式下，approval step 在 approval record 写入后继续进入下游节点
 - `auto` 模式下，`ahe-spec-review` / `ahe-design-review` 返回 `需修改` 且修订方向明确时，可自动回到上游 skill 继续修订
 - 除 `ahe-spec-review` / `ahe-design-review` 外，review / gate 结论为"需修改"且修订方向明确时，自动回到上游 skill 继续修订
+- 当前任务的 `ahe-completion-gate` 返回 `通过` 后，若 router 能唯一锁定 `next-ready task`，则回 router 并在同一轮继续进入 `ahe-test-driven-dev`
 - 恢复编排协议判断出唯一下一推荐节点时
 
 ## 连续执行的红旗信号
@@ -89,6 +93,7 @@
 - **证据冲突**：不同工件指向不同阶段时，先报告冲突，再按保守原则回到更上游节点
 - **路由抖动**：同一轮里在两个节点之间来回切换但没有新证据时，停止切换，明确说明缺少哪个决定性证据
 - **迁移表缺口**：若某结论无法映射到唯一下一推荐节点，回到 `ahe-workflow-router` 重编排，而不是自行补脑
+- **下一任务选择歧义**：当前任务虽已完成，但 approved / ready 的剩余任务不唯一，或依赖状态与 `Current Active Task` 投影冲突；此时停止自动推进，报告缺少的决定性证据
 - **profile 不稳**：若新证据触发 upgrade 条件，先升级 profile 并写明原因，再继续路由
 - **显式交接不可解析**：若 `Next Action Or Recommended Skill` 是自由文本、无法唯一归一化，明确忽略该值并按迁移表 + 工件证据继续编排
 - **auto 落盘失败**：若 approval step 无法写出可回读的 approval record，停止自动推进并显式报告
@@ -104,6 +109,7 @@
 - 用户提出新的范围变化、验收变化或紧急缺陷线索，需要判断是否切到 `ahe-increment` / `ahe-hotfix`
 - 当前证据与既有阶段判断冲突，无法直接延续原路线
 - 需要进行 profile 升级
+- 当前任务的 `ahe-completion-gate` 已通过，需要判断是重选下一任务还是进入 `ahe-finalize`
 - reviewer 显式返回 `reroute_via_router=true`，或把 `next_action_or_recommended_skill` 指向 `ahe-workflow-router`
 
 ## 路由红旗信号
