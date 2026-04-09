@@ -37,6 +37,9 @@
 
 - Task Board Path:
 - Task Queue Notes:
+- Workspace Isolation:
+- Worktree Path:
+- Worktree Branch:
 
 ## Next Step
 

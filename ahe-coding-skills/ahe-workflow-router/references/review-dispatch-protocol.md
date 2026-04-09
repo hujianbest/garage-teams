@@ -41,6 +41,9 @@
   "supporting_context_paths": [
     "最小必要辅助上下文路径"
   ],
+  "workspace_isolation": "in-place|worktree-required|worktree-active",
+  "worktree_path": "当前候选实现所在 worktree 根路径（若存在）",
+  "worktree_branch": "当前候选实现分支（若存在）",
   "expected_record_path": "docs/reviews/... 或项目映射路径",
   "current_profile": "full|standard|lightweight"
 }
@@ -53,6 +56,7 @@
 - 判断当前是否应进入 review 节点
 - 选择正确的 review skill
 - 组装最小 review request
+- 若当前 `Workspace Isolation=worktree-active`，把 `Worktree Path` / `Worktree Branch` 明确带入 review request
 - 启动 reviewer subagent
 - 消费 reviewer 返回摘要
 - 在需要时发起 approval step，或在 `Execution Mode=auto` 下自动落盘批准
@@ -71,6 +75,7 @@ reviewer subagent 负责：
 
 - 读取对应 `ahe-*review` skill
 - 读取 review request 指定的最小必要工件
+- 若 review request 提供 `worktree_path`，在该 worktree 视角下读取候选实现，而不是退回仓库根目录读取另一份状态
 - 按 skill 要求执行评审
 - 把评审记录写到约定路径
 - 按统一 return contract 回传摘要

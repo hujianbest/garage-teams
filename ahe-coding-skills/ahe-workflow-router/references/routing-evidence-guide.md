@@ -30,7 +30,7 @@
 推荐的路由证据包括：
 
 - 需求规格、设计文档、任务计划的批准状态
-- `task-progress.md` 这类进度记录
+- `task-progress.md` 这类进度记录（若存在 `Workspace Isolation` / `Worktree Path` / `Worktree Branch`，也应一并读取）
 - `docs/reviews/` 下的评审记录
 - `docs/approvals/` 下的 approval 记录
 - `docs/verification/` 下的验证记录
@@ -58,6 +58,7 @@
 1. `AGENTS.md` 中的 `ahe-workflow` 配置段
 2. 规格 / 设计 / 任务工件的存在情况和批准状态
 3. 进度、评审和验证记录
+   - 若当前 workflow 已使用 worktree，还要读取 `Workspace Isolation` / `Worktree Path` / `Worktree Branch`
 4. 用户当前请求
 
 在完成阶段路由前，避免大范围代码探索。

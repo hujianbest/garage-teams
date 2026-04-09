@@ -30,6 +30,20 @@
 - 若 `AGENTS.md` policy 禁止当前范围继续 `auto`，应停止自动推进并显式报告
 - `auto` 只改变等待方式，不改变 review / gate / approval step 的存在性
 
+## Workspace Isolation
+
+`Workspace Isolation` 与 `Workflow Profile`、`Execution Mode` 正交：
+
+- `in-place`：允许继续使用当前工作区
+- `worktree-required`：下游代码修改节点必须先创建或复用 worktree
+- `worktree-active`：当前已绑定有效 worktree；后续实现 / review 应复用同一路径
+
+约束：
+
+- `worktree-required` 不是暂停点；若下一节点是 `ahe-test-driven-dev`，应在同一轮继续完成 worktree 准备
+- 若当前是 `worktree-active`，review dispatch 必须携带 `Worktree Path` / `Worktree Branch`
+- 不允许在节点切换时静默丢失 worktree 上下文
+
 ## 连续执行原则
 
 路由完成后，应在同一轮中立刻进入目标 skill 并执行；只有命中 approval step 或 hard stop 时，才改变这一默认行为。
@@ -66,12 +80,13 @@
 5. **其他 review / gate 结论为 `需修改` 或 `阻塞` 且修订方向不明确**：需要与用户讨论修订方案或显式报告当前阻塞
 6. **Auto policy / 环境阻塞**：`AGENTS.md` 明确禁止当前场景 auto resolve，或缺少最小可路由工件、approval record 落点、验证环境或外部依赖
 7. **下一个任务不唯一或 ready 判定冲突**：`ahe-completion-gate` 已通过，但剩余任务候选不唯一、依赖状态冲突，或 task board / 任务计划无法稳定判断唯一 `next-ready task`
+8. **Worktree 阻塞**：当前 `Workspace Isolation=worktree-required`，但目录选择、ignore 校验、基线验证或路径落盘失败，导致无法安全进入实现
 
 ## 非暂停点
 
 以下转场不需要等待用户确认，应在同一轮中自动推进：
 
-- 路由完成后进入目标 skill
+- 路由完成后进入目标 skill，并在需要时继续完成 `worktree-required` 的隔离工作目录准备
 - 执行型 skill 完成后进入下一个能力型 skill（如 `ahe-specify` 完成 → `ahe-spec-review`）
 - review / gate 结论为"通过"后进入迁移表中的下一个节点（`interactive` 下的 approval step 除外）
 - `auto` 模式下，approval step 在 approval record 写入后继续进入下游节点
@@ -97,6 +112,7 @@
 - **profile 不稳**：若新证据触发 upgrade 条件，先升级 profile 并写明原因，再继续路由
 - **显式交接不可解析**：若 `Next Action Or Recommended Skill` 是自由文本、无法唯一归一化，明确忽略该值并按迁移表 + 工件证据继续编排
 - **auto 落盘失败**：若 approval step 无法写出可回读的 approval record，停止自动推进并显式报告
+- **worktree 上下文丢失**：若当前实现或 review 明明绑定了 `worktree-active`，但恢复编排后丢失 `Worktree Path` / `Worktree Branch`，先修复状态工件，再继续
 
 如果已经连续两次因为同一类证据缺口而无法稳定路由，应明确把它报告为当前阻塞，而不是继续重复解释同一状态机判断。
 
@@ -136,6 +152,7 @@
 | "缺了一两个评审或门禁也没关系，先推进再补" | 缺少必需 review / gate / approval step 证据时，不允许继续向下游推进。 |
 | "standard / lightweight 已经够了，不用升级" | 一旦发现缺上游依据或复杂度超出当前假设，就要升级 profile。 |
 | "既然是 auto，就把确认节点从链路里省掉" | `auto` 只改变 confirmation 的解决方式；approval 节点仍然存在，且必须落盘。 |
+| "`worktree-required` 只是建议，我先在当前工作区改了再说" | worktree 隔离一旦被要求，就是执行前置条件；不能先改后补。 |
 
 ## 输出与交接语义
 

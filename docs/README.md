@@ -11,6 +11,7 @@
 | `designs/` | AHE skill / workflow 的目标态设计说明 |
 | `guides/` | AHE 对外接入、映射与使用指南 |
 | `plans/` | 尚在推进中的优化方案与规划稿 |
+| `specs/` | AHE 主题级需求规格说明 |
 | `references/` | 参考资产索引与研究辅助文档 |
 
 ## 当前内容
@@ -26,11 +27,12 @@
 
 ### `architecture/`
 
+- `architecture/ahe-platform-first-multi-agent-architecture.md`
 - `architecture/ahe-workflow-skill-anatomy.md`
 
 ### `designs/`
 
-- `designs/ahe-workflow-multi-agent-operating-model-design.md`
+- `designs/ahe-platform-first-multi-agent-implementation-design.md`
 
 ### `guides/`
 
@@ -40,6 +42,10 @@
 ### `plans/`
 
 - `plans/ahe-review-subagent-optimization-plan.md`
+
+### `specs/`
+
+- `specs/2026-04-09-ahe-platform-first-multi-agent-phase-1-srs.md`
 
 ### `references/`
 

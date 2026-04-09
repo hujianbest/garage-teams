@@ -11,6 +11,7 @@
 3. review / gate 的 verdict、severity 与 handoff 应该如何统一
 4. `record_path`、评审记录、验证记录与状态工件应如何表达
 5. 哪些旧字段只允许“读时归一化”，不允许继续写回
+6. 工作目录 / worktree 隔离应如何表达与传递
 
 ## Canonical Progress Schema
 
@@ -49,6 +50,18 @@
 - `Current Active Task` 仍是当前已锁定任务的权威表达；`Task Board Path` 只负责描述剩余任务的 ready / pending / done 投影
 - 若已批准任务计划与 task board 冲突，父会话应停止自动推进，并回到 `ahe-workflow-router` 按更保守证据重判
 - 若项目不使用独立 task board，则应保证任务计划正文仍足以支撑 router 判断唯一 `next-ready task`
+
+### Optional coordination fields: worktree isolation
+
+说明：
+
+- `Workspace Isolation`、`Worktree Path`、`Worktree Branch` 不是 canonical progress core 的必填字段；只有 workflow 需要隔离工作目录时才建议追加
+- `Workspace Isolation` 统一使用 `in-place` / `worktree-required` / `worktree-active`
+- `worktree-required` 表示下游代码修改节点必须先创建或复用 worktree，再进入实现 / 验证
+- `worktree-active` 表示当前已经绑定有效 worktree；下游节点必须复用 `Worktree Path`，不要静默退回仓库根目录
+- `Worktree Path` 应指向实际 worktree 根目录；若当前只是“需要隔离但尚未落地”，可暂时留空
+- `Worktree Branch` 用于记录当前 worktree 绑定的分支，便于 review / finalize 与 PR 状态追踪
+- 共享规则以 `ahe-coding-skills/docs/ahe-worktree-isolation.md` 为准
 
 ### `Execution Mode`
 
@@ -288,3 +301,4 @@ reviewer subagent 的最小结构化摘要统一使用：
 - [ ] review / gate 结论会落盘到仓库工件
 - [ ] 依赖 fresh evidence 的节点明确写出新鲜度锚点
 - [ ] route / stage / profile / 上游证据冲突会回到 `ahe-workflow-router`
+- [ ] 若当前 workflow 需要 worktree 隔离，状态工件与 handoff 已显式携带 `Workspace Isolation` / `Worktree Path` / `Worktree Branch`

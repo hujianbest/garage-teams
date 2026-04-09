@@ -40,6 +40,15 @@
 - 已进入某个具体 workflow 节点时，从对应目录的 `SKILL.md` 开始
 - 与任务进度、task queue、评审、验证配套的文档骨架见 `ahe-coding-skills/templates/`（如 `task-progress-template.md`、`task-board-template.md`、`review-record-template.md`、`verification-record-template.md`）
 
+## 独立 SE analysis skills
+
+`se-*` 分析 workflow 已迁移到仓库根目录下的 `ahe-se-skills/`，不再放在 `ahe-coding-skills/` 内。
+
+请改从以下入口查看：
+
+- `ahe-se-skills/README.md`
+- `ahe-se-skills/se-analysis-workflow/SKILL.md`
+
 ## 新增 skill 时的建议
 
 1. 先明确 skill 只解决一个清晰问题。
@@ -51,4 +60,5 @@
 ## 命名与路径约定
 
 - **Workflow 族**：使用 `ahe-coding-skills/ahe-*`。
+- **独立分析 workflow**：使用语义清晰的非 `ahe-*` 名称，例如 `se-*`，并放在 `ahe-se-skills/` 下，避免与 router 已知节点冲突。
 - **旧结构**：不要引用已移除路径；若文档中仍出现，应改为当前扁平 `ahe-coding-skills/ahe-*` 或真实存在的路径。

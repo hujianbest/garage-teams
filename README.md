@@ -10,7 +10,7 @@
 2. 需要进入 AHE workflow 时，先读 `ahe-coding-skills/docs/ahe-workflow-entrypoints.md`，再进入 `ahe-coding-skills/using-ahe-workflow/SKILL.md`。
 3. 若当前属于 runtime 恢复编排、阶段判断、profile 判断或证据冲突，再进入 `ahe-coding-skills/ahe-workflow-router/SKILL.md`。（旧文档或旧 handoff 若仍使用 **legacy 合并路由** 旧名称，按 `ahe-coding-skills/docs/ahe-workflow-shared-conventions.md` 的读时归一化规则，等同当前 router 语义。）
 4. 需要理解 progress、evidence、review verdict 和记录格式时，读 `ahe-coding-skills/docs/ahe-workflow-shared-conventions.md`。
-5. 需要维护某个 skill 时，先读 `ahe-coding-skills/README.md`，再进入目标 `ahe-coding-skills/<skill-name>/SKILL.md`。
+5. 需要维护 AHE workflow skill 时，先读 `ahe-coding-skills/README.md`；需要维护独立 SE 分析 skill 时，先读 `ahe-se-skills/README.md`，再进入目标目录下的 `SKILL.md`。
 6. 需要复用 AHE workflow 模板时，进入 `ahe-coding-skills/templates/`；其他通用模板仍在 `templates/`。
 7. 需要做 skill 校验、打包或评测时，以 `.cursor/skills/skill-creator/` 为工作目录执行脚本。
 
@@ -32,15 +32,16 @@
 | `AGENTS.md` | 仓库级 agent 工作约定 |
 | `docs/` | 按 `analysis/`、`architecture/`、`designs/`、`guides/`、`plans/`、`references/` 分组的长文文档 |
 | `ahe-coding-skills/` | 仓库内自有 skills（含 `ahe-*` workflow family）与相关设计规则 |
+| `ahe-se-skills/` | 独立的 `se-*` 分析 workflow skills |
 | `ahe-coding-skills/docs/` | 直接服务 live workflow skills 的共享文档 |
 | `ahe-coding-skills/templates/` | 直接服务 live workflow skills 的模板 |
 | `templates/` | 其他可复用的 Markdown 模板 |
-| `agents/` | 预留给角色化 agent 说明或提示词 |
+| `agents/` | 角色化 agent 说明、提示词与可复用子 agent 合同 |
 | `rules/` | 预留给常驻规则 |
 | `hooks/` | 预留给 hooks 设计与辅助脚本 |
 | `.cursor/skills/skill-creator/` | skill 校验、打包、评测辅助脚本 |
 
-`agents/`、`rules/`、`hooks/` 当前仍是轻量骨架目录，可按后续需要逐步填充。
+`rules/`、`hooks/` 当前仍以轻量骨架为主；`agents/` 目录现已开始承载可复用子 agent 提示文档。
 
 ## AHE Workflow Family
 
@@ -53,7 +54,28 @@
 | Implementation And Branches | `ahe-test-driven-dev`、`ahe-hotfix`、`ahe-increment`、`ahe-finalize` | 实现、支线分析与收尾闭环 |
 | Quality And Gates | `ahe-bug-patterns`、`ahe-test-review`、`ahe-code-review`、`ahe-traceability-review`、`ahe-regression-gate`、`ahe-completion-gate` | 缺陷模式排查、质量评审、回归与完成门禁 |
 
-完整 skill 目录说明见 `ahe-coding-skills/README.md`。
+完整 AHE workflow skill 目录说明见 `ahe-coding-skills/README.md`；独立 SE analysis skill 目录说明见 `ahe-se-skills/README.md`。
+
+## Standalone SE Analysis Workflow
+
+除 `ahe-*` 主链外，仓库现在还包含一套独立的 `se-*` 分析 workflow，用于帮助对系统不熟的新手 SE 做方案分析、需求拆解和多方案收敛。
+
+- `ahe-se-skills/se-analysis-workflow/`：公开入口，负责判断从访谈、调研还是正式收敛起步
+- `ahe-se-skills/se-discovery/`：通过采访和术语归一化收敛问题定义
+- `ahe-se-skills/se-research-and-options/`：做仓库调研、外部研究和候选方案比较
+- `ahe-se-skills/se-design-pack/`：输出 analysis pack、solution pack、接口设计、时序图、DFX、AR 分解和参考代码量估算
+- `ahe-se-skills/se-analysis-workflow/references/`：共享访谈清单、输出模板、DFX / AR / 估算口径和示例
+- `agents/`：供这套 workflow 复用的仓库调研、网络调研和方案挑战子 agent 提示
+
+这套 `se-*` workflow 默认把分析结果写到：
+
+- `docs/analysis/`
+- `docs/designs/`
+
+注意：
+
+- 它是独立 workflow，不属于 `ahe-workflow-router` 管理的 canonical `ahe-*` 节点族
+- 使用时不要把 `se-*` 名称写入 AHE canonical `Next Action Or Recommended Skill`
 
 ## 关键文档
 
@@ -61,7 +83,7 @@
 - `ahe-coding-skills/docs/ahe-workflow-entrypoints.md`：定义何时先走 `ahe-coding-skills/using-ahe-workflow/SKILL.md`，何时交给 `ahe-workflow-router`，以及何时允许 direct invoke。
 - `ahe-coding-skills/docs/ahe-workflow-shared-conventions.md`：集中定义 progress schema、`Execution Mode`、fresh evidence、verdict、severity 和记录表达方式。
 - `ahe-coding-skills/docs/ahe-command-entrypoints.md`：定义 `/ahe-spec`、`/ahe-build`、`/ahe-review`、`/ahe-closeout` 这类 docs-only command contract。
-- `docs/designs/ahe-workflow-multi-agent-operating-model-design.md`：描述 AHE 多 agent 运行模型与 coordination 设计。
+- `docs/designs/ahe-platform-first-multi-agent-implementation-design.md`：描述平台优先 multi-agent runtime 的实现设计，以及 AHE 作为首个 coding pack 的接入方案。
 - `docs/architecture/ahe-workflow-skill-anatomy.md`：定义 workflow skill 的目标态 anatomy。
 - `docs/guides/ahe-workflow-externalization-guide.md`：说明外部仓库采用 AHE workflow family 时的最小能力面。
 - `docs/guides/ahe-path-mapping-guide.md`：说明默认逻辑工件如何映射到实际仓库路径。
