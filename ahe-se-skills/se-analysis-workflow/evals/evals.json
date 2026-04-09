@@ -1,0 +1,41 @@
+{
+  "skill_name": "se-analysis-workflow",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我是新加入团队的 SE，只知道要在嵌入式 SOC 上新增一个对外提供 AI 推理的微服务。它要订阅系统状态、接收别的服务通过 TCP 发过来的请求，团队还说上层要封装 OpenSSL、要做线程池，但我现在并不理解这些要求的边界。请你先不要直接给方案，而是判断我现在最应该往哪一类下一步推进，并说明依据。",
+      "expected_output": "把当前上下文分类为 `blank-start`，推荐进入 `se-discovery`，并说明事实、推断和开放问题的边界。",
+      "files": [],
+      "expectations": [
+        "显式给出当前入口分类 `blank-start`。",
+        "显式推荐进入 `se-discovery`，而不是直接给最终方案。",
+        "输出中区分至少一个事实、一个推断、一个假设或开放问题。",
+        "不把下一步路由到任何 `ahe-*` canonical 节点。"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我已经整理了一版 discovery 草稿：目标是给现有审计平台新增一个跨区域日志归档桥接服务；当前已知调用方、范围、非目标、关键约束和开放问题都列出来了，但我还没查仓库里是否已有归档能力，也没比较直连对象存储、先写本地缓冲再异步上传、或通过现有消息总线转发这几种方案。请你判断现在更应该继续做哪一类工作，并说明原因。",
+      "expected_output": "把当前上下文分类为 `partial-context`，推荐进入 `se-research-and-options`，并说明研究与方案比较仍未完成。",
+      "files": [],
+      "expectations": [
+        "显式给出当前入口分类 `partial-context`。",
+        "显式推荐进入 `se-research-and-options`。",
+        "理由中提到当前仍缺仓库调研、外部研究或候选方案比较。",
+        "下一步保持在本地 `se-*` workflow 内，而不是切回 `ahe-*`。"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "我已经有一份 analysis pack，其中包含 discovery 结论、仓库调研摘要、外部研究摘要、至少两个候选方案、方案矩阵和推荐方向。当前剩余开放问题不会阻塞主干输出，我现在准备把它收敛成正式评审材料。请你判断下一步更应该推进哪一类工作，并说明依据。",
+      "expected_output": "把当前上下文分类为 `synthesis-ready`，推荐进入 `se-design-pack`，并说明证据已足够支撑正式收敛。",
+      "files": [],
+      "expectations": [
+        "显式给出当前入口分类 `synthesis-ready`。",
+        "显式推荐进入 `se-design-pack`。",
+        "理由中提到已具备 discovery、research、candidate options 或 recommended direction 等证据。",
+        "输出保持本 workflow 的本地 handoff，不冒充 AHE canonical 节点。"
+      ]
+    }
+  ]
+}

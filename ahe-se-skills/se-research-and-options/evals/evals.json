@@ -1,0 +1,39 @@
+{
+  "skill_name": "se-research-and-options",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "基于附带的 analysis pack，继续帮我做下一步调研和方案比较。请明确哪些问题要去仓库里核实，哪些要查外部资料，最后把可比较的候选方向收敛成推荐方案。没有验证过的仓库事实不要补脑。",
+      "expected_output": "输出补齐 research 与 options 的 analysis pack，显式分离 repo / web 研究、候选方案、方案矩阵、推荐方向以及仍待验证的假设，并给出本地下一步建议。",
+      "files": [
+        "evals/files/embedded-ai-discovery-only.md"
+      ],
+      "expectations": [
+        "把研究问题按 `repo`、`web`、`decision` 三类显式标注或分组。",
+        "输出分别包含仓库调研结论和外部研究结论，而不是把来源混在一起。",
+        "形成至少两个候选方案，并给出方案矩阵或等价的 trade-off 对比视图。",
+        "输出的候选方案、矩阵或推荐方向应明显是在补 discovery-only 输入里的开放问题，而不是简单复述已有结论。",
+        "推荐方向中区分哪些结论已有证据支撑，哪些仍然是工作假设或证据缺口。",
+        "如果外部研究结论被写入正文，至少有一部分内容带有可核验的来源标识，或明确写成“待补外部来源”。",
+        "结果以 analysis pack 的研究补写为主，并给出本地下一步建议 `se-design-pack`。"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我想在当前仓库里把 `se-*` workflow 作为独立能力对外说明，但又不能让它冒充 `ahe-*` router 的 canonical 节点。请基于仓库现有资料继续做调研和方案比较：我需要弄清楚 README / AGENTS / 目录边界应该怎么表达、是否要单独入口、以及后续扩展约定该怎么写。最后给我一组可比较方案和推荐方向。",
+      "expected_output": "输出一份真正基于仓库资料的 research/options 结果，能区分 repo 事实、外部参考和仍待验证的判断，并给出本地下一步建议。",
+      "files": [
+        "../../README.md",
+        "../../AGENTS.md",
+        "../README.md"
+      ],
+      "expectations": [
+        "把待研究问题显式区分为 `repo`、`web`、`decision` 三类，或给出等价的结构化分组。",
+        "仓库侧结论至少引用 2 个具体 repo 路径或文档名作为依据，而不是只写抽象判断。",
+        "形成至少两个可比较候选方案，并比较目录组织、入口清晰度、与 `ahe-*` 边界等维度。",
+        "给出推荐方向及理由，同时明确哪些结论来自 repo 读取，哪些仍待额外验证。",
+        "结果以 analysis pack 研究补写与 options 收敛为主，并给出本地下一步建议 `se-design-pack`。"
+      ]
+    }
+  ]
+}
