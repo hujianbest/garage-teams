@@ -7,6 +7,7 @@
 - 关联文档:
   - `docs/README.md`
   - `docs/garage/README.md`
+  - `garage/README.md`
 
 ## 1. 这组文档回答什么
 

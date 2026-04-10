@@ -1,6 +1,6 @@
 # Garage Phase 1 01 Foundation And Repository Layout
 
-- 状态: 待执行
+- 状态: 已完成
 - 日期: 2026-04-11
 - 定位: 把 `Garage` 的 phase 1 设计先落成可开发的仓库骨架，冻结实现边界、目录归属、入口规则和与现有 AHE 资产的关系。
 - 当前阶段: phase 1
@@ -9,6 +9,7 @@
   - `docs/garage/garage-extensible-architecture.md`
   - `docs/garage/garage-core-subsystems-architecture.md`
   - `docs/garage/garage-phase1-reference-packs.md`
+  - `garage/README.md`
 
 ## 1. 任务目标
 
@@ -98,3 +99,32 @@
 
 - `docs/tasks/garage-phase1-02-core-runtime-records.md`
 - `docs/tasks/garage-phase1-03-shared-contracts-and-registry.md`
+
+## 10. 本轮完成结果
+
+本轮已经落地：
+
+- `garage/` 实现骨架根目录
+- `garage/core/`
+- `garage/contracts/`
+- `garage/packs/`
+- `garage/packs/product-insights/`
+- `garage/packs/coding/`
+- `garage/hosts/`
+- `artifacts/`
+- `evidence/`
+- `sessions/`
+- `archives/`
+- `.garage/`
+
+同时完成了这些入口同步：
+
+- 更新 `README.md`，把 `garage/` 与 5 个 workspace surfaces 纳入仓库结构说明
+- 更新 `docs/garage/README.md`，把设计链接到 `garage/README.md`
+- 新增 `garage/README.md`，明确实现边界与 AHE 资产定位
+
+当前阶段已经能够明确回答：
+
+- phase 1 的实现会落在哪些目录
+- `Garage Core`、shared contracts、packs 与 hosts 的边界是什么
+- 现有 `ahe-*` 资产在 phase 1 中是来源资产，而不是直接等同的 runtime

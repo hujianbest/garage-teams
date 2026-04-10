@@ -21,6 +21,7 @@
   - `docs/garage/garage-coding-pack-design.md`
   - `docs/garage/garage-phase1-cross-pack-bridge.md`
   - `docs/tasks/README.md`
+  - `garage/README.md`
   - `docs/architecture/ahe-platform-first-multi-agent-architecture.md`
   - `docs/analysis/hermes-agent-harness-engineering-analysis.md`
   - `docs/analysis/clowder-ai-harness-engineering-analysis.md`
@@ -44,7 +45,8 @@
 13. 再读 `docs/garage/garage-product-insights-pack-design.md` 与 `docs/garage/garage-coding-pack-design.md`，理解两个 reference packs 的详细设计。
 14. 再读 `docs/garage/garage-phase1-cross-pack-bridge.md`，冻结 `product-insights -> coding` 的 bridge seam。
 15. 再读 `docs/tasks/README.md`，按开发顺序进入 phase 1 的实现任务拆解。
-16. 最后再进入 `ahe-coding-skills/README.md` 与 `ahe-product-skills/README.md`，判断现有 `coding` / `product insights` 资产如何逐步转译成 `Garage` 下的 reference packs。
+16. 再读 `garage/README.md`，理解 phase 1 的实现骨架、workspace surfaces 与目录边界。
+17. 最后再进入 `ahe-coding-skills/README.md` 与 `ahe-product-skills/README.md`，判断现有 `coding` / `product insights` 资产如何逐步转译成 `Garage` 下的 reference packs。
 
 ## 1. 为什么叫 Garage
 
