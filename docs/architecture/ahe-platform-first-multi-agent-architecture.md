@@ -1,12 +1,13 @@
-# AHE 平台优先 Multi-Agent 架构设计
+# AHE Agent Platform Control Plane And Shared Contract Architecture
 
 - 状态: 草稿
 - 日期: 2026-04-09
-- 定位: 定义一个平台优先的 multi-agent 架构，其中 `ahe-coding-skills/` 收缩为首个 coding skill pack，而不是继续承担平台层职责。
+- 定位: 定义当前主架构文档所采用的平台优先控制面与共享契约架构，其中 `ahe-coding-skills/` 收缩为首个 coding skill pack，而不是继续承担平台层职责。
+- 使用说明: 长期能力建设顺序与 ADR 清单见 `docs/plans/ahe-agent-platform-roadmap-and-adr-backlog.md`。
 - 关联文档:
   - `README.md`
   - `AGENTS.md`
-  - `docs/designs/ahe-platform-first-multi-agent-implementation-design.md`
+  - `docs/plans/ahe-agent-platform-roadmap-and-adr-backlog.md`
   - `docs/architecture/ahe-workflow-skill-anatomy.md`
   - `docs/guides/ahe-workflow-externalization-guide.md`
   - `docs/guides/ahe-path-mapping-guide.md`
@@ -15,7 +16,7 @@
 ## 1. 概述
 
 当前仓库已经有一份 `ahe-*` 家族导向的多 agent 运行模型草稿，但它仍然主要从 **AHE workflow 如何多 agent 化** 的角度出发。  
-本设计要解决的是更上层的问题：
+本文解决的是当前主架构问题：
 
 - 如何先定义一个 `pack-neutral` 的 multi-agent platform runtime
 - 如何把 `ahe-coding-skills/` 重新定义为这个平台上的首个 `Coding Skill Pack`
@@ -23,7 +24,15 @@
 
 一句话总结：
 
-**先有平台，再有 pack；AHE 是第一个 pack，而不是平台本体。**
+**先有平台控制面与共享契约，再有 pack；AHE 是第一个 pack，而不是平台本体。**
+
+本文明确不覆盖：
+
+- 完整 working system 的产品面与操作面
+- 体验面、部署拓扑和长期服务拓扑
+- 多用户、多环境、多 pack 的系统级运行模型
+
+这些能力的长期建设顺序与待冻结 ADR，统一收敛到 `docs/plans/ahe-agent-platform-roadmap-and-adr-backlog.md`。
 
 ---
 

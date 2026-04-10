@@ -10,7 +10,7 @@
 | `architecture/` | AHE 的系统级运行模型与架构设计 |
 | `designs/` | AHE skill / workflow 的目标态设计说明 |
 | `guides/` | AHE 对外接入、映射与使用指南 |
-| `plans/` | 尚在推进中的优化方案与规划稿 |
+| `plans/` | 尚在推进中的优化方案、路线图与规划稿 |
 | `references/` | 参考资产索引与研究辅助文档 |
 
 ## 当前内容
@@ -31,7 +31,7 @@
 
 ### `designs/`
 
-- `designs/ahe-platform-first-multi-agent-implementation-design.md`
+- 当前暂无收录文档
 
 ### `guides/`
 
@@ -40,6 +40,7 @@
 
 ### `plans/`
 
+- `plans/ahe-agent-platform-roadmap-and-adr-backlog.md`
 - `plans/ahe-review-subagent-optimization-plan.md`
 
 ### `references/`
