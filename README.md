@@ -32,7 +32,7 @@
 | --- | --- |
 | `README.md` | 仓库总览与使用入口 |
 | `AGENTS.md` | 仓库级 agent 工作约定 |
-| `docs/` | 按 `analysis/`、`architecture/`、`designs/`、`guides/`、`plans/`、`references/` 分组的长文文档 |
+| `docs/` | 按 `analysis/`、`architecture/`、`designs/`、`garage/`、`tasks/`、`guides/`、`plans/`、`references/` 分组的长文文档 |
 | `docs/insights/` | `ahe-product-skills` 默认落盘的上游产品洞察工件 |
 | `ahe-coding-skills/` | 仓库内自有 skills（含 `ahe-*` workflow family）与相关设计规则 |
 | `ahe-coding-skills/docs/` | 直接服务 live workflow skills 的共享文档 |
@@ -77,6 +77,8 @@
 ## 关键文档
 
 - `docs/README.md`：`docs/` 分组索引与维护约定入口。
+- `docs/garage/README.md`：`Garage` 的品牌定位、phase 1 设计链与阅读入口。
+- `docs/tasks/README.md`：`Garage` phase 1 的开发任务拆解与执行顺序入口。
 - `docs/architecture/ahe-platform-first-multi-agent-architecture.md`：定义当前主架构文档采用的平台优先控制面与共享契约边界。
 - `docs/plans/ahe-agent-platform-roadmap-and-adr-backlog.md`：定义长期能力路线图、阶段退出条件与需要逐步冻结的 ADR 清单。
 - `ahe-coding-skills/docs/ahe-workflow-entrypoints.md`：定义何时先走 `ahe-coding-skills/using-ahe-workflow/SKILL.md`，何时交给 `ahe-workflow-router`，以及何时允许 direct invoke。

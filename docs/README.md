@@ -9,6 +9,8 @@
 | `analysis/` | 外部 harness / workflow 仓库的源码分析与对比 |
 | `architecture/` | AHE 的系统级运行模型与架构设计 |
 | `designs/` | AHE skill / workflow 的目标态设计说明 |
+| `garage/` | `Garage` 的品牌定位、项目愿景与可扩展分层架构文档 |
+| `tasks/` | `Garage` phase 1 的开发任务拆解与执行顺序文档 |
 | `guides/` | AHE 对外接入、映射与使用指南 |
 | `mind/` | 主题化总结、设计心法与高层认知提炼 |
 | `plans/` | 尚在推进中的优化方案、路线图与规划稿 |
@@ -35,6 +37,40 @@
 ### `designs/`
 
 - 当前暂无收录文档
+
+### `garage/`
+
+- 建议先从 `garage/README.md` 开始，再按其中的阅读顺序继续。
+- `garage/README.md`
+- `garage/garage-extensible-architecture.md`
+- `garage/garage-core-subsystems-architecture.md`
+- `garage/garage-phase1-core-runtime-records.md`
+- `garage/garage-phase1-session-lifecycle-and-handoffs.md`
+- `garage/garage-phase1-governance-model.md`
+- `garage/garage-phase1-artifact-and-evidence-surface.md`
+- `garage/garage-shared-contracts.md`
+- `garage/garage-phase1-shared-contract-schemas.md`
+- `garage/garage-continuity-memory-skill-architecture.md`
+- `garage/garage-phase1-continuity-mapping-and-promotion.md`
+- `garage/garage-phase1-reference-packs.md`
+- `garage/garage-product-insights-pack-design.md`
+- `garage/garage-coding-pack-design.md`
+- `garage/garage-phase1-cross-pack-bridge.md`
+
+### `tasks/`
+
+- 建议先从 `tasks/README.md` 开始，再按其中的开发顺序继续。
+- `tasks/README.md`
+- `tasks/garage-phase1-01-foundation-and-repository-layout.md`
+- `tasks/garage-phase1-02-core-runtime-records.md`
+- `tasks/garage-phase1-03-shared-contracts-and-registry.md`
+- `tasks/garage-phase1-04-session-lifecycle-and-governance.md`
+- `tasks/garage-phase1-05-artifact-routing-and-evidence-surface.md`
+- `tasks/garage-phase1-06-continuity-and-promotion.md`
+- `tasks/garage-phase1-07-reference-pack-shells.md`
+- `tasks/garage-phase1-08-product-insights-pack.md`
+- `tasks/garage-phase1-09-coding-pack.md`
+- `tasks/garage-phase1-10-cross-pack-bridge-and-phase1-walkthrough.md`
 
 ### `guides/`
 
