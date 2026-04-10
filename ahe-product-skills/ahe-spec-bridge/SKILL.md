@@ -1,9 +1,9 @@
 ---
-name: ap-spec-bridge
+name: ahe-spec-bridge
 description: Bridge product insight artifacts into a pre-spec input for `ahe-coding-skills/ahe-specify`. Use when outcome, opportunity, concept, and key assumptions are clear enough that implementation discipline can begin, but you do not want `ahe-coding-skills` to invent the product thesis from scratch.
 ---
 
-# AP Spec Bridge
+# AHE Spec Bridge
 
 ## Overview
 

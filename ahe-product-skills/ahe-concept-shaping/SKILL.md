@@ -1,9 +1,9 @@
 ---
-name: ap-concept-shaping
+name: ahe-concept-shaping
 description: Generate and challenge multiple product concepts, then converge on a sharper wedge. Use when a priority opportunity is clear but the solution direction still feels generic, overfamiliar, or too easy to copy.
 ---
 
-# AP Concept Shaping
+# AHE Concept Shaping
 
 ## Overview
 
@@ -25,8 +25,8 @@ description: Generate and challenge multiple product concepts, then converge on 
 
 不要在这些场景使用：
 
-- 机会还没选清楚，先回到 `ap-opportunity-mapping`
-- 关键未知项还没暴露，先完成概念初步收敛后再去 `ap-assumption-probes`
+- 机会还没选清楚，先回到 `ahe-opportunity-mapping`
+- 关键未知项还没暴露，先完成概念初步收敛后再去 `ahe-assumption-probes`
 
 ## Default Agents
 
@@ -142,4 +142,4 @@ description: Generate and challenge multiple product concepts, then converge on 
 
 默认下一步：
 
-- `ap-assumption-probes`
+- `ahe-assumption-probes`

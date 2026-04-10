@@ -36,6 +36,7 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 - 你已经在某个 leaf skill 内部，且当前节点职责与输入都清楚
 - 你已经确认需要 authoritative route / stage / profile 判断，此时直接交给 `ahe-workflow-router`
 - 你已经确认当前就是某个 leaf skill 的本地职责，且该 skill 的 standalone contract 已满足
+- 你其实还在判断产品 thesis、wedge、probe 或“值不值得做”，此时先去 `ahe-product-skills/using-ahe-product-workflow`
 
 常见触发信号：
 
@@ -44,6 +45,24 @@ description: Provides the public entrypoint to the AHE workflow family. Use when
 - “先帮我走 AHE”
 - “这个请求该进 `ahe-specify` 还是先路由？”
 - “/ahe-review code TASK-003”
+
+## Boundary With `ahe-product-skills`
+
+如果当前问题仍停留在这些上游判断，不要强行进入 coding family：
+
+- 产品为什么没有吸引力
+- 应该优先打哪个 wedge / concept / opportunity
+- 哪个假设最危险、先跑什么 probe
+
+此时应先进入：
+
+- `ahe-product-skills/using-ahe-product-workflow`
+
+如果上游已经产出：
+
+- `docs/insights/*-spec-bridge.md`
+
+且当前目标已经变成 formal spec / design / task planning，则可以把该 bridge 当作 coding family 的输入继续向下进入 `ahe-specify` 或其它合法节点。
 
 ## Workflow Discovery
 
@@ -134,6 +153,7 @@ entry 层职责：
 
 | 用户意图                | 可优先尝试的入口                               | 一旦不明确时回哪里             |
 | ------------------- | -------------------------------------- | --------------------- |
+| 产品 thesis / wedge / probe 仍不明确 | `ahe-product-skills/using-ahe-product-workflow` | `ahe-product-skills/using-ahe-product-workflow` |
 | 规格澄清 / 规格修订         | `ahe-specify`                          | `ahe-workflow-router` |
 | 当前活跃任务实现            | `ahe-test-driven-dev`                  | `ahe-workflow-router` |
 | review / gate 请求    | 具体 review / gate skill                 | `ahe-workflow-router` |

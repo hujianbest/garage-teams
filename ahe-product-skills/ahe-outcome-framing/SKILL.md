@@ -1,9 +1,9 @@
 ---
-name: ap-outcome-framing
+name: ahe-outcome-framing
 description: Reframe a vague product idea into a sharper outcome, target user, current substitute, and focus question. Use when an idea still sounds like “build an app for X,” when a shipped product feels generic, or when you need to diagnose why a concept lacks pull before doing research or specs.
 ---
 
-# AP Outcome Framing
+# AHE Outcome Framing
 
 ## Overview
 
@@ -27,8 +27,8 @@ description: Reframe a vague product idea into a sharper outcome, target user, c
 
 不要在这些场景使用：
 
-- 已有清晰 outcome 和用户 progress，当前更缺 evidence，改用 `ap-insight-mining`
-- 已有足够 framing，当前需要机会排序，改用 `ap-opportunity-mapping`
+- 已有清晰 outcome 和用户 progress，当前更缺 evidence，改用 `ahe-insight-mining`
+- 已有足够 framing，当前需要机会排序，改用 `ahe-opportunity-mapping`
 
 ## Output Goal
 
@@ -122,8 +122,8 @@ description: Reframe a vague product idea into a sharper outcome, target user, c
 
 默认下一步：
 
-- `ap-insight-mining`
+- `ahe-insight-mining`
 
 如果用户已经有大量外部信号，也可以直接进入：
 
-- `ap-opportunity-mapping`
+- `ahe-opportunity-mapping`

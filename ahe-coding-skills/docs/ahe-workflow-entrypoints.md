@@ -18,6 +18,29 @@ direct invoke 不是主路径替代品，而是在“当前节点已经足够明
 
 如果用户显式要求 `auto` / 自动执行，把它视为 `Execution Mode` 偏好一起带入选定入口；不要把它误写成新的 profile，也不要把它当成跳步理由。
 
+## Boundary With Product Discovery
+
+在进入 `ahe-coding-skills` 之前，先判断当前问题是否其实仍属于上游 product discovery。
+
+以下场景不要直接进入 coding family，而应先进入：
+
+- `ahe-product-skills/using-ahe-product-workflow`
+
+典型信号：
+
+- 用户还在问“这个产品值不值得做”
+- 用户还在问“为什么现在的方向没有吸引力”
+- 用户还在问“应该先打哪个 wedge / concept / opportunity”
+- 用户还在问“先验证哪个假设、先跑什么 probe”
+
+只有当当前请求已经主要转为“把方向写成正式规格、设计或任务计划”，才进入 `ahe-coding-skills`。
+
+如果上游已经产出：
+
+- `docs/insights/*-spec-bridge.md`
+
+则可以把它视为进入 `ahe-specify` 的高价值输入，而不是要求 coding family 从零反推产品 thesis。
+
 ## Start With `using-ahe-workflow`
 
 以下场景默认先经过 `using-ahe-workflow`：
@@ -70,6 +93,7 @@ direct invoke 不是主路径替代品，而是在“当前节点已经足够明
 
 | 节点类别 | 代表 skill | 典型入口条件 | 不该这样进入的典型情况 |
 |---|---|---|---|
+| Upstream discovery | `ahe-product-skills/using-ahe-product-workflow` | 仍在判断产品 thesis、wedge、probe 或是否值得做 | 已明确进入 formal spec / design / task planning，且 coding family 前置条件已满足 |
 | Public Entry | `using-ahe-workflow` | 新会话、命令入口、family discovery、需要判断 direct invoke 还是 route-first | 当前已经进入 runtime recovery、需要 authoritative route / stage / profile 判断 |
 | Orchestrator | `ahe-workflow-router` | 阶段不清、需要恢复编排、需要判断 profile 或下一步 | 把它当成每次新会话都必须直接暴露给用户的 public shell |
 | Authoring | `ahe-specify` / `ahe-design` / `ahe-tasks` | 当前明确是在补齐规格、设计或任务计划正文；上游前置条件满足 | 阶段不清、其实该做 review、其实该走支线、或已进入实现 |

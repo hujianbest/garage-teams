@@ -38,8 +38,8 @@
 在本目录中的体现：
 
 - `using-ahe-product-workflow` 先判断节点
-- `ap-insight-mining` 聚焦证据采集
-- `ap-concept-shaping` 和 `ap-spec-bridge` 承担综合与收敛
+- `ahe-insight-mining` 聚焦证据采集
+- `ahe-concept-shaping` 和 `ahe-spec-bridge` 承担综合与收敛
 - 在关键收敛点引入多 agent debate / PK，而不是单次 synthesis 直接拍板
 
 ### `langchain-ai/open_deep_research`
@@ -90,7 +90,7 @@
 
 在本目录中的体现：
 
-- `ap-outcome-framing` 和 `ap-opportunity-mapping` 都强调 guided framing，而不是直接填模板
+- `ahe-outcome-framing` 和 `ahe-opportunity-mapping` 都强调 guided framing，而不是直接填模板
 
 ### Teresa Torres / Product Talk
 
@@ -107,8 +107,8 @@
 在本目录中的体现：
 
 - 所有 skill 都显式区分 `Observed`、`Inferred`、`Invented`、`Untested`
-- `ap-opportunity-mapping` 不允许把 solution 冒充 opportunity
-- `ap-assumption-probes` 在进入 spec 前先暴露危险未知项
+- `ahe-opportunity-mapping` 不允许把 solution 冒充 opportunity
+- `ahe-assumption-probes` 在进入 spec 前先暴露危险未知项
 
 ## Why A Separate Family Exists
 

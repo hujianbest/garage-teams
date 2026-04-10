@@ -1,9 +1,9 @@
 ---
-name: ap-opportunity-mapping
+name: ahe-opportunity-mapping
 description: Turn evidence into JTBD, opportunities, and a prioritized wedge map. Use when you already have framing and insight signals and need to decide which user problem is most worth pursuing before inventing solution concepts.
 ---
 
-# AP Opportunity Mapping
+# AHE Opportunity Mapping
 
 ## Overview
 
@@ -25,8 +25,8 @@ description: Turn evidence into JTBD, opportunities, and a prioritized wedge map
 
 不要在这些场景使用：
 
-- 证据还不够，先回到 `ap-insight-mining`
-- 已选定机会，当前更缺概念方向，改用 `ap-concept-shaping`
+- 证据还不够，先回到 `ahe-insight-mining`
+- 已选定机会，当前更缺概念方向，改用 `ahe-concept-shaping`
 
 ## Default Agents
 
@@ -157,4 +157,4 @@ description: Turn evidence into JTBD, opportunities, and a prioritized wedge map
 
 默认下一步：
 
-- `ap-concept-shaping`
+- `ahe-concept-shaping`

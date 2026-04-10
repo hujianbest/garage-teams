@@ -1,9 +1,9 @@
 ---
-name: ap-assumption-probes
+name: ahe-assumption-probes
 description: Turn risky unknowns into cheap, disposable product probes with kill criteria. Use when a concept looks promising but key desirability, usability, viability, or feasibility assumptions still need evidence before you enter specs or implementation.
 ---
 
-# AP Assumption Probes
+# AHE Assumption Probes
 
 ## Overview
 
@@ -24,8 +24,8 @@ description: Turn risky unknowns into cheap, disposable product probes with kill
 
 不要在这些场景使用：
 
-- 方向还没选清楚，先回到 `ap-concept-shaping`
-- 已经验证得足够充分，当前只差 handoff，改用 `ap-spec-bridge`
+- 方向还没选清楚，先回到 `ahe-concept-shaping`
+- 已经验证得足够充分，当前只差 handoff，改用 `ahe-spec-bridge`
 
 ## Default Agents
 
@@ -116,6 +116,6 @@ description: Turn risky unknowns into cheap, disposable product probes with kill
 
 若 probe 已完成或已有足够 bridge 信息，默认下一步：
 
-- `ap-spec-bridge`
+- `ahe-spec-bridge`
 
 若 probe 尚未执行，则先执行 probe，再回到本节点更新结果。

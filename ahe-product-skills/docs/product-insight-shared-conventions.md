@@ -65,9 +65,9 @@
 
 以下节点默认启用多 agent 讨论 / PK：
 
-- `ap-insight-mining`
-- `ap-opportunity-mapping`
-- `ap-concept-shaping`
+- `ahe-insight-mining`
+- `ahe-opportunity-mapping`
+- `ahe-concept-shaping`
 
 默认 debate 至少包含：
 

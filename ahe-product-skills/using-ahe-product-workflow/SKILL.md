@@ -38,7 +38,7 @@ description: Provides the public entrypoint to the AHE product insight family. U
 
 按下面规则选节点。
 
-### 进入 `ap-outcome-framing`
+### 进入 `ahe-outcome-framing`
 
 满足任一条件即可：
 
@@ -46,7 +46,7 @@ description: Provides the public entrypoint to the AHE product insight family. U
 - 还说不清 desired outcome、目标用户、当前替代方案或非目标
 - 项目“为什么不吸引人”还停留在感觉层
 
-### 进入 `ap-insight-mining`
+### 进入 `ahe-insight-mining`
 
 满足任一条件即可：
 
@@ -54,28 +54,28 @@ description: Provides the public entrypoint to the AHE product insight family. U
 - 需要从 web、GitHub、社区、替代品和现有材料中提取证据
 - 需要形成 insight pack，而不是直接想 feature
 
-### 进入 `ap-opportunity-mapping`
+### 进入 `ahe-opportunity-mapping`
 
 满足任一条件即可：
 
 - 已有一定 evidence，需要收敛 JTBD / opportunity / wedge 视图
 - 需要判断“先打哪个机会，而不是先做哪个功能”
 
-### 进入 `ap-concept-shaping`
+### 进入 `ahe-concept-shaping`
 
 满足任一条件即可：
 
 - 已选机会，但解决方向仍然平庸
 - 需要产生多个概念方向，并选出更有吸引力的 wedge
 
-### 进入 `ap-assumption-probes`
+### 进入 `ahe-assumption-probes`
 
 满足任一条件即可：
 
 - 方向看起来不错，但关键成败假设还没暴露
 - 需要在写 spec 前先设计便宜验证
 
-### 进入 `ap-spec-bridge`
+### 进入 `ahe-spec-bridge`
 
 只有在以下条件都满足时才进入：
 
@@ -89,7 +89,7 @@ description: Provides the public entrypoint to the AHE product insight family. U
 本 skill 的正确输出只有两类：
 
 1. 明确进入一个 product insight 节点
-2. 明确说明已经可以进入 `ap-spec-bridge`
+2. 明确说明已经可以进入 `ahe-spec-bridge`
 
 推荐使用这 3 行快路径：
 
@@ -110,9 +110,9 @@ description: Provides the public entrypoint to the AHE product insight family. U
 
 当路由到下面节点时，默认按多 agent 讨论 / PK 方式执行，而不是单 agent 直接拍板：
 
-- `ap-insight-mining`
-- `ap-opportunity-mapping`
-- `ap-concept-shaping`
+- `ahe-insight-mining`
+- `ahe-opportunity-mapping`
+- `ahe-concept-shaping`
 
 ## Red Flags
 

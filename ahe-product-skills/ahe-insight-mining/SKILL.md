@@ -1,9 +1,9 @@
 ---
-name: ap-insight-mining
+name: ahe-insight-mining
 description: Mine product insight signals from web, GitHub, community, substitutes, and local context. Use when a concept needs evidence, when you need to understand why an idea feels commodity, or when you want non-obvious tensions and white space before mapping opportunities.
 ---
 
-# AP Insight Mining
+# AHE Insight Mining
 
 ## Overview
 
@@ -27,8 +27,8 @@ description: Mine product insight signals from web, GitHub, community, substitut
 
 不要在这些场景使用：
 
-- 还没做基本 framing，先回到 `ap-outcome-framing`
-- 研究已经足够，当前只是要机会排序，改用 `ap-opportunity-mapping`
+- 还没做基本 framing，先回到 `ahe-outcome-framing`
+- 研究已经足够，当前只是要机会排序，改用 `ahe-opportunity-mapping`
 
 ## Default Agents
 
@@ -123,7 +123,7 @@ description: Mine product insight signals from web, GitHub, community, substitut
 
 ### 8. 明确下一步研究是否已经足够进入机会收敛
 
-如果你已经能回答以下问题，就可以进入 `ap-opportunity-mapping`：
+如果你已经能回答以下问题，就可以进入 `ahe-opportunity-mapping`：
 
 - 用户真正要推进的 progress 是什么
 - 现在的替代品 / workaround 是什么
@@ -152,4 +152,4 @@ description: Mine product insight signals from web, GitHub, community, substitut
 
 默认下一步：
 
-- `ap-opportunity-mapping`
+- `ahe-opportunity-mapping`
