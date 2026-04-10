@@ -10,6 +10,7 @@
 | `architecture/` | AHE 的系统级运行模型与架构设计 |
 | `designs/` | AHE skill / workflow 的目标态设计说明 |
 | `guides/` | AHE 对外接入、映射与使用指南 |
+| `mind/` | 主题化总结、设计心法与高层认知提炼 |
 | `plans/` | 尚在推进中的优化方案、路线图与规划稿 |
 | `references/` | 参考资产索引与研究辅助文档 |
 
@@ -17,9 +18,11 @@
 
 ### `analysis/`
 
+- `analysis/clowder-ai-harness-engineering-analysis.md`
 - `analysis/everything-claude-code-main-harness-engineering-analysis.md`
 - `analysis/get-shit-done-main-harness-engineering-analysis.md`
 - `analysis/gstack-main-harness-engineering-analysis.md`
+- `analysis/hermes-agent-harness-engineering-analysis.md`
 - `analysis/longtaskforagent-main-harness-engineering-analysis.md`
 - `analysis/OpenSpec-main-harness-engineering-analysis.md`
 - `analysis/superpowers-main-harness-engineering-analysis.md`
@@ -37,6 +40,11 @@
 
 - `guides/ahe-path-mapping-guide.md`
 - `guides/ahe-workflow-externalization-guide.md`
+
+### `mind/`
+
+- `mind/clowder-ai-core-design-ideas.md`
+- `mind/hermes-agent-core-design-ideas.md`
 
 ### `plans/`
 
