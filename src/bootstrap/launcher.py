@@ -12,7 +12,6 @@ from core import GateVerdict, ObjectRef, SessionIntent, SessionState, SessionSta
 from execution import ExecutionRuntime
 from foundation import (
     HostAdapterBinding,
-    RuntimeProfile,
     RuntimeTopology,
     TopologyBindingError,
 )
@@ -20,6 +19,8 @@ from governance import GateType, GovernanceRule, GovernanceRuntime, RuntimeConte
 from registry import RegistryIndex, build_registry
 from session import BlockedGateError, SessionAction, SessionController
 from surfaces import ArtifactRoute, FileBackedSurfaceManager
+
+from .profile_loader import load_runtime_profile
 
 
 def _host_binding(
@@ -158,10 +159,10 @@ class GarageLauncher:
         existing_state: SessionState | None = None,
     ) -> LaunchResult:
         topology = self._resolve_topology(config)
-        profile = RuntimeProfile(
+        profile = load_runtime_profile(
+            topology.runtime_home,
             profile_id=config.profile_id,
-            runtime_home=topology.runtime_home.root,
-            capabilities=config.runtime_capabilities,
+            runtime_capabilities=config.runtime_capabilities,
             provider_hints=config.provider_hints,
         )
         host = self._resolve_host_binding(config)

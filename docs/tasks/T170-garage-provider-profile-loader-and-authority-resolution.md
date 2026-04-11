@@ -1,7 +1,7 @@
 # T170: Garage Provider Profile Loader And Authority Resolution
 
 - Task ID: `T170`
-- 状态: 待执行
+- 状态: 已完成
 - 日期: 2026-04-11
 - 定位: 把 `runtime home` 中 `profiles / config / adapters` 的静态语义落成真实 loader 与 authority resolution 链，使 `CLIEntry`、`HostBridgeEntry`、`WebEntry` 共享同一条 provider / model 配置主线。
 - 当前阶段: 完整架构主线下的第二组独立入口 implementation tracks

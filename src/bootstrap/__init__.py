@@ -9,6 +9,7 @@ from .launcher import (
     LaunchResult,
     RuntimeServices,
 )
+from .profile_loader import RuntimeProfileResolutionError, load_runtime_profile
 from .session_api import SessionApi, SessionLaunchSummary
 from .web import WebControlPlane, WebControlPlaneConfig, WebControlPlaneState
 
@@ -21,9 +22,11 @@ __all__ = [
     "LaunchMode",
     "LaunchResult",
     "RuntimeServices",
+    "RuntimeProfileResolutionError",
     "SessionApi",
     "SessionLaunchSummary",
     "WebControlPlane",
     "WebControlPlaneConfig",
     "WebControlPlaneState",
+    "load_runtime_profile",
 ]

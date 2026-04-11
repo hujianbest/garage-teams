@@ -78,7 +78,12 @@ class RuntimeProfile:
     profile_id: str
     runtime_home: Path | None = None
     capabilities: tuple[str, ...] = ()
+    provider_id: str | None = None
+    model_id: str | None = None
+    adapter_id: str | None = None
     provider_hints: Mapping[str, str] = field(default_factory=dict)
+    adapter_settings: Mapping[str, str] = field(default_factory=dict)
+    authority_sources: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)
