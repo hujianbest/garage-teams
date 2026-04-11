@@ -8,6 +8,7 @@ from .launcher import (
     LaunchResult,
     RuntimeServices,
 )
+from .session_api import SessionApi, SessionLaunchSummary
 
 __all__ = [
     "BootstrapConfig",
@@ -16,4 +17,6 @@ __all__ = [
     "LaunchMode",
     "LaunchResult",
     "RuntimeServices",
+    "SessionApi",
+    "SessionLaunchSummary",
 ]

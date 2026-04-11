@@ -1,0 +1,129 @@
+"""Minimal Garage CLI entry that reuses the shared SessionApi seam."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Sequence
+
+from .launcher import BootstrapConfig, BootstrapError, LaunchMode
+from .session_api import SessionApi
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="garage",
+        description="Garage CLIEntry built on the shared bootstrap and SessionApi chain.",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    create = subparsers.add_parser("create", help="Create a new Garage session.")
+    _add_common_arguments(create)
+    create.add_argument("--problem-kind", required=True, help="Problem kind for the new session.")
+    create.add_argument("--entry-pack", required=True, help="Entry pack id.")
+    create.add_argument("--entry-node", required=True, help="Entry node id.")
+    create.add_argument("--goal", required=True, help="Primary goal for the session.")
+    create.add_argument("--summary", help="Optional session summary override.")
+    create.add_argument(
+        "--boundary",
+        action="append",
+        default=[],
+        help="Boundary statement to include in the session intent. Repeatable.",
+    )
+
+    resume = subparsers.add_parser("resume", help="Resume an existing Garage session.")
+    _add_common_arguments(resume)
+    resume.add_argument("--session-id", required=True, help="Session id to resume.")
+
+    attach = subparsers.add_parser("attach", help="Attach to an existing active Garage session.")
+    _add_common_arguments(attach)
+    attach.add_argument("--session-id", required=True, help="Session id to attach.")
+
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        api = SessionApi()
+        config = _config_from_args(args)
+        if args.command == "create":
+            result = api.create(config)
+        elif args.command == "resume":
+            result = api.resume(config)
+        else:
+            result = api.attach(config)
+        payload = api.summarize(result).as_mapping()
+        json.dump(payload, sys.stdout, indent=2, sort_keys=True)
+        sys.stdout.write("\n")
+        return 0
+    except (BootstrapError, ValueError) as exc:
+        print(f"garage: {exc}", file=sys.stderr)
+        return 1
+
+
+def _add_common_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--source-root",
+        type=Path,
+        default=Path.cwd(),
+        help="Garage source root. Defaults to the current working directory.",
+    )
+    parser.add_argument(
+        "--runtime-home",
+        type=Path,
+        required=True,
+        help="Runtime home root used for profiles, config, cache, and adapters.",
+    )
+    parser.add_argument(
+        "--workspace-root",
+        type=Path,
+        required=True,
+        help="Workspace root for artifacts, evidence, sessions, archives, and .garage.",
+    )
+    parser.add_argument("--workspace-id", help="Explicit workspace id. Defaults to the workspace folder name.")
+    parser.add_argument("--profile-id", default="default", help="Runtime profile id to use.")
+    parser.add_argument("--host-adapter-id", help="Explicit host adapter binding to use.")
+    parser.add_argument("--initiator", default="creator", help="Initiator id recorded in the session intent.")
+
+
+def _config_from_args(args: argparse.Namespace) -> BootstrapConfig:
+    common_kwargs = {
+        "source_root": args.source_root,
+        "runtime_home": args.runtime_home,
+        "workspace_root": args.workspace_root,
+        "workspace_id": args.workspace_id,
+        "profile_id": args.profile_id,
+        "entry_surface": "cli",
+        "host_adapter_id": args.host_adapter_id,
+        "initiator": args.initiator,
+    }
+    if args.command == "create":
+        return BootstrapConfig(
+            launch_mode=LaunchMode.CREATE,
+            problem_kind=args.problem_kind,
+            entry_pack=args.entry_pack,
+            entry_node=args.entry_node,
+            goal=args.goal,
+            summary=args.summary,
+            boundaries=tuple(args.boundary),
+            **common_kwargs,
+        )
+    if args.command == "resume":
+        return BootstrapConfig(
+            launch_mode=LaunchMode.RESUME,
+            session_id=args.session_id,
+            **common_kwargs,
+        )
+    return BootstrapConfig(
+        launch_mode=LaunchMode.ATTACH,
+        session_id=args.session_id,
+        **common_kwargs,
+    )
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

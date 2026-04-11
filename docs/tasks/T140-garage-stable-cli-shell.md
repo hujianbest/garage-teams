@@ -1,7 +1,7 @@
 # T140: Garage Stable CLI Shell
 
 - Task ID: `T140`
-- 状态: 待执行
+- 状态: 已完成
 - 日期: 2026-04-11
 - 定位: 把 `GarageLauncher`、`RuntimeProfile`、`WorkspaceBinding` 与 `SessionApi` 收敛成最薄、稳定、可恢复的 `CLIEntry`，作为三类入口中的第一条真实产品化切片。
 - 当前阶段: 完整架构主线下的第二组独立入口 implementation tracks

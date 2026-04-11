@@ -24,7 +24,6 @@
 
 今天还没有：
 
-- 稳定的 `garage` CLI
 - GUI 或完整 IDE 产品入口
 - installer / daemon / 多 workspace supervisor
 - 生产级 provider 配置、secrets 管理和 execution backend
@@ -38,6 +37,22 @@
 ### 环境要求
 
 - `Python 3.12+`
+
+### 安装当前最小 CLI
+
+当前仓库已经提供了一个最薄的 `garage` CLI shell。
+
+在仓库根目录执行：
+
+```bash
+python -m pip install -e .
+```
+
+安装后可用：
+
+```bash
+garage --help
+```
 
 ### 先让 Python 能导入 `src/`
 
@@ -55,7 +70,41 @@ export PYTHONPATH=src
 
 ## 现在怎么运行
 
-### 1. 跑测试
+### 1. 用 `garage` CLI 创建或恢复 session
+
+创建一个最小 session：
+
+```bash
+garage create \
+  --source-root . \
+  --runtime-home .runtime-home \
+  --workspace-root .workspace \
+  --problem-kind implementation \
+  --entry-pack coding \
+  --entry-node coding.bridge-intake \
+  --goal "Bootstrap a Garage CLI session."
+```
+
+恢复已有 session：
+
+```bash
+garage resume \
+  --source-root . \
+  --runtime-home .runtime-home \
+  --workspace-root .workspace \
+  --session-id session.<your-id>
+```
+
+当前 CLI 会输出一份稳定 JSON summary，其中包含：
+
+- `sessionId`
+- `sessionStatus`
+- `workspaceId`
+- `profileId`
+- `hostAdapterId`
+- `sessionFile`
+
+### 2. 跑测试
 
 这是当前最稳妥的运行入口：
 
@@ -71,22 +120,22 @@ python -m unittest discover -s tests
 - reference pack registry loading
 - provider / tool execution skeleton
 
-### 2. 跑一个最小 bootstrap demo
+### 3. 跑一个最小 bootstrap demo
 
-当前没有稳定 CLI，所以真正“启动一次 Garage”最直接的办法，是直接调用 `GarageLauncher`：
+如果你想从 Python 侧直接调用 shared bootstrap / session seam，也可以继续直接调用 `SessionApi` 或 `GarageLauncher`：
 
 ```python
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from bootstrap import BootstrapConfig, GarageLauncher, LaunchMode
+from bootstrap import BootstrapConfig, LaunchMode, SessionApi
 
 repo_root = Path.cwd()
-launcher = GarageLauncher()
+session_api = SessionApi()
 
 with TemporaryDirectory() as tmp:
     tmp_root = Path(tmp)
-    result = launcher.launch(
+    result = session_api.create(
         BootstrapConfig(
             launch_mode=LaunchMode.CREATE,
             source_root=repo_root,
@@ -116,7 +165,6 @@ with TemporaryDirectory() as tmp:
 
 当前它还不能证明：
 
-- 你已经拿到了稳定 CLI
 - execution layer 已经接好生产级 provider
 - Garage 已经是 end-user ready app
 
@@ -192,7 +240,7 @@ with TemporaryDirectory() as tmp:
 为了避免误解，这个仓库当前不是：
 
 - 一个已经打磨完成的通用桌面应用
-- 一个已经稳定发布的 CLI 工具
+- 一个已经完整打磨并广泛兼容的 CLI 产品
 - 一个单纯的 workflow 资料库
 
 它更准确的说法是：
