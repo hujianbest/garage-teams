@@ -1,0 +1,45 @@
+{
+  "skill_name": "writing-docs",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我要补一篇给后续 agent 看的参考文档，讲外部仓库采用 AHE / Garage workflow family 时怎么做 externalization 和 path mapping。请先判断这是不是已有文档已经在回答的问题；如果要落盘，就直接给出应该修改哪些文档、放在哪一类目录，以及精确路径和标题，不要再新造一个总入口文档。",
+      "expected_output": "先检查现有 ownership，再选择更新 `docs/wiki/W120-ahe-workflow-externalization-guide.md` 和/或 `docs/wiki/W130-ahe-path-mapping-guide.md`，而不是新建一个重复的汇总文档；答案保持在 `docs/wiki/`，并沿用现有 wiki 文档的 ID 与 header 规则。",
+      "files": [
+        "../../../docs/README.md",
+        "../../../docs/wiki/W120-ahe-workflow-externalization-guide.md",
+        "../../../docs/wiki/W130-ahe-path-mapping-guide.md"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "现在 `docs/` 里的编号、命名和 meta 头规则还要再统一一轮，重点是让 agent 更容易检索。请判断这些规则应该写进哪几个现有文档，各自负责什么；不要新建额外的 rules / style / convention 文档。",
+      "expected_output": "把 docs 树结构、全局编号/命名/格式规则归到 `docs/README.md`；把 feature map 和 `Fxxx` 规划归到 `docs/ROADMAP.md`；把 task 排序和 `Txxx` 索引归到 `docs/tasks/README.md`；不再新建额外规则文档，也不回退到 `docs/guides/` 或 `docs/plans/`。",
+      "files": [
+        "../../../docs/README.md",
+        "../../../docs/ROADMAP.md",
+        "../../../docs/tasks/README.md"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "我要新增一份 phase 1 执行文档，内容是把一个实现主题拆成可执行任务。请直接告诉我应该放在哪个目录、文件名格式是什么、标题和 meta 头怎么写；如果这个请求其实应该先落到 task 索引，也请一起说明。",
+      "expected_output": "把执行分解文档放到 `docs/tasks/`，新任务文档使用 `Txxx-<title-slug>.md`，而 `docs/tasks/README.md` 继续作为 task index 的 canonical 入口；答案应复用现有 task 文档的 H1 和 meta 头格式，而不是 feature/design/wiki 的格式。",
+      "files": [
+        "../../../docs/tasks/README.md",
+        "../../../docs/tasks/T010-garage-phase-1-foundation-and-repository-layout.md",
+        "../../../docs/tasks/T120-garage-phase-1-runtime-bootstrap-and-entrypoints.md"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "我要新增一篇 `docs/wiki/` 参考文档，记录一个暂时还没定名的上游仓库接入 Garage workflow family 的案例。它是新的上游案例，不是 `W120` / `W130` 已经回答的 externalization 或 path mapping 规则。请直接给我精确文件路径、ID 和 H1，不要出现 `<repo-slug>`、`待定`，也不要给出“之后再替换”的条件说明。",
+      "expected_output": "给出一个完全具体的 wiki 路径、`Wxxx` ID 和 `# Wxxx: Title` 形式的标题；当上游项目名未指定时，使用稳定的通用 slug，例如 `reference-upstream`，而不是占位符、条件路径或延后替换说明。",
+      "files": [
+        "../../../docs/README.md",
+        "../../../docs/wiki/W010-clowder-ai-harness-engineering-analysis.md",
+        "../../../docs/wiki/W030-hermes-agent-harness-engineering-analysis.md"
+      ]
+    }
+  ]
+}
