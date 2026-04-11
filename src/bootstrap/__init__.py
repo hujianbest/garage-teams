@@ -8,6 +8,14 @@ from .credential_resolution import (
     merge_credential_ref_declarations,
     resolve_credential_refs,
 )
+from .install_layout import (
+    RUNTIME_HOME_SCHEMA_VERSION,
+    default_runtime_home_path,
+    package_version,
+    resolve_runtime_home,
+    resolve_source_root,
+    resolve_workspace_root,
+)
 from .host_bridge import HostBridgeLaunchRequest, HostBridgeSessionApi
 from .runtime_home_doctor import DoctorFinding, DoctorSeverity, diagnose_runtime_home, findings_as_jsonable
 from .launcher import (
@@ -29,11 +37,13 @@ __all__ = [
     "DoctorFinding",
     "DoctorSeverity",
     "GarageLauncher",
+    "RUNTIME_HOME_SCHEMA_VERSION",
     "HostBridgeLaunchRequest",
     "HostBridgeSessionApi",
     "LaunchMode",
     "LaunchResult",
     "ResolvedCredentials",
+    "default_runtime_home_path",
     "RuntimeServices",
     "RuntimeProfileResolutionError",
     "SessionApi",
@@ -44,7 +54,11 @@ __all__ = [
     "diagnose_runtime_home",
     "findings_as_jsonable",
     "load_runtime_profile",
+    "package_version",
     "merge_credential_ref_declarations",
     "redact_text",
     "resolve_credential_refs",
+    "resolve_runtime_home",
+    "resolve_source_root",
+    "resolve_workspace_root",
 ]

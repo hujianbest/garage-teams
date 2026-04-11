@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from .install_layout import package_version, resolve_runtime_home, resolve_source_root, resolve_workspace_root
 from .launcher import BootstrapConfig, BootstrapError, LaunchMode
 from .runtime_home_doctor import DoctorSeverity, diagnose_runtime_home, findings_as_jsonable
 from .session_api import SessionApi
@@ -46,8 +47,8 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument(
         "--runtime-home",
         type=Path,
-        required=True,
-        help="Runtime home root used for profiles, config, cache, and adapters.",
+        default=None,
+        help="Runtime home root; defaults to GARAGE_RUNTIME_HOME or the OS user-local layout.",
     )
     doctor.add_argument("--profile-id", default="default", help="Runtime profile id to validate.")
     doctor.add_argument(
@@ -60,11 +61,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    argv_list = list(sys.argv[1:] if argv is None else argv)
+    if argv_list and argv_list[0] in ("--version", "-V"):
+        sys.stdout.write(f"garage {package_version()}\n")
+        return 0
+
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(argv_list)
     try:
         if args.command == "doctor":
-            findings, ok = diagnose_runtime_home(args.runtime_home, profile_id=args.profile_id)
+            runtime_home = resolve_runtime_home(args.runtime_home)
+            findings, ok = diagnose_runtime_home(runtime_home, profile_id=args.profile_id)
             if args.strict:
                 ok = ok and not any(f.severity == DoctorSeverity.WARNING for f in findings)
             payload = {
@@ -96,20 +103,20 @@ def _add_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--source-root",
         type=Path,
-        default=Path.cwd(),
-        help="Garage source root. Defaults to the current working directory.",
+        default=None,
+        help="Garage source root; defaults to cwd or GARAGE_SOURCE_ROOT when set.",
     )
     parser.add_argument(
         "--runtime-home",
         type=Path,
-        required=True,
-        help="Runtime home root used for profiles, config, cache, and adapters.",
+        default=None,
+        help="Runtime home root; defaults to GARAGE_RUNTIME_HOME or the OS user-local layout.",
     )
     parser.add_argument(
         "--workspace-root",
         type=Path,
-        required=True,
-        help="Workspace root for artifacts, evidence, sessions, archives, and .garage.",
+        default=None,
+        help="Workspace root; defaults to the current working directory.",
     )
     parser.add_argument("--workspace-id", help="Explicit workspace id. Defaults to the workspace folder name.")
     parser.add_argument("--profile-id", default="default", help="Runtime profile id to use.")
@@ -119,9 +126,9 @@ def _add_common_arguments(parser: argparse.ArgumentParser) -> None:
 
 def _config_from_args(args: argparse.Namespace) -> BootstrapConfig:
     common_kwargs = {
-        "source_root": args.source_root,
-        "runtime_home": args.runtime_home,
-        "workspace_root": args.workspace_root,
+        "source_root": resolve_source_root(args.source_root),
+        "runtime_home": resolve_runtime_home(args.runtime_home),
+        "workspace_root": resolve_workspace_root(args.workspace_root),
         "workspace_id": args.workspace_id,
         "profile_id": args.profile_id,
         "entry_surface": "cli",

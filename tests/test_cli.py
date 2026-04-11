@@ -13,6 +13,15 @@ class GarageCliTests(unittest.TestCase):
     def setUp(self) -> None:
         self.repo_root = Path(__file__).resolve().parents[1]
 
+    def test_cli_version_flag(self) -> None:
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            exit_code = main(["--version"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("garage", stdout.getvalue())
+        self.assertEqual(stderr.getvalue(), "")
+
     def test_cli_create_prints_launch_summary_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             runtime_home = Path(tmp_dir) / "runtime-home"
