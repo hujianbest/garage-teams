@@ -11,6 +11,7 @@ from typing import Sequence
 from .install_layout import package_version, resolve_runtime_home, resolve_source_root, resolve_workspace_root
 from .launcher import BootstrapConfig, BootstrapError, LaunchMode
 from .runtime_home_doctor import DoctorSeverity, diagnose_runtime_home, findings_as_jsonable
+from .runtime_ops import compute_install_diagnostics
 from .session_api import SessionApi
 
 
@@ -57,6 +58,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Treat warnings (for example missing directories) as failures.",
     )
 
+    status = subparsers.add_parser("status", help="Print local runtime diagnostics (no session required).")
+    _add_common_arguments(status)
+
     return parser
 
 
@@ -81,6 +85,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             json.dump(payload, sys.stdout, indent=2, sort_keys=True)
             sys.stdout.write("\n")
             return 0 if ok else 1
+
+        if args.command == "status":
+            payload = compute_install_diagnostics(
+                source_root=resolve_source_root(args.source_root),
+                runtime_home=resolve_runtime_home(args.runtime_home),
+                workspace_root=resolve_workspace_root(args.workspace_root),
+                workspace_id=args.workspace_id,
+                profile_id=args.profile_id,
+                entry_surface="cli",
+                host_adapter_id=args.host_adapter_id,
+            )
+            json.dump(payload, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+            return 0
 
         api = SessionApi()
         config = _config_from_args(args)

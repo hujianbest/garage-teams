@@ -138,6 +138,41 @@ class GarageCliTests(unittest.TestCase):
             payload = json.loads(stdout.getvalue())
             self.assertTrue(payload["ok"])
 
+    def test_cli_status_reports_health(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            runtime_home = Path(tmp_dir) / "runtime-home"
+            workspace_root = Path(tmp_dir) / "workspace"
+            workspace_root.mkdir()
+            for sub in ("profiles", "config", "adapters", "cache"):
+                (runtime_home / sub).mkdir(parents=True)
+            (runtime_home / "profiles" / "dogfood.json").write_text(
+                json.dumps({"providerId": "provider.dogfood", "modelId": "m", "adapterId": "a"}),
+                encoding="utf-8",
+            )
+            (runtime_home / "adapters" / "a.json").write_text(
+                json.dumps({"providerId": "provider.dogfood"}),
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                exit_code = main(
+                    [
+                        "status",
+                        "--source-root",
+                        str(self.repo_root),
+                        "--runtime-home",
+                        str(runtime_home),
+                        "--workspace-root",
+                        str(workspace_root),
+                        "--profile-id",
+                        "dogfood",
+                    ]
+                )
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["health"], "healthy")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -23,6 +23,7 @@ from surfaces import ArtifactRoute, FileBackedSurfaceManager
 
 from .credential_resolution import CredentialResolutionError, ResolvedCredentials, resolve_credential_refs
 from .profile_loader import load_runtime_profile
+from .runtime_ops import ops_emit
 
 
 def _host_binding(
@@ -161,6 +162,14 @@ class GarageLauncher:
         *,
         existing_state: SessionState | None = None,
     ) -> LaunchResult:
+        ops_emit(
+            "garage.launch.start",
+            {
+                "launchMode": config.launch_mode.value,
+                "profileId": config.profile_id,
+                "entrySurface": config.entry_surface,
+            },
+        )
         topology = self._resolve_topology(config)
         profile = load_runtime_profile(
             topology.runtime_home,
@@ -176,8 +185,17 @@ class GarageLauncher:
         services = self._build_runtime_services(topology, profile, host, resolved_credentials)
         session_state = self._enter_runtime(config, services, existing_state)
         session_route = services.surfaces.write_session_state(session_state)
+        launcher_id = f"launcher.{config.profile_id}.{session_state.session_id}"
+        ops_emit(
+            "garage.launch.complete",
+            {
+                "launcherId": launcher_id,
+                "sessionId": session_state.session_id,
+                "sessionStatus": session_state.session_status.value,
+            },
+        )
         return LaunchResult(
-            launcher_id=f"launcher.{config.profile_id}.{session_state.session_id}",
+            launcher_id=launcher_id,
             config=config,
             services=services,
             session_state=session_state,

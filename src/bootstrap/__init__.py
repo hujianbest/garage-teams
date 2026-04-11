@@ -18,6 +18,13 @@ from .install_layout import (
 )
 from .host_bridge import HostBridgeLaunchRequest, HostBridgeSessionApi
 from .runtime_home_doctor import DoctorFinding, DoctorSeverity, diagnose_runtime_home, findings_as_jsonable
+from .runtime_ops import (
+    HealthStatus,
+    compute_install_diagnostics,
+    launch_summary_diagnostics,
+    ops_emit,
+    recent_ops_events,
+)
 from .launcher import (
     BootstrapConfig,
     BootstrapError,
@@ -37,6 +44,7 @@ __all__ = [
     "DoctorFinding",
     "DoctorSeverity",
     "GarageLauncher",
+    "HealthStatus",
     "RUNTIME_HOME_SCHEMA_VERSION",
     "HostBridgeLaunchRequest",
     "HostBridgeSessionApi",
@@ -51,10 +59,14 @@ __all__ = [
     "WebControlPlane",
     "WebControlPlaneConfig",
     "WebControlPlaneState",
+    "compute_install_diagnostics",
     "diagnose_runtime_home",
     "findings_as_jsonable",
+    "launch_summary_diagnostics",
     "load_runtime_profile",
+    "ops_emit",
     "package_version",
+    "recent_ops_events",
     "merge_credential_ref_declarations",
     "redact_text",
     "resolve_credential_refs",
