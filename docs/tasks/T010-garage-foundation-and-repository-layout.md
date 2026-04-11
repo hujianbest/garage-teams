@@ -112,7 +112,7 @@
 - `tests/` 已建立当前 runtime package 的最小验证面。
 - `packs/` 已成为当前可见的 pack surface。
 - `packs/coding/` 与 `packs/product-insights/` 已成为两个 reference packs 的当前目录入口。
-- `.agents/skills/` 承接通用 agent skills 与 `skill-creator` 等辅助资产。
+- `.agents/skills/` 承接通用 agent skills 与当前本地辅助技能资产。
 - `.garage/` 与 root-level `artifacts/`、`evidence/`、`sessions/`、`archives/` 继续作为当前 file-backed surfaces。
 
 同时完成了这些入口同步：

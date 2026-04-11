@@ -1,46 +1,45 @@
 # Garage
 
-`Garage` 是一个面向 `solo creator` 的、`local-first`、`workspace-first` 的 agent runtime。
-它想做的不是另一个聊天壳，而是一套能组织 AI 团队、沉淀 evidence、在治理下持续成长的 `Creator OS` 骨架。
+`Garage` 是一个面向 `solo creator` 的开源 agent runtime。
 
-当前仓库是 `Garage` 的开源主仓。现阶段它同时扮演：
+它的目标不是再做一个聊天壳，而是把下面这些东西变成同一个长期系统：
 
-- `Garage Source Root`
-- 当前默认的 dogfooding workspace
-- reference packs、runtime scaffolding 和 docs truth sources 的承载面
+- AI 团队协作
+- `workspace-first` 的 file-backed facts
+- packs / contracts 驱动的能力扩展
+- evidence、governance 和长期成长
 
-## 当前状态
+当前仓库是 `Garage` 的主开发仓，既承载源码与设计文档，也承载当前默认的 dogfooding workspace。
 
-这个项目已经可以被“运行”，但还不是一个已经打包好的 end-user app。
+## 一句话状态
+
+`Garage` 现在已经能跑通一条最小 runtime 主链，但还不是一个已经打包完成的终端产品。
 
 今天仓库里已经有：
 
 - `src/` 下的 runtime topology、bootstrap 和 execution layer 骨架
-- `Product Insights Pack` 和 `Coding Pack` 两个 reference packs 的 contract surface
-- `artifacts/`、`evidence/`、`sessions/`、`archives/`、`.garage/` 这套 file-backed workspace surfaces
-- 用 `unittest` 维护的最小回归验证
+- `coding` 与 `product-insights` 两个 reference packs
+- `artifacts/`、`evidence/`、`sessions/`、`archives/`、`.garage/` 这套 workspace-first surfaces
+- `unittest` 覆盖的最小回归验证
 
 今天还没有：
 
-- 稳定的 `garage` CLI 命令
-- GUI / IDE product surface
+- 稳定的 `garage` CLI
+- GUI 或完整 IDE 产品入口
 - installer / daemon / 多 workspace supervisor
-- 完整 provider 配置、secrets 管理和生产级 execution backends
+- 生产级 provider 配置、secrets 管理和 execution backend
 
-如果你是第一次进入这个仓库，最重要的判断是：
+如果你是第一次打开这个仓库，可以直接把它理解成：
 
-**当前最靠谱的运行方式，是把它当成一个 Python runtime scaffold + docs-first open-source project 来运行，而不是把它当成已经交付完成的桌面应用或 SaaS。**
-
-## 环境要求
-
-- `Python 3.12+`
-- 可选：`PyYAML`
-  只在维护 `.agents/skills/skill-creator/` 下的脚本时需要
+**一个 docs-first、runtime-first、正在演进中的开源 `Creator OS` scaffold。**
 
 ## 快速开始
 
-1. 克隆仓库并进入根目录。
-2. 让 Python 能导入 `src/` 下的运行时代码。
+### 环境要求
+
+- `Python 3.12+`
+
+### 先让 Python 能导入 `src/`
 
 PowerShell:
 
@@ -54,17 +53,17 @@ bash / zsh:
 export PYTHONPATH=src
 ```
 
-## 当前项目怎么运行
+## 现在怎么运行
 
-### 1. 运行测试套件
+### 1. 跑测试
 
-这是当前最直接的“项目是否能跑起来”的验证方式：
+这是当前最稳妥的运行入口：
 
 ```bash
 python -m unittest discover -s tests
 ```
 
-这会验证当前已经落下来的实现切片，包括：
+这会验证当前已经落下来的主链，包括：
 
 - runtime topology bindings
 - unified bootstrap chain
@@ -72,18 +71,9 @@ python -m unittest discover -s tests
 - reference pack registry loading
 - provider / tool execution skeleton
 
-### 2. 运行一个最小 bootstrap demo
+### 2. 跑一个最小 bootstrap demo
 
-如果你想真的“启动一次 Garage runtime”，可以直接在 Python 里调用 `GarageLauncher`。
-
-下面这个例子会：
-
-- 使用当前仓库作为 `source root`
-- 在临时目录里创建 `runtime home`
-- 在临时目录里创建外部 `workspace`
-- 加载 `packs/` 下的 reference packs
-- 创建一个新的 `coding` session
-- 把 session state 落到 workspace surface
+当前没有稳定 CLI，所以真正“启动一次 Garage”最直接的办法，是直接调用 `GarageLauncher`：
 
 ```python
 from pathlib import Path
@@ -117,20 +107,27 @@ with TemporaryDirectory() as tmp:
     print(result.session_route.file_path)
 ```
 
-说明：
+这个 demo 当前能证明：
 
-- 这个 demo 不需要 provider API key。
-- 它验证的是当前的 topology、bootstrap、registry、governance 和 workspace surface 主链。
-- 现在的 execution layer 已经有统一对象和测试，但还不是完整的生产级 provider runtime。
+- source root / runtime home / workspace 三层绑定能被正确解析
+- reference packs 能从 `packs/` 被加载
+- runtime services 能被装配
+- 新 session 能被创建并落盘到 workspace surfaces
 
-### 3. 以当前仓库作为 dogfooding workspace 运行
+当前它还不能证明：
 
-当前仓库处于 `source-coupled workspace mode`：
+- 你已经拿到了稳定 CLI
+- execution layer 已经接好生产级 provider
+- Garage 已经是 end-user ready app
 
-- 仓库根目录既是 `source root`
-- 也是当前默认 dogfooding workspace
+## 当前仓库如何理解
 
-这意味着如果你故意把 repo root 当 workspace，用到的主事实面会是：
+这个仓库目前运行在 `source-coupled workspace mode`：
+
+- 仓库根目录是 `Garage Source Root`
+- 仓库根目录也可以作为默认 dogfooding workspace
+
+这就是为什么你会在根目录看到：
 
 - `artifacts/`
 - `evidence/`
@@ -138,25 +135,25 @@ with TemporaryDirectory() as tmp:
 - `archives/`
 - `.garage/`
 
-对开源贡献者来说，更推荐先用上面的“临时外部 workspace”例子，这样不会把 demo 状态混进你的 clone。
+对贡献者来说，更推荐先用临时外部 workspace 跑 demo，而不是直接把 repo root 当测试 workspace，这样不会把运行状态混进本地 clone。
 
 ## 仓库结构
 
 | 路径 | 作用 |
 | --- | --- |
-| `README.md` | 仓库级入口 |
+| `README.md` | 仓库入口 |
 | `AGENTS.md` | 仓库级 agent 约定 |
 | `pyproject.toml` | Python package / `src` layout 入口 |
 | `src/` | `Garage` runtime 的当前实现面 |
 | `docs/` | 主文档树与 source-of-truth |
 | `packs/` | 当前 reference packs |
-| `tests/` | `unittest` 验证面 |
-| `.agents/skills/` | 通用 skills 与 skill 工具链 |
+| `tests/` | 当前最小验证面 |
+| `.agents/skills/` | 仓库内使用的本地 skills 资产 |
 | `artifacts/`、`evidence/`、`sessions/`、`archives/`、`.garage/` | workspace-first file-backed surfaces |
 
 ## 先读哪里
 
-推荐阅读顺序：
+如果你想理解项目本体，推荐顺序是：
 
 1. `docs/README.md`
 2. `docs/VISION.md`
@@ -167,15 +164,15 @@ with TemporaryDirectory() as tmp:
 7. `docs/design/`
 8. `docs/tasks/README.md`
 
-如果你只关心“当前为什么这样运行”，优先看：
+如果你只关心“现在为什么能这样运行”，优先看：
 
 - `docs/features/F210-runtime-home-and-workspace-topology.md`
 - `docs/features/F220-runtime-bootstrap-and-entrypoints.md`
 - `docs/features/F230-runtime-provider-and-tool-execution.md`
 
-## 开发与验证
+## 当前实现边界
 
-当前仓库的实现约束：
+当前主线坚持这些约束：
 
 - `Markdown-first`
 - `file-backed`
@@ -183,35 +180,21 @@ with TemporaryDirectory() as tmp:
 - `workspace-first`
 - `one runtime, many entry surfaces`
 
-当前没有统一 CI；最小回归入口是：
+也就是说：
 
-```bash
-python -m unittest discover -s tests
-```
+- 设计真相主要在 `docs/`
+- 运行时代码主要在 `src/`
+- pack 能力面主要在 `packs/`
+- workspace facts 主要留在根部 surfaces，而不是被 runtime home 吞掉
 
-## Skill 工具链
+## 当前不是哪些东西
 
-如果你要维护 `.agents/skills/` 下的 skills，可以进入 `.agents/skills/skill-creator/` 运行：
+为了避免误解，这个仓库当前不是：
 
-```bash
-python -m scripts.quick_validate <skill-dir>
-python -m scripts.package_skill <skill-dir> [output-dir]
-python -m scripts.aggregate_benchmark <benchmark-dir>
-python -m scripts.generate_report <json-input> [-o output.html]
-python -m scripts.run_eval ...
-python -m scripts.run_loop ...
-```
+- 一个已经打磨完成的通用桌面应用
+- 一个已经稳定发布的 CLI 工具
+- 一个单纯的 workflow 资料库
 
-注意：
+它更准确的说法是：
 
-- 这些脚本一般需要 `PyYAML`
-- 部分评测命令还依赖 `claude` CLI
-- 这套工具链是 skill 维护面，不等于 Garage end-user runtime
-
-## 当前非目标
-
-当前 README 不应让你误解这件事：
-
-- `Garage` 还不是一个已经打磨完成的通用桌面产品
-- 这个仓库也不是单纯的 workflow 资料库
-- 目前最真实的状态，是一个 docs-first、runtime-first、open-source 演进中的 `Creator OS` 骨架
+**一个正在把 `Creator OS` 设计落成真实 runtime 的开源主仓。**

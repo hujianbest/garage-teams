@@ -51,4 +51,4 @@
 1. workflow skill 继续使用 `ahe-*` 命名族，但路径引用必须使用当前真实路径。
 2. 每个 skill 入口统一放在 `packs/coding/skills/<skill-name>/SKILL.md`。
 3. 长案例、模板说明和补充材料放到各 skill 的 `references/` 或共享 `docs/` / `templates/` 中。
-4. 需要校验、打包或评测时，使用 `.agents/skills/skill-creator/` 下的脚本，而不是在本目录重复造工具。
+4. 需要维护或验证 skill 时，优先使用当前真实存在的 skill 入口，例如 `.agents/skills/writing-skills/SKILL.md`；不要再假设旧的本地脚本工具链或统一脚本入口仍然存在。

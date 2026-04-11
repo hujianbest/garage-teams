@@ -28,7 +28,7 @@
 
 - 能用 Markdown 清楚表达的知识，不要过早做成脚本。
 - 只有当能力需要重复执行、自动校验或跨环境复用时，再落成脚本或工具。
-- 若需要 skill 工具链，优先复用 `.cursor/skills/skill-creator/`。
+- 若需要 skill 写作或维护 guidance，优先复用当前真实存在的入口，例如 `.agents/skills/writing-skills/SKILL.md`；不要假设旧的 Cursor skill 工具链目录仍然存在。
 
 ## 6. 证据优先于印象
 

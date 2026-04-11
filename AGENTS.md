@@ -50,7 +50,7 @@
 | `packs/product-insights/skills/` | 产品洞察 workflow 来源资产入口 |
 | `.agents/skills/` | 通用 agent skills 与 skill 工具链 |
 
-## Cursor / 脚本说明
+## Cursor / 技能说明
 
 本仓库当前仍以 Markdown 资产和少量 Python 辅助脚本为主，没有业务应用构建链路。
 
@@ -59,20 +59,22 @@
 - `Python 3.12+`
 - `PyYAML`（按需安装）
 
-### 常用脚本
+### 当前本地 skills
 
-以下脚本都应在 `.agents/skills/skill-creator/` 下执行：
+旧的本地 skill 脚本目录已移除。
 
-| 命令 | 用途 |
+当前仓库内仍保留这些本地 skills 入口：
+
+| 路径 | 用途 |
 | --- | --- |
-| `python -m scripts.quick_validate <skill-dir>` | 校验 `SKILL.md` frontmatter |
-| `python -m scripts.package_skill <skill-dir> [output-dir]` | 打包 skill |
-| `python -m scripts.aggregate_benchmark <benchmark-dir>` | 汇总 benchmark |
-| `python -m scripts.generate_report <json-input> [-o output.html]` | 生成 HTML 报告 |
-| `python -m scripts.run_eval ...` | 触发评测，依赖 `claude` CLI |
-| `python -m scripts.run_loop ...` | 评测改进循环，依赖 `claude` CLI |
+| `.agents/skills/find-skills/SKILL.md` | 查找或发现可用 skill |
+| `.agents/skills/writing-docs/SKILL.md` | 维护 `docs/` 下的 Garage 系统文档 |
+| `.agents/skills/writing-skills/SKILL.md` | 创建、编辑和验证 skill 文档 |
+| `.agents/skills/vision-obey/SKILL.md` | 对照 `docs/` 主线做一致性检查 |
+| `.agents/skills/architecture-designer/SKILL.md` | 辅助架构设计工作 |
 
 ### 注意事项
 
 - `references/` 类型目录若存在，默认视为参考资料，不强行安装或运行其依赖。
-- 本仓库当前没有统一 lint、CI 或自动化测试套件；核心验证方式仍是路径检查和上述 skill 脚本。
+- 本仓库当前没有内置的统一 skill 脚本工具链。
+- 本仓库当前没有统一 lint、CI 或自动化测试套件；核心验证方式仍是路径检查和现有 Python 测试。
