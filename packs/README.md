@@ -2,12 +2,12 @@
 
 - 状态: phase 1 scaffold
 - 日期: 2026-04-11
-- 定位: `garage/packs/` 是 `Garage` reference packs 的实现根目录，pack-specific 角色、节点、artifact、evidence 与治理 overlay 都应留在各自 pack 下。
+- 定位: `packs/` 是 `Garage` reference packs 的当前 pack surface，pack-specific 角色、节点、artifact、evidence 与治理 overlay 都应留在各自 pack 下。
 
 ## 当前 phase 1 packs
 
-- `garage/packs/product-insights/`
-- `garage/packs/coding/`
+- `packs/product-insights/`
+- `packs/coding/`
 
 ## 边界
 

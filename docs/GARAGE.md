@@ -1,58 +1,59 @@
-# Garage
+# M030: Garage
 
+- Document ID: `M030`
 - 状态: 草稿
 - 日期: 2026-04-11
 - 定位: `Garage` 是一个服务个人创作者的 `Creator OS`，它不是单点 AI 工具，而是一群像在车库里创业一样协作的 AI 角色所组成的长期创作系统。
 - 当前阶段: phase 1
 - 关联文档:
   - `docs/README.md`
-  - `docs/garage/garage-extensible-architecture.md`
-  - `docs/garage/garage-core-subsystems-architecture.md`
-  - `docs/garage/garage-runtime-bootstrap-and-entrypoints.md`
-  - `docs/garage/garage-runtime-provider-and-tool-execution.md`
-  - `docs/garage/garage-runtime-home-and-workspace-topology.md`
-  - `docs/garage/garage-phase1-core-runtime-records.md`
-  - `docs/garage/garage-phase1-session-lifecycle-and-handoffs.md`
-  - `docs/garage/garage-phase1-governance-model.md`
-  - `docs/garage/garage-phase1-artifact-and-evidence-surface.md`
-  - `docs/garage/garage-shared-contracts.md`
-  - `docs/garage/garage-phase1-shared-contract-schemas.md`
-  - `docs/garage/garage-continuity-memory-skill-architecture.md`
-  - `docs/garage/garage-phase1-continuity-mapping-and-promotion.md`
-  - `docs/garage/garage-phase1-reference-packs.md`
-  - `docs/garage/garage-product-insights-pack-design.md`
-  - `docs/garage/garage-coding-pack-design.md`
-  - `docs/garage/garage-phase1-cross-pack-bridge.md`
+  - `docs/VISION.md`
+  - `docs/ROADMAP.md`
+  - `docs/architecture/A110-garage-extensible-architecture.md`
+  - `docs/architecture/A120-garage-core-subsystems-architecture.md`
+  - `docs/features/F220-runtime-bootstrap-and-entrypoints.md`
+  - `docs/features/F230-runtime-provider-and-tool-execution.md`
+  - `docs/features/F210-runtime-home-and-workspace-topology.md`
+  - `docs/features/F030-core-runtime-records.md`
+  - `docs/features/F040-session-lifecycle-and-handoffs.md`
+  - `docs/features/F050-governance-model.md`
+  - `docs/features/F060-artifact-and-evidence-surface.md`
+  - `docs/features/F010-shared-contracts.md`
+  - `docs/features/F020-shared-contract-schemas.md`
+  - `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`
+  - `docs/features/F070-continuity-mapping-and-promotion.md`
+  - `docs/features/F110-reference-packs.md`
+  - `docs/design/D110-garage-product-insights-pack-design.md`
+  - `docs/design/D120-garage-coding-pack-design.md`
+  - `docs/features/F120-cross-pack-bridge.md`
   - `docs/tasks/README.md`
-  - `garage/README.md`
-  - `docs/architecture/ahe-platform-first-multi-agent-architecture.md`
-  - `docs/analysis/hermes-agent-harness-engineering-analysis.md`
-  - `docs/analysis/clowder-ai-harness-engineering-analysis.md`
+  - `packs/README.md`
+  - `docs/wiki/W140-ahe-platform-first-multi-agent-architecture.md`
+  - `docs/wiki/W030-hermes-agent-harness-engineering-analysis.md`
+  - `docs/wiki/W010-clowder-ai-harness-engineering-analysis.md`
 
 ## 0. 阅读顺序
 
 如果你想快速理解 `Garage`，建议按下面顺序阅读：
 
-1. 先读本文，理解 `Garage` 的品牌语义、项目定位和愿景。
-2. 再读 `docs/garage/garage-extensible-architecture.md`，理解 phase 1 的可扩展分层架构。
-3. 再读 `docs/garage/garage-core-subsystems-architecture.md`，理解 `Garage Core` 的五个稳定子系统与主链交互。
-4. 再读 `docs/garage/garage-runtime-bootstrap-and-entrypoints.md`，理解 `Garage` 作为独立可运行程序时的启动链与多入口统一模型。
-5. 再读 `docs/garage/garage-runtime-provider-and-tool-execution.md`，理解 provider / tool execution 层如何作为 runtime 内部执行面存在。
-6. 再读 `docs/garage/garage-runtime-home-and-workspace-topology.md`，理解 `source root / runtime home / workspace` 的分层与当前 repo-local dogfooding 形态。
-7. 再读 `docs/garage/garage-phase1-core-runtime-records.md`，冻结 `Garage Core` 在 phase 1 的运行时对象、持久记录与写入语义。
-8. 再读 `docs/garage/garage-phase1-session-lifecycle-and-handoffs.md`，冻结 `session` 的推进、暂停、交接、返工、收尾与归档准备语义。
-9. 再读 `docs/garage/garage-phase1-governance-model.md`，冻结 `global / core / pack / node` 四层治理与 gate 语义。
-10. 再读 `docs/garage/garage-phase1-artifact-and-evidence-surface.md`，冻结 phase 1 的文件表面、权威规则与归档语义。
-11. 再读 `docs/garage/garage-shared-contracts.md`，理解 `Garage` 用什么共享 contract 承接 pack、role、node、artifact、evidence 与 host。
-12. 再读 `docs/garage/garage-phase1-shared-contract-schemas.md`，冻结 6 类 contract 的最小 schema shape。
-13. 再读 `docs/garage/garage-continuity-memory-skill-architecture.md`，理解 `memory`、`session`、`skill`、`evidence` 的持续性分层。
-14. 再读 `docs/garage/garage-phase1-continuity-mapping-and-promotion.md`，冻结 phase 1 的 continuity 候选来源与 promotion 规则。
-15. 再读 `docs/garage/garage-phase1-reference-packs.md`，理解为什么 phase 1 先用 `Coding Pack` 与 `Product Insights Pack` 验证平台中立性。
-16. 再读 `docs/garage/garage-product-insights-pack-design.md` 与 `docs/garage/garage-coding-pack-design.md`，理解两个 reference packs 的详细设计。
-17. 再读 `docs/garage/garage-phase1-cross-pack-bridge.md`，冻结 `product-insights -> coding` 的 bridge seam。
-18. 再读 `docs/tasks/README.md`，按开发顺序进入 phase 1 的实现任务拆解。
-19. 再读 `garage/README.md`，理解 phase 1 的实现骨架、workspace surfaces 与目录边界。
-20. 最后再进入 `ahe-coding-skills/README.md` 与 `ahe-product-skills/README.md`，判断现有 `coding` / `product insights` 资产如何逐步转译成 `Garage` 下的 reference packs。
+1. 先读 `docs/README.md`，理解当前 `docs` 的信息架构与入口分层。
+2. 再读 `docs/VISION.md`，理解 `Garage` 为什么存在，以及它想建立怎样的创作工作方式。
+3. 再读本文，理解 `Garage` 的品牌语义、项目定位和主线阅读顺序。
+4. 再读 `docs/ROADMAP.md`，理解 `docs/features/` 的稳定 feature IDs、当前 feature map 和路线图。
+5. 再读 `docs/architecture/A110-garage-extensible-architecture.md`，理解 phase 1 的可扩展分层架构。
+6. 再读 `docs/architecture/A120-garage-core-subsystems-architecture.md`，理解 `Garage Core` 的五个稳定子系统与主链交互。
+7. 再读 `docs/features/F010-shared-contracts.md` 与 `docs/features/F020-shared-contract-schemas.md`，理解共享 contracts 及其 schema shape。
+8. 再读 `docs/features/F030-core-runtime-records.md`，冻结 `Garage Core` 在 phase 1 的运行时对象、持久记录与写入语义。
+9. 再读 `docs/features/F040-session-lifecycle-and-handoffs.md` 与 `docs/features/F050-governance-model.md`，理解 `session` 推进与四层治理语义。
+10. 再读 `docs/features/F060-artifact-and-evidence-surface.md`，冻结 phase 1 的文件表面、权威规则与归档语义。
+11. 再读 `docs/architecture/A130-garage-continuity-memory-skill-architecture.md` 与 `docs/features/F070-continuity-mapping-and-promotion.md`，理解 continuity 分层与 promotion 规则。
+12. 再读 `docs/features/F110-reference-packs.md` 与 `docs/features/F120-cross-pack-bridge.md`，理解 reference packs 与 `product-insights -> coding` 的 bridge seam。
+13. 再读 `docs/design/D110-garage-product-insights-pack-design.md` 与 `docs/design/D120-garage-coding-pack-design.md`，理解两个 reference packs 的详细设计。
+14. 再读 `docs/features/F210-runtime-home-and-workspace-topology.md`，理解 `source root / runtime home / workspace` 的分层与当前 repo-local dogfooding 形态。
+15. 再读 `docs/features/F220-runtime-bootstrap-and-entrypoints.md` 与 `docs/features/F230-runtime-provider-and-tool-execution.md`，理解独立 runtime 的启动链与 execution layer。
+16. 再读 `docs/tasks/README.md`，按开发顺序进入 phase 1 的实现任务拆解。
+17. 再读 `packs/README.md`，理解当前 pack surface、source asset 入口与目录边界。
+18. 最后再进入 `packs/coding/skills/README.md` 与 `packs/product-insights/skills/README.md`，判断现有 `coding` / `product insights` 资产如何逐步转译成 `Garage` 下的 reference packs。
 
 ## 1. 为什么叫 Garage
 
