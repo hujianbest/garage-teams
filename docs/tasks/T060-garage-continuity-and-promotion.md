@@ -102,5 +102,5 @@
 
 ## 9. 完成后进入哪一篇
 
-- `docs/tasks/T080-garage-phase-1-product-insights-pack.md`
-- `docs/tasks/T090-garage-phase-1-coding-pack.md`
+- `docs/tasks/T080-garage-product-insights-pack.md`
+- `docs/tasks/T090-garage-coding-pack.md`

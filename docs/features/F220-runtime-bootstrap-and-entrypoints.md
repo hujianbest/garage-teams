@@ -4,12 +4,14 @@
 - 状态: 草稿
 - 日期: 2026-04-11
 - 定位: 定义 `Garage` 作为独立可运行程序时的启动链与多入口统一模型，确保未来无论从 `CLI`、`IDE`、聊天入口还是轻 UI 进入，都进入同一个 runtime core，而不是各自长出独立流程。
-- 当前阶段: phase 1
+- 当前阶段: 完整架构主线，实施将按切片推进
 - 关联文档:
   - `docs/GARAGE.md`
   - `docs/architecture/A110-garage-extensible-architecture.md`
   - `docs/architecture/A120-garage-core-subsystems-architecture.md`
+  - `docs/architecture/A140-garage-system-architecture.md`
   - `docs/features/F010-shared-contracts.md`
+  - `docs/features/F080-garage-self-evolving-learning-loop.md`
   - `docs/features/F230-runtime-provider-and-tool-execution.md`
   - `docs/features/F210-runtime-home-and-workspace-topology.md`
 
@@ -83,7 +85,7 @@
 | `Entry Surface` | 接住外部交互方式 | `CLI`、`IDE`、聊天入口、轻 UI |
 | `Bootstrap Layer` | 把外部入口翻译成统一 runtime 启动动作 | `GarageLauncher`、`RuntimeProfile`、`WorkspaceBinding`、`HostAdapterBinding` |
 | `Runtime Core` | 承接统一会话、治理、路由与追溯语义 | `Session`、`Registry`、`Governance`、`Artifact Routing`、`Evidence` |
-| `Capability Layer` | 承接 pack 与运行时执行面 | `Capability Packs`、provider/tool execution layer |
+| `Capability Layer` | 承接 pack、执行面与成长面 | `Capability Packs`、provider/tool execution layer、growth services |
 
 这里最关键的判断是：
 
@@ -114,14 +116,14 @@
 
 ## 6. canonical bootstrap sequence
 
-phase 1 建议把启动链固定成下面这条责任顺序：
+当前主线建议把启动链固定成下面这条责任顺序：
 
 1. 解析 `GarageLauncher` 的启动意图。
 2. 解析当前 `RuntimeProfile`。
 3. 解析目标 `WorkspaceBinding`。
 4. 选择并绑定 `HostAdapterBinding`。
 5. 初始化 `RuntimeServices`。
-6. 加载 shared contracts、packs、governance artifacts 与 workspace surfaces。
+6. 加载 shared contracts、packs、governance artifacts、continuity stores 与 workspace surfaces。
 7. 创建或恢复 `Session`。
 8. 把后续交互统一送入 `Garage Core`。
 
@@ -199,30 +201,30 @@ bootstrap layer 不应越权：
 - 不决定 artifact 语义
 - 不替代 governance
 
-## 10. phase 1 对启动链的收敛
+## 10. 当前实现对启动链的收敛
 
-phase 1 先只冻结这些判断：
+当前实现阶段先只冻结这些判断：
 
 - `Garage` 必须有统一 launcher 语义
 - 不同入口共享同一 bootstrap chain
 - bootstrap 必须显式解析 profile、workspace 与 host adapter
 - session 创建 / 恢复不能散落在不同入口里
 
-phase 1 还不需要先做：
+当前实现阶段还不需要先做：
 
 - 多进程 supervisor
 - 常驻 daemon
 - 远程控制面 API
 - 多租户入口调度器
 
-## 11. phase 1 非目标
+## 11. 当前实现非目标
 
 - 不先设计完整命令集
 - 不先设计完整 GUI
 - 不先冻结所有 host adapter 的具体实现
 - 不先决定 `CLI-first` 还是 `IDE-first` 的最终产品姿态
 
-phase 1 只需要先证明：
+当前实现阶段只需要先证明：
 
 - 入口很多，但 runtime 只有一个
 
@@ -233,5 +235,5 @@ phase 1 只需要先证明：
 - Host-neutral core：入口差异留在 adapter 与 bootstrap 边缘，不扩散进 core。
 - Session-first runtime：启动链必须服务 `Session` 的创建、恢复与稳定推进。
 - Pack-independent bootstrap：bootstrap 不解释 pack 内部术语，不为某个 pack 定制启动逻辑。
-- phase 1 克制：先冻结启动责任链，再考虑多进程、远程 API 与更重控制面。
+- 当前主线克制：先冻结启动责任链，再考虑多进程、远程 API 与更重控制面。
 

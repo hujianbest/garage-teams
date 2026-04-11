@@ -101,6 +101,6 @@
 
 ## 9. 完成后进入哪一篇
 
-- `docs/tasks/T060-garage-phase-1-continuity-and-promotion.md`
-- `docs/tasks/T070-garage-phase-1-reference-pack-shells.md`
-- `docs/tasks/T110-garage-phase-1-runtime-home-and-workspace-topology.md`
+- `docs/tasks/T060-garage-continuity-and-promotion.md`
+- `docs/tasks/T070-garage-reference-pack-shells.md`
+- `docs/tasks/T110-garage-runtime-home-and-workspace-topology.md`

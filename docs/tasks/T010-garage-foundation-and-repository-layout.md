@@ -99,8 +99,8 @@
 
 ## 9. 完成后进入哪一篇
 
-- `docs/tasks/T020-garage-phase-1-core-runtime-records.md`
-- `docs/tasks/T030-garage-phase-1-shared-contracts-and-registry.md`
+- `docs/tasks/T020-garage-core-runtime-records.md`
+- `docs/tasks/T030-garage-shared-contracts-and-registry.md`
 
 ## 10. 本轮完成结果
 

@@ -1,153 +1,119 @@
-# A120: Garage Core Subsystems Architecture
+# A120: Garage Runtime Subsystems Architecture
 
 - Architecture ID: `A120`
 - 状态: 草稿
 - 日期: 2026-04-11
-- 定位: 定义 `Garage Core` 在 phase 1 应先冻结的分层子系统边界，确保未来新增能力时可以通过注册和映射扩展，而不是回头修改核心。
-- 当前阶段: phase 1
+- 定位: 在 `A110` 已冻结顶层分层架构之后，进一步定义 `Garage` 完整 runtime 的稳定子系统，明确哪些子系统负责启动、协调、执行、追溯与成长，以及它们之间如何协作。
+- 当前阶段: 完整架构主线，实施将按切片推进
 - 关联文档:
   - `docs/GARAGE.md`
   - `docs/architecture/A110-garage-extensible-architecture.md`
-  - `docs/features/F030-core-runtime-records.md`
-  - `docs/features/F010-shared-contracts.md`
   - `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`
-  - `docs/features/F110-reference-packs.md`
-  - `docs/wiki/W030-hermes-agent-harness-engineering-analysis.md`
-  - `docs/wiki/W010-clowder-ai-harness-engineering-analysis.md`
-  - `docs/wiki/W140-ahe-platform-first-multi-agent-architecture.md`
+  - `docs/architecture/A140-garage-system-architecture.md`
+  - `docs/features/F010-shared-contracts.md`
+  - `docs/features/F030-core-runtime-records.md`
+  - `docs/features/F050-governance-model.md`
+  - `docs/features/F060-artifact-and-evidence-surface.md`
+  - `docs/features/F080-garage-self-evolving-learning-loop.md`
+  - `docs/features/F210-runtime-home-and-workspace-topology.md`
+  - `docs/features/F220-runtime-bootstrap-and-entrypoints.md`
+  - `docs/features/F230-runtime-provider-and-tool-execution.md`
 
 ## 1. 文档目标与范围
 
 这篇文档只回答一个问题：
 
-**当 `Garage` 已经确定为一个可扩展的 `Creator OS` 之后，平台中立的 `Garage Core` 应该怎样继续拆成高质量的稳定子系统。**
-
-本文覆盖的范围只有 `Garage Core` 自身，不展开完整实现，也不展开具体 pack 的内部流程。
+**当 `Garage` 被视为一个完整的长期 runtime 时，它内部应拆成哪些稳定子系统，才能同时支撑多入口、一致执行、workspace-first 真相面，以及 evidence 驱动的主动成长。**
 
 本文覆盖：
 
-- `Session`
-- `Registry`
-- `Governance`
-- `Artifact Routing`
-- `Evidence`
+- 完整 runtime 的子系统边界
+- 子系统之间的主链交互
+- 关键稳定对象
+- 哪些职责属于 core，哪些职责属于 execution、growth 或 workspace 层
 
-本文暂不覆盖：
+本文不覆盖：
 
-- 具体 host 入口实现
-- 具体 pack 的角色清单与节点图
-- 完整 schema 字段全集
-- 数据库化或服务化实现
-- `memory` 与 `skill` 的完整子系统设计
+- 具体 pack 的内部流程图
+- 具体 provider 协议
+- 具体 tool 实现代码
+- 具体实施任务顺序
 
-当前阶段，我们先冻结子系统边界与交互关系，而不是立刻冻结所有实现细节。
+## 2. 为什么需要 runtime 子系统图
 
-## 2. 设计输入与吸收来源
+如果只停留在顶层分层而没有稳定子系统图，`Garage` 很容易出现三类混乱：
 
-`Garage Core` 不是从零发明，而是在现有参考基础上做收敛。
+- 入口、bootstrap、session 恢复和 provider 调用混在一起
+- `memory / skill / evidence / archive` 这些长期对象没有明确宿主
+- “主动成长”被写成一个口号，却没有稳定的 runtime 位置
 
-### 2.1 从 Hermes 吸收的部分
+因此，在完整架构里，需要把 `Garage` 明确拆成可以长期维护的子系统，而不是让每个入口、每个 pack 或每次新能力扩展都重新发明控制流。
 
-我们吸收的是结构思想，而不是产品形态：
+## 3. 子系统总览
 
-- 把 `session` 视为长期连续工作的第一等对象，而不是一次性对话容器
-- 强调高于入口的统一核心，避免不同入口各长一套流程语义
-- 坚持 `memory / session / skill` 分层，因此本设计明确把 `session` 与 `evidence` 分开
-- 扩展 seam 先定义边界，避免平台在增长中不断失控
+建议把 `Garage` runtime 稳定拆成下面 10 个子系统：
 
-不直接照抄的部分：
+| 子系统 | 主要作用 |
+| --- | --- |
+| `EntrySurface` | 接住用户交互与外部宿主入口 |
+| `Bootstrap` | 统一启动、恢复、profile 解析与 host 绑定 |
+| `Session` | 统一当前工作主线、上下文和 handoff 边界 |
+| `Registry` | 统一发现 pack、role、node、artifact role 与 capability 声明 |
+| `Governance` | 执行 review、approval、gate、archive 与成长治理 |
+| `ArtifactRouting` | 把中立工件意图映射到权威 workspace surfaces |
+| `EvidenceAndArchive` | 记录决策、验证、审计、archive 与 lineage |
+| `ExecutionLayer` | 统一 provider 调用、tool 调用与 execution trace |
+| `GrowthEngine` | 从 evidence 形成 proposal，并驱动 `memory / skill / runtime update` 的晋升流程 |
+| `ContinuityStores` | 承载 `memory`、`skill` 等长期资产及其回读语义 |
 
-- 单体 monolith 形态
-- 过深的运行时实现细节
-- 对个人 runtime 的具体产品壳层复刻
-
-### 2.2 从 Clowder 吸收的部分
-
-我们吸收的是平台化判断：
-
-- 平台是控制面，而不是 workflow 外壳
-- `registry`、共享契约和治理规则应独立成层
-- 治理应工件化，不能只藏在 prompt 或聊天历史里
-- adapter 吃掉宿主差异，避免 workflow 因入口变化而分叉
-
-不直接照抄的部分：
-
-- 团队级重型控制面
-- 多进程、多环境脚本体系的具体形态
-- 宽边界平台的全部复杂度
-
-## 3. Garage Core 的平台定位
-
-`Garage Core` 是 `Garage` 的平台中立稳定内核。
-
-它只理解中立对象，不理解具体创作领域术语。
-
-`Garage Core` 理解的对象：
-
-- `session`
-- `pack`
-- `role`
-- `node`
-- `artifact`
-- `evidence`
-- `approval`
-- `archive`
-
-`Garage Core` 不直接理解的对象：
-
-- `spec`
-- `insight memo`
-- `article`
-- `script`
-- `shotlist`
-- `release note`
-
-这些对象都应由各个 pack 自己映射到 core 的中立对象，而不是让 core 反过来理解具体领域名词。
-
-## 4. Garage Core 的内部总体结构
-
-建议把 `Garage Core` 明确拆成四层职责：
-
-| 层次 | 子系统 | 主要作用 |
-| --- | --- | --- |
-| 协调层 | `Session` | 统一会话生命周期、当前工作上下文与 handoff 边界 |
-| 能力与约束层 | `Registry`、`Governance` | 提供可发现能力与可执行规则 |
-| 落盘层 | `Artifact Routing` | 把中立工件意图映射到权威文件目标 |
-| 追溯层 | `Evidence` | 记录决策、验证、审批、归档与 lineage |
+## 4. 完整 runtime 结构图
 
 ```mermaid
-flowchart TD
-    entry[EntrySurface] --> session[Session]
+flowchart LR
+    entry[EntrySurface] --> bootstrap[Bootstrap]
+    bootstrap --> session[Session]
 
-    subgraph garageCore [GarageCore]
+    subgraph runtime [GarageRuntime]
         session --> registry[Registry]
         session --> governance[Governance]
         session --> routing[ArtifactRouting]
-        session --> evidence[Evidence]
+        session --> exec[ExecutionLayer]
+        session --> evidence[EvidenceAndArchive]
 
         registry --> governance
         registry --> routing
+        registry --> exec
+
         governance --> routing
         governance --> evidence
+        governance --> growth[GrowthEngine]
+
+        exec --> evidence
         routing --> evidence
+        evidence --> growth
+        growth --> continuity[ContinuityStores]
+        continuity --> session
     end
 
-    routing --> artifacts[MarkdownArtifactsAndSidecars]
-    evidence --> records[EvidenceRecordsAndLineage]
+    routing --> workspace[WorkspaceSurfaces]
+    evidence --> archives[ArchivesAndLineage]
 ```
 
 这张图表示的是责任方向，而不是实现顺序：
 
-- 所有入口先进入 `Session`
-- `Session` 通过 `Registry` 识别当前能力面
-- `Governance` 判断哪些动作被允许、阻塞或需要确认
-- `Artifact Routing` 把输出意图落到稳定文件面
-- `Evidence` 把关键过程沉淀为可追溯记录
+- 所有入口都先进入 `Bootstrap`
+- `Session` 是所有工作推进的统一边界
+- `Registry`、`Governance`、`ArtifactRouting`、`ExecutionLayer` 与 `EvidenceAndArchive` 围绕 `Session` 协作
+- `GrowthEngine` 不直接替代 `Session` 或 `Governance`，而是消费 evidence 并提出更新路径
+- `ContinuityStores` 通过回读影响未来的 session，但不能直接篡改当前证据
 
-## 5. 先冻结的核心对象
+## 5. 建议先冻结的稳定对象
 
-在继续展开子系统之前，建议先冻结一组最小中立对象，后文所有设计都围绕这些对象展开：
+为避免后续不同子系统各自发明名字，建议先冻结下面这组最小稳定对象：
 
+- `RuntimeProfile`
+- `WorkspaceBinding`
+- `HostAdapterBinding`
 - `SessionIntent`
 - `SessionState`
 - `SessionSnapshot`
@@ -156,273 +122,211 @@ flowchart TD
 - `NodeDefinition`
 - `ArtifactIntent`
 - `ArtifactDescriptor`
+- `ExecutionRequest`
+- `ExecutionContext`
+- `ExecutionTrace`
 - `PolicySet`
 - `EvidenceRecord`
+- `GrowthProposal`
+- `MemoryEntry`
+- `SkillAsset`
 - `LineageLink`
 
-这些对象不等于最终 schema，但它们是整个 core 能持续拆解的共同语言。
+这些对象不等于最终 schema，但它们应成为不同子系统之间的共同语言。
 
-在后续文档中，`RoleContract`、`WorkflowNodeContract` 等名称代表平台边界上的共享契约；而这里出现的 `RoleDefinition`、`NodeDefinition`，可以理解为这些 contract 被 `Garage Core` 装配之后的内部视图。
+## 6. 各子系统职责
 
-## 6. Session 子系统
+### 6.1 EntrySurface
 
-### 6.1 职责
+负责：
 
-- 作为所有入口共享的统一会话边界
-- 负责创建、恢复、暂停、结束 `session`
-- 维护当前 `pack`、当前 `node`、当前 handoff 与当前上下文指针
-- 把外部入口动作统一翻译成 core 可理解的会话动作
+- 接住 CLI、IDE、聊天入口、轻 UI 等外部交互
+- 收集启动意图和外部上下文
 
-### 6.2 不负责
+不负责：
 
-- 不声明 pack、role、node 本身
-- 不定义治理规则
-- 不解释具体领域工件语义
-- 不替代长期 `memory` 或 `skill` 子系统
+- pack 业务语义
+- session 真相
+- provider 或 tool 协议
 
-### 6.3 关键对象
+### 6.2 Bootstrap
 
-- `SessionId`
-- `SessionIntent`
-- `SessionState`
-- `SessionSnapshot`
-- `ContextPointer`
-- `HandoffRecord`
+负责：
 
-### 6.4 关键交互
+- 解析 `RuntimeProfile`
+- 绑定 `WorkspaceBinding`
+- 绑定 `HostAdapterBinding`
+- 创建或恢复 runtime services
+- 创建或恢复 `Session`
 
-- 启动或恢复时向 `Registry` 解析当前可用 `pack / role / node`
-- 在状态转移前向 `Governance` 请求适用规则与 gate
-- 形成输出意图时把 `ArtifactIntent` 交给 `Artifact Routing`
-- 在关键节点切换、审批、收尾时向 `Evidence` 写入记录
+不负责：
 
-### 6.5 Phase 1 边界
+- 领域工作流
+- memory / skill 晋升判断
+- provider 调用细节
 
-- 会话状态以文件为真相源
-- 面向机器的状态可使用轻量 sidecar，不要求全部写成 Markdown
-- 默认单创作者、单主线工作模式
-- 不处理实时多人协作、跨设备强同步或分布式锁
+### 6.3 Session
 
-## 7. Registry 子系统
+负责：
 
-### 7.1 职责
+- 创建、恢复、暂停和关闭工作主线
+- 维护当前 `pack / role / node / handoff / context`
+- 作为所有动作的统一会话边界
 
-- 作为 `pack`、`role`、`node`、`artifact role` 的统一注册面
-- 让平台通过声明式注册发现能力，而不是通过核心分支硬编码能力
-- 为 `Session`、`Governance`、`Artifact Routing` 提供稳定查询入口
+不负责：
 
-### 7.2 不负责
+- role / node 的注册定义
+- evidence 的长期判定
+- skill 的长期沉淀
 
-- 不执行工作流
-- 不存储会话过程状态
-- 不生成内容
-- 不替代治理裁决
+### 6.4 Registry
 
-### 7.3 关键对象
+负责：
 
-- `PackManifest`
-- `RoleDefinition`
-- `NodeDefinition`
-- `ArtifactRoleMapping`
-- `RegistryIndex`
-- `RegistryVersion`
+- 发现 packs、roles、nodes、artifact role 和 capability 声明
+- 为 session、governance、routing 和 execution 提供统一查询入口
 
-### 7.4 关键交互
+不负责：
 
-- 为 `Session` 提供 pack 入口、角色和节点解析
-- 为 `Governance` 提供 pack 级或 node 级规则挂载点
-- 为 `Artifact Routing` 提供工件角色映射和权威目标声明
+- 执行工作流
+- 保存当前会话状态
+- 持久化长期资产
 
-### 7.5 Phase 1 边界
+### 6.5 Governance
 
-- 注册信息以文件化 manifest 为主
-- 支持本地加载与显式版本化
-- 不做远程市场、在线发现或动态热插拔生态
-- phase 1 只需验证 `Coding Pack` 与 `Product Insights Pack` 两个 reference packs
+负责：
 
-## 8. Governance 子系统
+- 注入全局、runtime、pack、node 级规则
+- 决定哪些动作允许、阻塞、待确认或需要补证据
+- 约束 archive 与 growth proposal 的审批路径
 
-### 8.1 职责
+不负责：
 
-- 读取并注入全局、core 级、pack 级、node 级规则工件
-- 在运行时执行 `approval`、`review`、`gate`、`archive` 的触发语义
-- 在状态转移、工件写入和收尾动作前给出允许、阻塞、待确认或需补证据的判断
+- 实际执行模型或工具
+- 直接生成领域内容
+- 直接编写规则原文
 
-### 8.2 不负责
+### 6.6 ArtifactRouting
 
-- 不直接生成领域内容
-- 不负责角色注册
-- 不负责工件路径落盘
-- 不负责创作愿景、术语和治理规则原文的编写
-- 不替代人的最终判断，只提供规则框架与 gate 语义
+负责：
 
-### 8.3 关键对象
+- 把 `ArtifactIntent` 映射到权威 workspace surfaces
+- 维护 artifact authority、path、descriptor 与 readback 语义
 
-- `PolicySet`
-- `ApprovalRequirement`
-- `ReviewRequirement`
-- `GateDecision`
-- `ArchiveRule`
-- `ExceptionRecord`
+不负责：
 
-### 8.4 关键交互
+- 判断内容是否可信
+- 决定是否进入长期资产
+- 承担 archive 或 evidence 的审计语义
 
-- 从 `Registry` 获取当前 `pack / node` 的适用范围
-- 为 `Session` 提供状态转移约束
-- 为 `Artifact Routing` 提供写入权限与阶段限制
-- 把决策结果交给 `Evidence` 沉淀为可追溯记录
+### 6.7 EvidenceAndArchive
 
-### 8.5 Phase 1 边界
+负责：
 
-- 治理规则以 Markdown 文档加轻量规则 sidecar 为主
-- 规则评估以确定性判断为主，不引入重型策略引擎
-- 审批默认显式化，关键点由人确认
-- 不做复杂组织权限系统或多租户治理模型
+- 记录 decision、review、verification、approval、exception、archive
+- 维护 execution trace 的可追溯关联
+- 提供 lineage、history 与后续 growth 的观察面
 
-## 9. Artifact Routing 子系统
+不负责：
 
-### 9.1 职责
+- 直接决定 memory / skill 晋升
+- 替代 session 本身
+- 变成通用历史垃圾桶
 
-- 把中立的 `ArtifactIntent` 映射到权威文件目标
-- 维护 `artifact role -> path rule -> file type -> sidecar` 的一致关系
-- 确保不同 pack 的输出可以落到统一、可读、可回溯的文件面
+### 6.8 ExecutionLayer
 
-### 9.2 不负责
+负责：
 
-- 不生成工件内容
-- 不判定内容质量
-- 不制定治理策略
-- 不管理重型媒体资产系统
+- provider adapters
+- tool registry
+- execution request / response
+- tool call / result envelopes
+- 流式 execution trace
 
-### 9.3 关键对象
+不负责：
 
-- `ArtifactIntent`
-- `ArtifactRole`
-- `RouteRule`
-- `MaterializationTarget`
-- `ArtifactDescriptor`
-- `AuthorityMarker`
+- 决定当前动作是否被治理允许
+- 决定当前结果是否值得长期保存
+- 定义 pack 术语
 
-### 9.4 关键交互
+### 6.9 GrowthEngine
 
-- 从 `Session` 接收当前节点的输出意图
-- 从 `Registry` 读取 pack 的工件映射规则
-- 从 `Governance` 读取当前会话是否允许创建、覆盖、归档或发布
-- 把最终产出的工件描述和写入结果交给 `Evidence`
+负责：
 
-### 9.5 Phase 1 边界
+- 识别 evidence 中值得晋升的候选
+- 形成 `GrowthProposal`
+- 把 proposal 路由到 `memory`、`skill` 或 runtime update 的治理路径
+- 跟踪 proposal 状态、来源与结果
 
-- 主工件以 Markdown 为主
-- 机器可读状态通过 YAML 或 JSON sidecar 承载即可
-- 默认本地文件系统落盘
-- 对二进制或富媒体内容只保留引用位，不在 phase 1 做完整媒体资产管理
+不负责：
 
-## 10. Evidence 子系统
+- 直接绕过 governance 写入长期资产
+- 把所有 observed pattern 都自动固化
+- 直接替代 pack 或人类判断
 
-### 10.1 职责
+### 6.10 ContinuityStores
 
-- 沉淀关键决策、验证、审批、评审、归档记录
-- 建立 `session -> node -> artifact -> evidence -> archive` 的 lineage
-- 支持后续恢复、复查、审计和 closeout
+负责：
 
-### 10.2 不负责
+- 保存 `memory`
+- 保存 `skill`
+- 为未来 session 提供回读语义
+- 保存与长期资产相关的 lineage 与版本关系
 
-- 不替代会话上下文本身
-- 不保存所有瞬时聊天细节
-- 不充当长期偏好记忆
-- 不演化成通用分析平台或遥测平台
+不负责：
 
-### 10.3 关键对象
+- 保存所有瞬时上下文
+- 替代 evidence
+- 直接接收未经治理的自动晋升
 
-- `EvidenceRecord`
-- `DecisionRecord`
-- `ReviewVerdict`
-- `VerificationRecord`
-- `ApprovalRecord`
-- `ArchiveRecord`
-- `LineageLink`
-- `SourcePointer`
+## 7. 四条关键交互主链
 
-### 10.4 关键交互
+### 7.1 启动与恢复主链
 
-- 从 `Session` 接收状态转移和 handoff 记录
-- 从 `Governance` 接收 gate 与审批结果
-- 从 `Artifact Routing` 接收工件物化结果
-- 为后续 resume、review、archive 提供可引用证据面
+`EntrySurface -> Bootstrap -> Session`
 
-### 10.5 Phase 1 边界
+这条主链确保所有入口都通过同一套 profile / workspace / host 绑定逻辑进入系统。
 
-- 证据记录以 Markdown 为主，辅以轻量索引 sidecar
-- 采用追加式、可追溯的记录方式
-- 不做图数据库、事件总线或自动置信度评分系统
-- 优先保证“人能读、系统能指向、后续能恢复”
+### 7.2 工作执行主链
 
-## 11. 五个子系统如何串成主链
+`Session -> Registry / Governance / ExecutionLayer -> ArtifactRouting -> EvidenceAndArchive`
 
-`Garage Core` 的主链建议固定为下面这条责任链：
+这条主链确保系统先有会话边界，再解析能力、执行工作、留下结果和证据。
 
-1. 外部入口提交 `SessionIntent`，由 `Session` 创建或恢复工作上下文。
-2. `Session` 向 `Registry` 解析当前适用的 `pack`、入口 `node`、可参与 `role` 与工件映射。
-3. `Governance` 根据全局与 pack 规则，为当前动作注入 gate、审批要求和例外条件。
-4. 工作推进过程中，`Session` 形成一个或多个 `ArtifactIntent`，交由 `Artifact Routing` 路由到权威文件目标。
-5. 每次状态转移、工件落盘、评审、审批、验证和归档，都由 `Evidence` 形成可追溯记录。
-6. 后续任何 resume、review、archive，都优先基于 `session + artifact + evidence` 的组合恢复，而不是依赖隐式聊天上下文。
+### 7.3 成长主链
 
-这条主链的目的，是让每个子系统都只承担自己的稳定职责，而不是互相吞并边界。
+`EvidenceAndArchive -> GrowthEngine -> Governance -> ContinuityStores`
 
-## 12. Phase 1 的收敛范围
+这条主链确保主动成长默认从 evidence 出发，而不是从原始 session 或无门槛自动观察直接固化。
 
-phase 1 需要非常克制。
+### 7.4 长期资产回流主链
 
-当前阶段只做这些事：
+`ContinuityStores -> Session`
 
-- 让 `Garage Core` 形成稳定的中立子系统边界
-- 用 `Coding Pack` 与 `Product Insights Pack` 两个 reference packs 验证 core contract
-- 让新增能力默认通过 `manifest + role + node + artifact mapping + governance overlay` 接入
-- 以文件化控制面支撑主流程，而不是先做服务化控制面
+这条主链确保过去形成的 `memory / skill` 能回流到新的工作，但不能倒置为“长期资产反向替代当前证据”。
 
-当前阶段不做这些事：
+## 8. 子系统边界上的三条红线
 
-- 不先做重型数据库平台
-- 不先做完整多用户 SaaS
-- 不先冻结所有角色和节点
-- 不先把 `writing`、`video` 做成完整实现
-- 不把平台和具体 pack 语义混写在一起
+为了避免 runtime 逐渐失控，至少要守住下面三条红线：
 
-phase 1 的目标不是复杂，而是稳定。
+1. `EntrySurface` 不能拥有自己的私有 runtime 语义。
+2. `ExecutionLayer` 不能替代 `Governance` 决定是否允许某个动作。
+3. `GrowthEngine` 不能绕开 `EvidenceAndArchive` 与 `Governance` 直接写长期资产。
 
-## 13. 后续拆解顺序
+## 9. 这篇文档与其他文档的关系
 
-在这篇文档之后，建议继续按“总 -> 分”的顺序往下拆：
+这篇文档负责：
 
-1. 先拆 `Shared Contracts`
-   - 当前拆解文档见 `docs/features/F010-shared-contracts.md`
-   - 其中包括 `PackManifest`、`RoleContract`、`WorkflowNodeContract`、`ArtifactContract`、`EvidenceContract`、`HostAdapterContract`
-2. 再拆 continuity layers
-   - 当前拆解文档见 `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`
-   - 其中包括 `memory`、`session`、`skill`、`evidence` 的持续性分层
-3. 再拆 phase 1 的 reference packs
-   - 当前拆解文档见 `docs/features/F110-reference-packs.md`
-   - 其中包括 `Coding Pack` 与 `Product Insights Pack`
-4. 最后再决定是否需要把部分 contract 服务化
+- 冻结完整 runtime 的子系统地图
 
-这个顺序的意义是：
+后续由不同文档继续展开：
 
-- 先稳定 core
-- 再稳定接口
-- 最后扩展能力
+- `A130`：解释 continuity 与 growth proposal 的边界
+- `A140`：解释端到端系统设计与关键 ADR
+- `F220`：解释 bootstrap 与 entrypoints
+- `F230`：解释 execution layer
+- `F080`：解释主动成长 loop 的稳定 capability cut
 
-而不是一开始就把 pack 细节写死进平台。
+## 10. 一句话总结
 
-## 14. 遵循的设计原则
-
-- 平台中立：core 只理解中立对象，不理解具体领域名词。
-- 开闭原则：新增能力以注册和映射扩展为主，而不是修改核心分支。
-- Markdown-first：面向人的主工件默认是 Markdown。
-- File-backed：phase 1 以文件为主事实源，sidecar 只承担轻量机器状态。
-- Contract-first：先冻结对象和子系统边界，再谈实现细节。
-- Session 与 Evidence 分离：会话上下文不等于证据记录，避免状态混桶。
-- Governance as artifacts：治理规则、门禁、审批和归档先写成工件。
-- Host-neutral core：不同入口共享同一 core 语义，差异留在边缘适配层。
-- Traceability by default：任何关键推进都应留下可恢复、可复查、可归档的 lineage。
-- Phase-first restraint：先做小而稳的 phase 1 骨架，不提前长成重型平台。
+`Garage` 想成为一个真正的长期 runtime，就必须先把启动、协调、执行、追溯、成长和长期资产这几类职责稳定拆开；否则入口会反向定义系统，执行会污染核心，成长会失去边界。

@@ -97,6 +97,6 @@
 
 ## 9. 完成后进入哪一篇
 
-- `docs/tasks/T040-garage-phase-1-session-lifecycle-and-governance.md`
-- `docs/tasks/T050-garage-phase-1-artifact-routing-and-evidence-surface.md`
-- `docs/tasks/T070-garage-phase-1-reference-pack-shells.md`
+- `docs/tasks/T040-garage-session-lifecycle-and-governance.md`
+- `docs/tasks/T050-garage-artifact-routing-and-evidence-surface.md`
+- `docs/tasks/T070-garage-reference-pack-shells.md`

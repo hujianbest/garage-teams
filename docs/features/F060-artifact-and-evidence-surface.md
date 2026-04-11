@@ -1,23 +1,25 @@
-# F060: Garage Phase 1 Artifact And Evidence Surface
+# F060: Garage Artifact And Evidence Surface
 
 - Feature ID: `F060`
 - 状态: 草稿
 - 日期: 2026-04-11
-- 定位: 定义 `Garage` 在 phase 1 的文件表面，明确 `artifact`、`evidence`、`session` 与 `archive` 在 `Markdown-first`、`file-backed` 形态下的目录边界、权威规则、命名方式、sidecar 角色、lineage 链接与覆盖 / 归档语义。
-- 当前阶段: phase 1
+- 定位: 定义 `Garage` 的文件表面，明确 `artifact`、`evidence`、`session` 与 `archive` 在 `Markdown-first`、`file-backed` 形态下的目录边界、权威规则、命名方式、sidecar 角色、lineage 链接与覆盖 / 归档语义，并为 growth proposal 的 workspace-first persistence 预留明确边界。
+- 当前阶段: 完整架构主线，实施将按切片推进
 - 关联文档:
   - `docs/GARAGE.md`
   - `docs/architecture/A120-garage-core-subsystems-architecture.md`
+  - `docs/architecture/A140-garage-system-architecture.md`
   - `docs/features/F010-shared-contracts.md`
   - `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`
   - `docs/features/F110-reference-packs.md`
   - `docs/features/F050-governance-model.md`
+  - `docs/features/F080-garage-self-evolving-learning-loop.md`
 
 ## 1. 文档目标与范围
 
 这篇文档只回答一个问题：
 
-**在 phase 1 中，`Garage` 应如何用稳定、可读、可追溯的文件表面承接 `artifact` 与 `evidence`。**
+**`Garage` 应如何用稳定、可读、可追溯的文件表面承接 `artifact` 与 `evidence`，并让成长链条拥有可追踪的 workspace-first persistence。**
 
 本文关注：
 
@@ -55,11 +57,17 @@
 
 同一次推进通常会同时产生 `artifact` 与 `evidence`，但两者不能混写成同一类对象，也不能互相替代。
 
+`evidence` 还承担一个额外职责：
+
+- 它是 `GrowthProposal` 的默认观察面
+
+但 proposal 本身仍是独立治理对象，不应与 `evidence` 记录混成一个桶。
+
 ## 3. 文件表面的总体结构
 
 `Garage` 的文件表面应按对象职责分层，而不是按入口工具或聊天历史分层。
 
-phase 1 先冻结 5 类稳定 surface：
+当前主线先冻结 5 类稳定 surface：
 
 - `artifacts/`
 - `evidence/`
@@ -85,16 +93,16 @@ phase 1 先冻结 5 类稳定 surface：
 | `evidence/` | 当前有效证据面 | 决策、验证、评审、审批、来源记录 | 主工件正文 |
 | `sessions/` | 当前会话协调面 | resume 指针、handoff 状态、当前上下文快照 | 长期正式产物 |
 | `archives/` | 历史归档面 | 被替换、冻结、关闭的历史对象 | 当前有效对象 |
-| `.garage/` | 机器辅助面 | 索引、sidecar、路由辅助、轻量派生状态 | 面向人的主叙事内容 |
+| `.garage/` | 机器辅助面 | 索引、sidecar、路由辅助、growth proposal 状态、轻量派生状态 | 面向人的主叙事内容 |
 
-phase 1 的关键判断：
+当前主线的关键判断：
 
 - `archives/` 应作为统一顶层归档面，而不是把归档文件散落在各活跃目录里
 - pack 语义应作为子层维度进入这些 canonical surface，而不是自行长出新的顶层目录
 
 ## 5. 权威规则
 
-phase 1 建议冻结 5 条权威规则：
+当前主线建议冻结 5 条权威规则：
 
 1. 一个逻辑对象在任一时刻只能有一个“当前权威位”。
 2. `artifact` 的权威性来自主工件文件本身。
@@ -102,7 +110,7 @@ phase 1 建议冻结 5 条权威规则：
 4. `sidecar` 只承接机器可读标识、状态和链接，不承接人类主语义。
 5. `archive` 对历史状态权威，但对“当前有效版本”不权威。
 
-phase 1 禁止：
+当前主线禁止：
 
 - 把关键事实只藏在聊天历史
 - 把主语义只写在 sidecar
@@ -152,7 +160,7 @@ sidecar 不应：
 - 叙事内容以 Markdown 主文档为准
 - 稳定标识与链接锚点以 sidecar 为准
 
-phase 1 中，sidecar 是轻量增强层，不是隐藏数据库。
+当前主线中，sidecar 是轻量增强层，不是隐藏数据库。
 
 ## 8. Lineage linking 与跨面关联
 
@@ -162,7 +170,7 @@ phase 1 中，sidecar 是轻量增强层，不是隐藏数据库。
 
 而不是依赖目录邻接或命名猜测。
 
-phase 1 建议先冻结一组最小关系语义：
+当前主线建议先冻结一组最小关系语义：
 
 - `produced-by`
 - `derived-from`
@@ -219,11 +227,11 @@ phase 1 建议先冻结一组最小关系语义：
 
 而不是回写抹除旧记录。
 
-phase 1 不允许无 lineage 的 destructive overwrite。
+当前主线不允许无 lineage 的 destructive overwrite。
 
-## 11. Phase 1 的 file-backed 约束
+## 11. 当前实现的 file-backed 约束
 
-phase 1 以本地文件系统为主事实源，不引入：
+当前实现阶段以本地文件系统为主事实源，不引入：
 
 - 数据库优先
 - 对象存储优先
@@ -232,7 +240,7 @@ phase 1 以本地文件系统为主事实源，不引入：
 主工件与主证据默认以 Markdown 表达。  
 机器增强信息使用轻量 sidecar 即可。
 
-phase 1 不处理：
+当前实现阶段不处理：
 
 - 实时多人并发写入
 - 分布式锁
@@ -265,11 +273,11 @@ phase 1 不处理：
 - 平台中立：core 只理解中立对象与关系，不理解 pack 内部领域名词。
 - 一对象一当前权威位：任何逻辑对象在任一时刻只能有一个当前 authoritative slot。
 - `Markdown-first`：面向人的主语义写在 Markdown，而不是隐藏在 sidecar 或运行时状态里。
-- `File-backed`：phase 1 以可见文件面为事实源，避免过早服务化。
+- `File-backed`：当前主线以可见文件面为事实源，避免过早服务化。
 - Sidecar as support, not source：sidecar 是辅助层，不是主语义来源。
 - Archive instead of silent overwrite：历史应被显式归档和链接，而不是悄悄消失。
 - Traceability by default：lineage、验证、审批和替换关系默认可追溯。
 - Session is coordination, not authority：会话负责协调与恢复，不吞并长期工件权威。
 - Pack-extensible surface：新增 pack 应复用同一套 surface 规则，而不是自造顶层文件宇宙。
-- phase 1 克制：先把小而稳的 phase 1 文件表面冻结，再考虑更重的服务化能力。
+- 当前主线克制：先把小而稳的文件表面冻结，再考虑更重的服务化能力。
 

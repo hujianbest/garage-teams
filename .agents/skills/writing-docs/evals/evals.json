@@ -27,8 +27,8 @@
       "expected_output": "把执行分解文档放到 `docs/tasks/`，新任务文档使用 `Txxx-<title-slug>.md`，而 `docs/tasks/README.md` 继续作为 task index 的 canonical 入口；答案应复用现有 task 文档的 H1 和 meta 头格式，而不是 feature/design/wiki 的格式。",
       "files": [
         "../../../docs/tasks/README.md",
-        "../../../docs/tasks/T010-garage-phase-1-foundation-and-repository-layout.md",
-        "../../../docs/tasks/T120-garage-phase-1-runtime-bootstrap-and-entrypoints.md"
+        "../../../docs/tasks/T010-garage-foundation-and-repository-layout.md",
+        "../../../docs/tasks/T120-garage-runtime-bootstrap-and-entrypoints.md"
       ]
     },
     {

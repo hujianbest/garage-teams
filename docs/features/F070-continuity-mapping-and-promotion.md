@@ -1,87 +1,85 @@
-# F070: Garage Phase 1 Continuity Mapping And Promotion
+# F070: Garage Continuity Mapping And Promotion
 
 - Feature ID: `F070`
 - 状态: 草稿
 - 日期: 2026-04-11
-- 定位: 在 `A130-garage-continuity-memory-skill-architecture.md` 已定义 continuity 高层分层的基础上，进一步冻结 phase 1 中 `memory`、`skill`、`evidence` 在 `Product Insights Pack` 与 `Coding Pack` 上的候选来源、映射关系、晋升规则、治理检查点与禁止自动晋升边界。
-- 当前阶段: phase 1
+- 定位: 在 `A130` 已冻结 continuity 分层、`F080` 已冻结主动成长 loop 之后，进一步定义 `Product Insights Pack` 与 `Coding Pack` 在 `memory / skill / runtime update` 上的候选来源、映射关系、晋升规则、治理关注点与禁止路径。
+- 当前阶段: 完整架构主线，实施将按切片推进
 - 关联文档:
   - `docs/GARAGE.md`
-  - `docs/architecture/A120-garage-core-subsystems-architecture.md`
-  - `docs/features/F010-shared-contracts.md`
   - `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`
+  - `docs/features/F050-governance-model.md`
+  - `docs/features/F060-artifact-and-evidence-surface.md`
+  - `docs/features/F080-garage-self-evolving-learning-loop.md`
   - `docs/features/F110-reference-packs.md`
   - `docs/design/D110-garage-product-insights-pack-design.md`
   - `docs/design/D120-garage-coding-pack-design.md`
-  - `docs/features/F050-governance-model.md`
-  - `docs/features/F040-session-lifecycle-and-handoffs.md`
-  - `docs/features/F060-artifact-and-evidence-surface.md`
 
 ## 1. 文档目标与范围
 
 这篇文档只回答一个问题：
 
-**在 phase 1 中，`Garage` 应如何把 continuity 轴映射到 `Product Insights Pack` 与 `Coding Pack`，并以保守方式冻结 `promotion` 行为。**
+**当 `Garage` 进入主动成长模式后，`Product Insights Pack` 与 `Coding Pack` 分别会贡献什么样的 continuity 候选，又应该通过什么规则晋升为 `memory`、`skill` 或 `runtime update`。**
 
 本文覆盖：
 
-- 两个 `reference packs` 中 `memory`、`skill`、`evidence` 的候选来源
+- 两个 reference packs 的候选来源
 - continuity 对象与 pack 语义之间的映射关系
-- `promotion` 的允许路径、显式确认路径和禁止自动路径
-- phase 1 的治理检查点与最小证据要求
+- `Evidence -> GrowthProposal -> Update` 在两个 packs 上的差异化关注点
+- 默认禁止路径与高风险误晋升类型
 
 本文不覆盖：
 
-- 具体 schema 字段
-- 自动学习流水线
-- 向量检索实现
-- skill 文件格式细节
+- learning loop 的总体结构
+- proposal lifecycle 的通用定义
+- skill 文件格式
+- pack 之外的全局 memory / skill 架构
 
-## 2. 为什么需要这份文档
+## 2. 为什么这篇文档要与 `F080` 分开
 
-高层 continuity 文档已经回答了“四层要分开”，但还没有回答下面这些 phase 1 必须冻结的问题：
+`F080` 负责解释：
 
-- 两个 `reference packs` 分别会产生什么样的 continuity 候选
-- 哪些候选只应该停留在 `evidence`
-- 哪些候选可以保守晋升到 `memory` 或 `skill`
-- promotion 发生前，需要经过哪些治理检查点
-- 哪些行为在 phase 1 必须明确禁止自动化
+- learning loop 如何发生
+- proposal 如何进入治理
+- 哪些自动化默认允许
 
-如果没有这一层，系统很容易出现：
+而这篇文档只负责解释：
 
-- `Product Insights Pack` 的判断痕迹被误晋升成长期事实
-- `Coding Pack` 的一次性 workaround 被误晋升成长期 skill
-- pack 之间对“可晋升”理解不一致
+- 不同 packs 到底会产出什么候选
+- 这些候选更适合晋升到哪一类长期更新
+- 每个 pack 的高风险误晋升点是什么
 
-## 3. continuity 映射的核心判断
+一句话说：
 
-phase 1 建议先冻结 4 个判断：
+- `F080` 讲 loop
+- `F070` 讲 mapping
 
-- `session` 负责当前推进，不直接成为长期沉淀的默认来源
-- `evidence` 是 promotion 的默认观察面
-- `memory` 只接纳跨 session、跨阶段仍然稳定成立的信息
-- `skill` 只接纳边界清楚、可重复复用、已被验证的方法
+## 3. mapping 的核心判断
+
+完整架构下建议先冻结 5 个判断：
+
+1. `session` 仍负责当前推进，不直接成为长期沉淀的默认来源。
+2. `evidence` 仍是成长观察面，pack 先贡献 evidence，再通过 proposal 走向长期更新。
+3. `memory` 只接纳跨 session 仍成立的事实、偏好与约束。
+4. `skill` 只接纳可描述、可重复、可复用的方法。
+5. `runtime update` 只接纳那些会影响团队协作纪律、review 方式、prompt 模块或运行策略的改进建议。
 
 一句话压缩就是：
 
-**先记录，再判断，再晋升；宁可少晋升，也不要错晋升。**
+**不同 packs 可以贡献不同类型的成长候选，但长期更新语义必须统一。**
 
-## 4. continuity 对象总览
+## 4. 两个 packs 的 continuity 对照
 
-| continuity 对象 | 回答的问题 | 在 phase 1 的默认来源 | 默认进入方式 |
-| --- | --- | --- | --- |
-| `memory` | 哪些长期事实以后仍成立 | 经确认的长期偏好、稳定约束、跨 pack 可复用背景 | 保守晋升 |
-| `skill` | 哪些方法以后值得反复调用 | 经验证的工作流、模板、协作套路、复查方式 | 保守晋升 |
-| `evidence` | 为什么这样判断、做过什么验证 | decision、review、approval、verification、bridge、closeout | 默认记录 |
-| `session` | 当前工作正在发生什么 | 当前 pack / node / handoff / 活跃上下文 | 默认运行时承接 |
+| 维度 | `Product Insights Pack` | `Coding Pack` |
+| --- | --- | --- |
+| `evidence` 重点 | 信号、判断、来源、假设验证、bridge 依据 | 设计取舍、review、verification、closeout、限制与风险 |
+| `memory` 候选 | 长期问题域偏好、目标约束、稳定判断偏向 | 工程约束、仓库偏好、长期环境事实、质量倾向 |
+| `skill` 候选 | 研究套路、分析模板、洞察整理方法 | 实现流程、验证方法、复查套路、收尾模板 |
+| `runtime update` 候选 | framing checklist、probe discipline、bridge review 规则 | verification checklist、handoff discipline、closeout policy |
+| 高风险误晋升 | 临时判断被当长期事实 | workaround 被当长期方法 |
+| 核心治理关注点 | 来源可靠性、判断依据、bridge 完整性 | 验证充分性、方法泛化性、质量结论可靠性 |
 
-这里要明确：
-
-- `session` 可以产生候选，但不应默认直接变成 `memory` 或 `skill`
-- `evidence` 是主晋升面，不是所有内容的最终归宿
-- 两个 pack 都可以贡献 continuity 候选，但判断门槛必须统一
-
-## 5. `Product Insights Pack` 的 continuity 候选来源
+## 5. `Product Insights Pack` 的候选映射
 
 ### 5.1 可形成 `evidence` 的来源
 
@@ -92,28 +90,36 @@ phase 1 建议先冻结 4 个判断：
 - `bridge artifact` 的形成依据
 - pack 内 review / approval / exception 痕迹
 
-### 5.2 可形成 `memory` 候选的来源
+### 5.2 更适合进入 `memory` 的候选
 
 - 创作者长期关注的问题域
 - 稳定的目标偏好或方向约束
 - 反复被确认的判断标准
 - 对某类机会的长期偏向
 
-### 5.3 可形成 `skill` 候选的来源
+### 5.3 更适合进入 `skill` 的候选
 
 - 稳定有效的研究工作流
 - 可复用的分析模板
 - 多次证明有效的 framing / probing 方法
 - 跨 session 可复用的洞察整理套路
 
-### 5.4 默认不应晋升的来源
+### 5.4 更适合进入 `runtime update` 的候选
+
+- 新的 probe checklist
+- 更好的来源记录规范
+- 更稳的 bridge 审核步骤
+- 对 pack-level review policy 的调整建议
+
+### 5.5 默认不应晋升的内容
 
 - 一次性市场观察
 - 尚未验证的机会猜测
 - 当前 session 才成立的临时 framing
 - 缺少来源支撑的直觉判断
+- 情绪化偏好表达
 
-## 6. `Coding Pack` 的 continuity 候选来源
+## 6. `Coding Pack` 的候选映射
 
 ### 6.1 可形成 `evidence` 的来源
 
@@ -124,148 +130,130 @@ phase 1 建议先冻结 4 个判断：
 - 风险、限制与未决项
 - 关键 handoff 与返工原因
 
-### 6.2 可形成 `memory` 候选的来源
+### 6.2 更适合进入 `memory` 的候选
 
 - 长期工程约束
 - 仓库级稳定偏好
 - 持续成立的质量偏向
 - 被反复确认的环境事实
 
-### 6.3 可形成 `skill` 候选的来源
+### 6.3 更适合进入 `skill` 的候选
 
 - 可重复复用的实现流程
 - 稳定有效的 review 方法
 - closeout / verification 模板
 - 与特定仓库无强耦合的协作套路
 
-### 6.4 默认不应晋升的来源
+### 6.4 更适合进入 `runtime update` 的候选
+
+- review checklist 调整
+- verification discipline 调整
+- handoff 模板更新
+- prompt / rule / policy patch 建议
+
+### 6.5 默认不应晋升的内容
 
 - 单次修复中的临时绕路
 - 只适用于当前 repo 状态的特例步骤
 - 未完成验证的实现路径
 - 依赖宿主偶然性的 workaround
+- 临时 debug 痕迹
 
-## 7. 两个 packs 的 continuity 对照
+## 7. canonical promotion route
 
-| 维度 | `Product Insights Pack` | `Coding Pack` |
-| --- | --- | --- |
-| `evidence` 重点 | 信号、判断、假设验证、bridge 依据 | 设计取舍、review、verification、closeout |
-| `memory` 候选 | 长期问题域偏好、目标约束、稳定判断偏向 | 工程约束、仓库偏好、质量偏向、稳定环境事实 |
-| `skill` 候选 | 研究套路、分析模板、洞察工作流 | 实现流程、验证方法、复查套路、收尾模板 |
-| 高风险误晋升 | 临时判断被当长期事实 | workaround 被当长期方法 |
-| 关键治理关注点 | 来源可靠性、bridge 完整性 | 验证充分性、质量结论可靠性 |
+在两个 packs 上，建议统一采用下面这条 canonical route：
 
-这张表的目的，是冻结：
+1. pack 内节点先形成 `evidence`
+2. `evidence` 被观察并转写成 `GrowthProposal`
+3. proposal 根据类型进入 `memory`、`skill` 或 `runtime update` 的治理路径
+4. 被接受的更新回流到未来 session
 
-- 两个 pack 都可以贡献 continuity 候选
-- 但候选类型不同，风险点不同
-- promotion 判断方式应尽量统一
+这里最重要的不是“能不能自动发现候选”，而是：
 
-## 8. phase 1 的 promotion 路径
+- 是否先形成 evidence
+- 是否显式写成 proposal
+- 是否有足够治理来决定最后落点
+
+## 8. 允许路径与禁止路径
 
 ### 8.1 默认允许路径
 
-- `Session -> Evidence`
-- `Product Insights candidate -> Evidence`
-- `Coding candidate -> Evidence`
+- `PackEvidence -> GrowthProposal`
+- `GrowthProposal -> Memory`
+- `GrowthProposal -> Skill`
+- `GrowthProposal -> RuntimeUpdate`
 
-### 8.2 允许但必须显式确认的路径
+这里的前提是：
 
-- `Evidence -> Memory`
-- `Evidence -> Skill`
-- 极少数 `Session -> Memory`
-- 极少数 `Session -> Skill`
+- proposal 已显式形成
+- governance 已参与
 
-### 8.3 phase 1 默认禁止自动路径
+### 8.2 默认禁止路径
 
-- `Session -> Memory` 自动晋升
-- `Session -> Skill` 自动晋升
-- `Evidence -> Memory` 无门槛自动晋升
-- `Evidence -> Skill` 无门槛自动晋升
-- `Memory <-> Skill` 自动互转
-- pack 内私有 heuristics 自动进入全局 continuity 资产
+- `PackSession -> Memory` 自动晋升
+- `PackSession -> Skill` 自动晋升
+- `PackEvidence -> Memory` 无门槛自动晋升
+- `PackEvidence -> Skill` 无门槛自动晋升
+- `PackEvidence -> RuntimeUpdate` 绕过 proposal
+- pack 私有 heuristics 自动进入共享长期资产
 
-## 9. promotion 判定规则
+## 9. 判断一个 proposal 更像哪类更新
 
-### 9.1 `Evidence -> Memory`
+### 9.1 更像 `memory`
 
-至少应满足：
+当候选主要回答：
 
-- 信息具有跨 session 稳定性
-- 不依赖单次上下文才成立
-- 已有明确确认动作
-- 不属于争议中结论
-- 未来多个 pack 或 session 仍可能引用
+- 以后应该记住什么事实
+- 哪些偏好或约束长期成立
 
-### 9.2 `Evidence -> Skill`
+### 9.2 更像 `skill`
 
-至少应满足：
+当候选主要回答：
 
-- 是方法，不是结果
-- 边界清楚，可描述为可重复动作
-- 不依赖一次性特例
-- 已有验证、review 或重复使用依据
-- 对未来工作具有明显复用价值
+- 以后应该怎样更稳定地做一类工作
+- 哪种方法可以被重复调用
 
-保守判断原则：
+### 9.3 更像 `runtime update`
 
-**不能证明值得晋升时，默认停留在 `evidence`。**
+当候选主要回答：
 
-## 10. 明确禁止自动晋升的内容
+- 团队自身以后该怎样运行得更稳
+- 哪些治理、review、prompt 或 routing 规则需要调整
 
-下面这些内容在 phase 1 中不应因为“被看见”就自动进入 `memory` 或 `skill`：
+## 10. 两个 packs 的治理重点
 
-- 全量聊天记录
-- 原始思维过程
-- 未经确认的假设
-- 临时计划
-- 一次性 workaround
-- 宿主特定操作细节
-- 失败样本与争议痕迹本身
-- 缺少 review / verification / approval 的结论
+### 10.1 `Product Insights Pack`
 
-phase 1 必须坚持：
+治理重点更偏向：
 
-**连续性资产宁可少而准，也不要多而混。**
+- 来源可靠性
+- 判断依据是否充分
+- bridge artifact 是否完整
+- 提议的长期偏向是否真的跨 session 成立
 
-## 11. governance checkpoints 与 promotion 的关系
+### 10.2 `Coding Pack`
 
-promotion 不能脱离治理。
+治理重点更偏向：
 
-phase 1 至少应有这组检查点：
+- 验证是否充分
+- 方法是否可泛化
+- proposed skill 是否脱离一次性 repo 状态
+- runtime update 是否只是当前宿主特例
 
-- 候选识别 checkpoint
-- review checkpoint
-- approval checkpoint
-- exception checkpoint
-- archive checkpoint
+## 11. pack-specific mapping 的意义
 
-其中：
+如果没有这层 mapping，learning loop 虽然存在，但很容易出现：
 
-- `Product Insights Pack` 更关注来源、判断与 bridge 完整性
-- `Coding Pack` 更关注验证、质量与方法是否可泛化
+- 不同 packs 对“什么值得成长”理解不一致
+- `Product Insights Pack` 的临时判断被误当成长期事实
+- `Coding Pack` 的临时 workaround 被误当成可复用 skill
 
-## 12. 对后续开发的意义
+因此，这篇文档冻结的不是整个成长系统，而是：
 
-这篇文档冻结的不是一个自动学习系统，而是：
+- 两个 reference packs 分别贡献什么
+- 它们该往哪里走
+- 各自最容易犯什么错
 
-- 什么能留下来
-- 留到哪一层
-- 在什么条件下允许晋升
-- 哪些东西绝不能自动被固化
+## 12. 一句话总结
 
-只有这一层先说清楚，后面的任务拆分才不会一边实现一边重新发明 continuity 规则。
-
-## 13. 遵循的设计原则
-
-- continuity 分层优先：`memory`、`session`、`skill`、`evidence` 必须分层，而不是混成一个桶。
-- promotion 保守化：默认先进入 `evidence`，只有少量内容可显式晋升到 `memory` 或 `skill`。
-- `Evidence-first promotion`：大多数晋升优先经过 `evidence`，而不是从原始 session 直接生长。
-- Pack 贡献候选，core 冻结规则：不同 pack 可以贡献 continuity 候选，但 promotion 语义应由统一架构冻结。
-- Pack-specific, core-consistent：pack 的候选来源可以不同，但允许路径、禁止路径和治理语汇应保持一致。
-- 禁止自动固化噪音：全量聊天、临时计划、一次性 workaround、未确认假设不得自动晋升。
-- 治理先于晋升：review、approval、exception 等治理动作先于关键 promotion。
-- 来源可追溯：任何 `memory` 或 `skill` 都应能回指其 `artifact` 与 `evidence` 来源。
-- `Markdown-first` / `file-backed`：phase 1 的 continuity 资产优先保持人类可读、文件可见。
-- phase 1 克制：先冻结 continuity mapping 与 promotion 规则，再讨论自动学习和更重实现。
-
+`F070` 的作用，是把 `Product Insights Pack` 与 `Coding Pack` 放回同一条主动成长主链里，并明确它们各自更容易贡献哪类长期更新、应走什么晋升路径，以及哪些内容绝不能被误固化为 `memory`、`skill` 或 runtime update。

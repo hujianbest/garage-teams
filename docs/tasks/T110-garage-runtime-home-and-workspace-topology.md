@@ -102,5 +102,5 @@
 
 ## 9. 完成后进入哪一篇
 
-- `docs/tasks/T120-garage-phase-1-runtime-bootstrap-and-entrypoints.md`
-- `docs/tasks/T130-garage-phase-1-runtime-provider-and-tool-execution.md`
+- `docs/tasks/T120-garage-runtime-bootstrap-and-entrypoints.md`
+- `docs/tasks/T130-garage-runtime-provider-and-tool-execution.md`

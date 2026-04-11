@@ -110,4 +110,4 @@
 
 ## 9. 完成后进入哪一篇
 
-- `docs/tasks/T100-garage-phase-1-cross-pack-bridge-and-phase-1-walkthrough.md`
+- `docs/tasks/T100-garage-cross-pack-bridge-and-walkthrough.md`

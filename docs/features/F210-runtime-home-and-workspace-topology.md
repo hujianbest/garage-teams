@@ -4,12 +4,13 @@
 - 状态: 草稿
 - 日期: 2026-04-11
 - 定位: 定义 `Garage` 作为独立可运行程序时的 `source root / runtime home / workspace` 拓扑，明确当前仓库中的 repo-local surfaces 与未来可安装运行形态之间的关系。
-- 当前阶段: phase 1
+- 当前阶段: 完整架构主线，实施将按切片推进
 - 关联文档:
   - `docs/GARAGE.md`
   - `docs/features/F220-runtime-bootstrap-and-entrypoints.md`
   - `docs/features/F060-artifact-and-evidence-surface.md`
   - `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`
+  - `docs/features/F080-garage-self-evolving-learning-loop.md`
   - `packs/README.md`
 
 ## 1. 文档目标与范围
@@ -33,7 +34,7 @@
 
 ## 2. 为什么需要这份文档
 
-当前 phase 1 文档明确规定了：
+当前主线文档已经明确规定了：
 
 - `artifacts/`
 - `evidence/`
@@ -43,7 +44,7 @@
 
 这 5 个 surface 以当前仓库根目录为主事实面。
 
-这个判断对 phase 1 很重要，但如果目标是独立程序，还必须进一步回答：
+这个判断对当前实现阶段很重要，但如果目标是独立程序，还必须进一步回答：
 
 - 程序本体放哪里
 - 运行时 home 放哪里
@@ -69,7 +70,7 @@
 
 - source root 不等于 runtime home
 - runtime home 不等于 workspace
-- workspace 才是 phase 1 file-backed surface 的主要承载面
+- workspace 才是 file-backed surface 的主要承载面
 
 ## 4. `Garage Source Root`
 
@@ -120,7 +121,7 @@
 - 当前正在推进哪个创作或开发上下文
 - 当前 artifacts、evidence、sessions 与 archives 落在哪里
 
-phase 1 建议继续坚持：
+当前主线建议继续坚持：
 
 - `artifacts/`
 - `evidence/`
@@ -135,7 +136,7 @@ phase 1 建议继续坚持：
 - `Garage` 可以作为独立程序运行
 - 但它推进的主事实面仍然优先留在 workspace 本地
 
-## 7. 当前仓库在 phase 1 中如何解释
+## 7. 当前仓库在当前主线中如何解释
 
 当前仓库不应被理解为未来唯一部署形态，而应被理解为：
 
@@ -152,7 +153,7 @@ phase 1 建议继续坚持：
 - 仓库根目录同时承接当前 workspace surfaces
 - 设计链和任务链也都暂时放在同一仓库里
 
-这是一种对 phase 1 友好的开发与 dogfooding 形态，但不是未来唯一运行形态。
+这是一种对当前实现阶段友好的开发与 dogfooding 形态，但不是未来唯一运行形态。
 
 ## 8. 独立安装运行时的目标形态
 
@@ -170,7 +171,7 @@ phase 1 建议继续坚持：
 
 ## 9. 拓扑绑定规则
 
-建议 phase 1 先冻结下面这些绑定规则：
+建议当前主线先冻结下面这些绑定规则：
 
 - 一个 `Session` 只能属于一个 workspace。
 - 一个 workspace 可以被多个 session 先后使用，但不能把多个 workspace 混成一个 session。
@@ -204,23 +205,23 @@ runtime bootstrap 建议按下面顺序解析拓扑：
 - 先知道程序以谁的身份和配置启动
 - 再知道它当前服务哪个 workspace
 
-## 12. phase 1 收敛范围
+## 12. 当前实现收敛范围
 
-phase 1 只需要先冻结这些判断：
+当前实现阶段只需要先冻结这些判断：
 
 - 当前仓库是 source root
 - 当前仓库也可以作为默认 dogfooding workspace
 - workspace surfaces 仍然是主事实面
 - runtime home 必须在概念上与 workspace 分层
 
-phase 1 不要求：
+当前实现阶段不要求：
 
 - 立刻把源码仓与运行 workspace 彻底拆开
 - 设计完整 installer
 - 设计跨设备同步
 - 设计多 workspace 并发守护进程
 
-## 13. phase 1 非目标
+## 13. 当前实现非目标
 
 - 不把 repo-local dogfooding 形态误写成未来唯一部署方式
 - 不把 runtime home 直接做成 database-first 控制面
@@ -234,5 +235,5 @@ phase 1 不要求：
 - Dogfooding mode is valid, not final：当前仓库中的 source-coupled 形态是有效开发模式，但不是未来唯一部署形态。
 - Runtime home does not swallow workspace：runtime home 负责安装实例与 profile，不吞并主工件与主证据面。
 - Explicit continuity scope：`memory / skill` 是否跨 workspace 必须显式设计，不能隐式漂移。
-- phase 1 克制：先把拓扑边界讲稳，再决定 installer、daemon、多 workspace runtime 等更重形态。
+- 当前主线克制：先把拓扑边界讲稳，再决定 installer、daemon、多 workspace runtime 等更重形态。
 

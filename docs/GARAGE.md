@@ -3,57 +3,53 @@
 - Document ID: `M030`
 - 状态: 草稿
 - 日期: 2026-04-11
-- 定位: `Garage` 是一个服务个人创作者的 `Creator OS`，它不是单点 AI 工具，而是一群像在车库里创业一样协作的 AI 角色所组成的长期创作系统。
-- 当前阶段: phase 1
+- 定位: `Garage` 是一个服务个人创作者的 `Creator OS`：它不是单点 AI 工具，也不是只会执行静态 workflow 的控制壳，而是一群像在车库里创业一样协作、扩展并主动成长的 AI 角色所组成的长期系统。
+- 当前阶段: 主线已切换到完整架构；实施将按需拆成多个 delivery slices 推进
 - 关联文档:
   - `docs/README.md`
   - `docs/VISION.md`
   - `docs/ROADMAP.md`
   - `docs/architecture/A110-garage-extensible-architecture.md`
   - `docs/architecture/A120-garage-core-subsystems-architecture.md`
-  - `docs/features/F220-runtime-bootstrap-and-entrypoints.md`
-  - `docs/features/F230-runtime-provider-and-tool-execution.md`
-  - `docs/features/F210-runtime-home-and-workspace-topology.md`
+  - `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`
+  - `docs/architecture/A140-garage-system-architecture.md`
+  - `docs/features/F010-shared-contracts.md`
+  - `docs/features/F020-shared-contract-schemas.md`
   - `docs/features/F030-core-runtime-records.md`
   - `docs/features/F040-session-lifecycle-and-handoffs.md`
   - `docs/features/F050-governance-model.md`
   - `docs/features/F060-artifact-and-evidence-surface.md`
-  - `docs/features/F010-shared-contracts.md`
-  - `docs/features/F020-shared-contract-schemas.md`
-  - `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`
   - `docs/features/F070-continuity-mapping-and-promotion.md`
+  - `docs/features/F080-garage-self-evolving-learning-loop.md`
   - `docs/features/F110-reference-packs.md`
+  - `docs/features/F120-cross-pack-bridge.md`
+  - `docs/features/F210-runtime-home-and-workspace-topology.md`
+  - `docs/features/F220-runtime-bootstrap-and-entrypoints.md`
+  - `docs/features/F230-runtime-provider-and-tool-execution.md`
   - `docs/design/D110-garage-product-insights-pack-design.md`
   - `docs/design/D120-garage-coding-pack-design.md`
-  - `docs/features/F120-cross-pack-bridge.md`
   - `docs/tasks/README.md`
   - `packs/README.md`
   - `docs/wiki/W140-ahe-platform-first-multi-agent-architecture.md`
   - `docs/wiki/W030-hermes-agent-harness-engineering-analysis.md`
+  - `docs/wiki/W040-hermes-agent-core-design-ideas.md`
   - `docs/wiki/W010-clowder-ai-harness-engineering-analysis.md`
 
 ## 0. 阅读顺序
 
 如果你想快速理解 `Garage`，建议按下面顺序阅读：
 
-1. 先读 `docs/README.md`，理解当前 `docs` 的信息架构与入口分层。
+1. 先读 `docs/README.md`，理解当前 `docs` 的信息架构与真相源分工。
 2. 再读 `docs/VISION.md`，理解 `Garage` 为什么存在，以及它想建立怎样的创作工作方式。
-3. 再读本文，理解 `Garage` 的品牌语义、项目定位和主线阅读顺序。
-4. 再读 `docs/ROADMAP.md`，理解 `docs/features/` 的稳定 feature IDs、当前 feature map 和路线图。
-5. 再读 `docs/architecture/A110-garage-extensible-architecture.md`，理解 phase 1 的可扩展分层架构。
-6. 再读 `docs/architecture/A120-garage-core-subsystems-architecture.md`，理解 `Garage Core` 的五个稳定子系统与主链交互。
-7. 再读 `docs/features/F010-shared-contracts.md` 与 `docs/features/F020-shared-contract-schemas.md`，理解共享 contracts 及其 schema shape。
-8. 再读 `docs/features/F030-core-runtime-records.md`，冻结 `Garage Core` 在 phase 1 的运行时对象、持久记录与写入语义。
-9. 再读 `docs/features/F040-session-lifecycle-and-handoffs.md` 与 `docs/features/F050-governance-model.md`，理解 `session` 推进与四层治理语义。
-10. 再读 `docs/features/F060-artifact-and-evidence-surface.md`，冻结 phase 1 的文件表面、权威规则与归档语义。
-11. 再读 `docs/architecture/A130-garage-continuity-memory-skill-architecture.md` 与 `docs/features/F070-continuity-mapping-and-promotion.md`，理解 continuity 分层与 promotion 规则。
-12. 再读 `docs/features/F110-reference-packs.md` 与 `docs/features/F120-cross-pack-bridge.md`，理解 reference packs 与 `product-insights -> coding` 的 bridge seam。
-13. 再读 `docs/design/D110-garage-product-insights-pack-design.md` 与 `docs/design/D120-garage-coding-pack-design.md`，理解两个 reference packs 的详细设计。
-14. 再读 `docs/features/F210-runtime-home-and-workspace-topology.md`，理解 `source root / runtime home / workspace` 的分层与当前 repo-local dogfooding 形态。
-15. 再读 `docs/features/F220-runtime-bootstrap-and-entrypoints.md` 与 `docs/features/F230-runtime-provider-and-tool-execution.md`，理解独立 runtime 的启动链与 execution layer。
-16. 再读 `docs/tasks/README.md`，按开发顺序进入 phase 1 的实现任务拆解。
-17. 再读 `packs/README.md`，理解当前 pack surface、source asset 入口与目录边界。
-18. 最后再进入 `packs/coding/skills/README.md` 与 `packs/product-insights/skills/README.md`，判断现有 `coding` / `product insights` 资产如何逐步转译成 `Garage` 下的 reference packs。
+3. 再读本文，理解 `Garage` 的品牌语义、系统定义和主线阅读顺序。
+4. 再读 `docs/ROADMAP.md`，理解 `docs/features/` 的稳定 feature IDs、能力分组与路线索引。
+5. 再读 `docs/architecture/A110-garage-extensible-architecture.md`，理解顶层分层骨架与扩展性主线。
+6. 再读 `docs/architecture/A120-garage-core-subsystems-architecture.md`，理解完整 runtime 的核心子系统。
+7. 再读 `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`，理解 `memory / session / skill / evidence` 如何分层。
+8. 再读 `docs/architecture/A140-garage-system-architecture.md`，理解端到端系统设计与关键架构决策。
+9. 再读 `docs/features/`，理解 contracts、governance、artifact surface、continuity、learning loop、runtime topology 与 execution 语义。
+10. 再读 `docs/design/`，理解 `Product Insights Pack` 与 `Coding Pack` 等 pack 设计如何挂到完整架构上。
+11. 最后再读 `docs/tasks/README.md`，理解完整架构会如何被拆成实施切片。
 
 ## 1. 为什么叫 Garage
 
@@ -61,192 +57,97 @@
 
 它要表达的不是怀旧，也不是创业神话，而是下面这组产品判断：
 
-- 重要的东西往往从一个小而聚焦的空间开始，而不是从庞大的组织结构开始
-- 创作、试错、构建、修正和沉淀，应该发生在同一个连续环境里
-- 人是方向的拥有者，AI 角色是一起工作的创业伙伴，而不是一组零散工具
-- 系统要支持从 idea 到产出的完整演进，而不是只优化某一个局部环节
+- 重要的系统往往从一个小而聚焦的团队开始，而不是从庞大组织开始。
+- 起步阶段能力少、做的事情少，是正常状态，但不应该被当成长期上限。
+- 真正好的车库团队，不只是会做事，还会在做事过程中积累经验、形成方法、升级自身能力。
+- 如果一个系统只能执行当前任务，却不会因为做过的事情而变强，它就不是“团队”，而只是工具集合。
 
-一句话说，`Garage` 想做的，是把“一个人在车库里带着一群 AI 伙伴把想法做出来”的工作方式，变成一个长期可复用的创作系统。
+一句话说，`Garage` 想做的，是把“一个人在车库里带着一群 AI 伙伴把想法做出来”的工作方式，变成一个能随着经验持续扩展、持续成长的长期系统。
 
 ## 2. 项目定位
 
 `Garage` 是一个面向 `solo creator` 的 `Creator OS`。
 
-它的核心不是聊天，不是单个模型，也不是某个固定领域的自动化脚本，而是一个能把多个 AI 角色组织起来、持续为创作者生产结果的分层平台。
+它的核心不是聊天，不是单个模型，也不是某个固定领域的自动化脚本，而是一个能把多个 AI 角色组织起来、持续为创作者生产结果，并且会在治理约束下主动成长的分层 runtime。
 
 当前我们把它定义为：
 
-- 一个 `Markdown-first`、`file-backed` 的创作操作系统
+- 一个 `local-first`、`multi-entry`、`workspace-first` 的 agent runtime
 - 一个能够组织 `AI 创作团队` 协作的控制面
-- 一个可扩展的平台骨架，未来能力通过新增 pack 挂载，而不是不断改写核心
+- 一个可扩展的平台骨架，未来能力通过新增 pack、role 和 runtime capability 接入
+- 一个会从经验中形成 evidence、提出长期资产候选、并推动团队自我改进的系统
 - 一个先服务个人创作者，再考虑更复杂协作形态的系统
 
 它首先要服务的用户，不是大团队，也不是纯技术用户，而是那些既要思考方向、又要把东西真正做出来的个人创作者与独立开发者。
 
-## 3. 愿景
+## 3. Garage 到底是什么系统
 
-`Garage` 的长期愿景是：
+如果压缩成一句话，`Garage` 是：
 
-**让个人创作者像拥有一间永不下线的创业车库一样，带着一支会持续积累方法、记忆和协作默契的 AI 团队，把洞察变成产品，把想法变成内容，把创作变成持续生产。**
+**一个以 workspace 为主事实面、以 session 为主线、以 pack 为能力面、以 governance 为边界、以 evidence 为追溯面、以 `memory / skill` 为长期成长资产的 self-evolving agent runtime。**
 
-这个愿景包含 4 层意思：
+这里最重要的不是“模型有多强”，而是下面这些系统判断：
 
-### 3.1 不只是回答问题，而是持续创造结果
+- 用户面对的是团队，而不是单体助手
+- 不同入口共享同一套 runtime 语义，而不是各有各的 workflow
+- 新能力主要通过扩展进入系统，而不是修改核心
+- 团队不仅执行任务，还会从经验中主动提出成长建议
+- 主动成长受到治理、审批、review 和 evidence 约束，而不是黑箱式自动漂移
 
-`Garage` 不应该停留在“你问一句，我答一句”的工具形态。
+## 4. 两条同等重要的主线
 
-它的目标是帮助用户持续推进真正的创作闭环，例如：
+`Garage` 的主线不是单一的“做一个更强的 agent”。
 
-- 从模糊 idea 到问题重写与机会判断
-- 从研究与产品洞察到概念收敛
-- 从规格与设计到 coding 实现
-- 从开发结果到表达、写作、发布与后续内容化
+它至少有两条同等重要的主线。
 
-### 3.2 不只是一个 AI，而是一支 AI 创作团队
+### 4.1 可扩展性
 
-用户面对的不应是一个什么都想做的单体助手，而应该是一支在同一平台中协作的 AI 团队。
+`Garage` 不能被当前能力集合锁死。
 
-这支团队的特征是：
-
-- 不同角色承担不同职责
-- 角色之间可以交接、复查、补位和沉淀经验
-- 人始终负责愿景、判断与关键取舍
-- AI 负责执行、放大、复盘与持续积累
-
-### 3.3 不只是当前能力，而是能持续扩展的能力面
-
-`Garage` 的第一阶段虽然从 `coding` 和 `product insights` 起步，但它的设计不能被这两个能力锁死。
-
-未来它应该可以自然承接：
-
-- `writing`
-- `video`
-- `research`
-- `course`
-- 其他尚未定义但具有明确创作产出的能力 pack
-
-扩展的方式应是：
-
-- 新增 pack
-- 注册新角色
-- 映射新 artifact
-- 复用稳定 core
-
-而不是每次扩展都回头重写平台层。
-
-### 3.4 不只是会做事，还要越用越顺手
-
-`Garage` 需要具备长期连续性。
-
-这意味着它必须逐步形成：
-
-- `memory`：稳定事实与长期偏好
-- `session`：任务过程、当前上下文与 handoff 状态
-- `skill`：被沉淀下来的方法、套路和可复用工作流
-
-这样它才不是一次性工具，而是一个越用越贴合用户工作方式的长期系统。
-
-## 4. 我们要解决的问题
-
-当前很多 AI 产品都有明显断层：
-
-- 洞察、开发、写作、发布是割裂的
-- 用户需要自己充当路由器，把不同工具和不同上下文手工串起来
-- AI 的记忆、方法和角色分工不稳定
-- 每加一种新能力，系统就要加很多特例逻辑
-
-`Garage` 要解决的，不是“再做一个更聪明的聊天壳”，而是把创作者真正需要的长期协作结构先搭起来。
-
-## 5. 核心设计原则
-
-### 5.1 Human-directed, AI-team-executed
-
-人负责：
-
-- 方向
-- 判断
-- 审批
-- 最终取舍
-
-AI 团队负责：
-
-- 研究
-- 生成
-- 编排
-- 复查
-- 沉淀
-
-### 5.2 Platform first, packs second
-
-先定义 `Garage` 的稳定核心和共享契约，再定义 `coding`、`product insights`、`writing`、`video` 等具体能力 pack。
-
-平台是长期骨架，pack 是可增长能力面。
-
-### 5.3 Open for extension, closed for modification
-
-新增能力时，应该优先：
+它必须允许下面这些变化持续发生：
 
 - 新增 pack
 - 新增 role
+- 新增 node
 - 新增 artifact mapping
-- 新增 templates / prompts / rules
+- 新增 runtime capability
+- 新增入口与宿主适配
 
-而不是修改核心去适配某个新领域。
+理想状态下，这些扩展主要通过注册、映射与边界装配进入系统，而不是回头修改 `Garage Core`。
 
-### 5.4 Memory, session, skill must be separated
+### 4.2 可成长性
 
-长期偏好、会话过程状态、可复用方法必须是三类不同资产；而 `evidence` 应作为独立的可追溯记录层存在。
+`Garage` 也不能永远停留在“第一天刚启动时的团队水平”。
 
-只有分层，`Garage` 才能真正形成长期连续性，而不是把一切都堆进聊天上下文。
+它必须允许下面这些成长持续发生：
 
-### 5.5 Governance as artifacts
+- 从工作结果中形成 `evidence`
+- 从 `evidence` 中主动识别 `memory` 与 `skill` 候选
+- 在治理约束下持久化长期知识
+- 从经验中 patch 旧 skill、改进协作纪律、调整运行策略
+- 让未来的 session、role 和 pack 因过去经验而变得更有效率
 
-愿景、术语、规则、评审、门禁和归档都应该先写成工件，再让系统和 pack 去读取这些工件。
+如果只有扩展性，没有成长性，`Garage` 会变成一个越来越大的静态平台；如果只有成长性，没有扩展性，`Garage` 会变成一个越来越会记东西、但能力边界越来越乱的黑箱。
 
-`Garage` 不应该把核心约束藏在聊天历史里。
+`Garage` 要同时守住这两条主线。
 
-### 5.6 Markdown-first in phase 1
+## 5. 系统形态
 
-第一阶段坚持：
+从系统形态看，`Garage` 应被理解成：
 
-- 以 Markdown 为主工件
-- 以文件化结构为主事实源
-- 以轻量 metadata / sidecar 支撑索引和状态
+- 一个长期存在的团队运行时，而不是一次性请求处理器
+- 一个高于入口的统一核心，而不是多套入口逻辑的松散集合
+- 一个以 `workspace` 为主事实面、以 `runtime home` 承载运行配置的分层系统
+- 一个通过 `contracts + packs` 承接能力、通过 `evidence + governance` 承接成长的运行时
 
-在没有必要之前，不把系统过早做成重型服务平台。
+这意味着：
 
-## 6. 能力边界
+- `CLI`、`IDE`、聊天入口、轻 UI 都不应拥有各自私有的运行语义
+- pack 不应直接绑定 provider 协议或宿主特性
+- 记忆、技能、证据和当前 session 不能混成一个历史桶
+- 主动成长必须能回指其来源和治理过程
 
-phase 1 正式承接的能力 pack：
-
-- `coding`
-- `product insights`
-
-phase 1 预留但暂不完整展开的能力 pack：
-
-- `writing`
-- `video`
-
-这意味着当前 `Garage` 的重点，不是把所有创作能力一次性做满，而是先证明平台骨架能够稳定承接多种内容能力。
-
-## 7. 非目标
-
-当前阶段，`Garage` 明确不追求：
-
-- 先做成完整多用户协作 SaaS
-- 先做成重型数据库控制面
-- 先覆盖所有内容创作媒介
-- 先把角色体系写死为固定组织架构
-- 先为每一种能力做深度实现
-
-phase 1 的成功标准不是“功能很多”，而是：
-
-- 品牌和定位清晰
-- 顶层架构稳定
-- 核心契约可扩展
-- `coding` 与 `product insights` 能作为 reference packs 证明架构成立
-
-## 8. Garage 与当前仓库的关系
+## 6. Garage 与当前仓库的关系
 
 这个仓库的过去，是一个以 `harness engineering` 为中心的工作台。
 
@@ -255,9 +156,63 @@ phase 1 的成功标准不是“功能很多”，而是：
 - 这个仓库不再只描述“怎么组织 agent workflow”
 - 它开始转向“如何为个人创作者组织一个长期 AI 创作系统”
 - 现有 `coding` 与 `product insights` 资产，不再只是两个并列工具集，而是未来 `Garage` 上的两个 reference packs
+- 当前仓库既是 `Garage` 的 source root，也是当前默认的 dogfooding workspace
 
 换句话说，`Garage` 不是在旧仓库上贴一个新名字，而是在重新定义这个项目的产品本体。
 
-## 9. 一句话总结
+## 7. 当前能力面与未来能力面
 
-`Garage` 是一个面向个人创作者的 `Creator OS`：人在其中定义方向，一群像在车库里创业一样协作的 AI 角色负责研究、构建、表达与沉淀，平台则用稳定核心和可扩展 pack 结构，把这种工作方式变成一个长期可演进的系统。
+`Garage` 当前已经明确的能力面包括：
+
+- `coding`
+- `product insights`
+
+未来自然应当承接的能力面包括：
+
+- `writing`
+- `video`
+- `research`
+- `course`
+- 其他尚未定义但具有明确创作产出的 pack
+
+这里的关键判断不是“什么时候把所有能力都做出来”，而是：
+
+- 系统是否已经具备承接更多能力面的结构条件
+- 团队是否能够随着能力面扩张而保持边界清晰
+- 新能力面是否能继承已有的成长资产，而不是重新从零开始
+
+## 8. 非目标
+
+当前 `Garage` 明确不追求：
+
+- 把系统做成一个无限自治、无限递归的 agent society
+- 把所有知识沉淀都做成无解释的黑箱自动学习
+- 把平台先做成数据库优先、组织优先的重型控制面
+- 把角色体系写死成固定组织架构
+- 为了“看起来功能很多”牺牲长期边界、治理和可维护性
+
+`Garage` 要做的，不是“所有东西都自动”，而是：
+
+**在清晰边界、可解释 evidence 和显式治理之上，允许团队主动成长。**
+
+## 9. 如何理解接下来的文档树
+
+从文档树视角看：
+
+- `docs/VISION.md` 解释为什么要做 `Garage`
+- `docs/GARAGE.md` 解释 `Garage` 是什么、应该从哪里读起
+- `docs/architecture/` 解释顶层平台边界、完整 runtime 与长期 continuity
+- `docs/features/` 解释稳定 capability cuts 与共享语义
+- `docs/design/` 解释 pack-specific 详细设计
+- `docs/tasks/` 解释完整架构如何按实施切片逐步落地
+
+这里最重要的规则是：
+
+- 主线真相先在 `architecture / features / design`
+- 实施切片再在 `tasks`
+
+而不是反过来让阶段性任务文档定义系统本体。
+
+## 10. 一句话总结
+
+`Garage` 是一个面向个人创作者的 `Creator OS`：人在其中定义方向，一群像在车库里创业一样协作的 AI 角色负责研究、构建、表达、沉淀与主动成长，平台则用稳定核心、可扩展 pack 结构、显式治理和 workspace-first 的长期资产面，把这种工作方式变成一个完整且可持续演化的系统。

@@ -1,16 +1,18 @@
-# F050: Garage Phase 1 治理模型
+# F050: Garage 治理模型
 
 - Feature ID: `F050`
 - 状态: 草稿
 - 日期: 2026-04-11
-- 定位: 定义 `Garage` 在 phase 1 的治理模型，明确规则分层、优先级、门禁语义、审批与归档边界，以及其与 `evidence`、`reference packs` 的关系。
-- 当前阶段: phase 1
+- 定位: 定义 `Garage` 的治理模型，明确规则分层、优先级、门禁语义、审批、归档与成长提案边界，以及其与 `evidence`、`reference packs` 和 runtime updates 的关系。
+- 当前阶段: 完整架构主线，实施将按切片推进
 - 关联文档:
   - `docs/GARAGE.md`
   - `docs/architecture/A110-garage-extensible-architecture.md`
   - `docs/architecture/A120-garage-core-subsystems-architecture.md`
+  - `docs/architecture/A140-garage-system-architecture.md`
   - `docs/features/F010-shared-contracts.md`
   - `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`
+  - `docs/features/F080-garage-self-evolving-learning-loop.md`
   - `docs/features/F110-reference-packs.md`
   - `docs/features/F040-session-lifecycle-and-handoffs.md`
 
@@ -18,14 +20,14 @@
 
 这篇文档只回答一个问题：
 
-**`Garage` 在 phase 1 应该如何用统一治理模型约束 `session` 推进、工件写入、交接、审批与归档。**
+**`Garage` 应该如何用统一治理模型约束 `session` 推进、工件写入、交接、审批、归档与长期更新。**
 
 本文覆盖：
 
 - `global / core / pack / node` 四层治理
 - `gate` 类型与结果语义
-- `approval / review / archive / exception` 的边界
-- 它们与 `Evidence`、`reference packs` 的关系
+- `approval / review / archive / exception / growth proposal` 的边界
+- 它们与 `Evidence`、`reference packs` 和 runtime updates 的关系
 
 本文不覆盖：
 
@@ -53,7 +55,7 @@
 
 这些职责分别属于 `Session`、`Registry`、`Artifact Routing`。
 
-`Garage` 在 phase 1 坚持：
+`Garage` 在当前主线坚持：
 
 **Governance as artifacts**
 
@@ -61,7 +63,7 @@
 
 ## 3. 治理分层与优先级
 
-phase 1 建议固定 4 层治理：
+当前主线建议固定 4 层治理：
 
 | 层级 | 作用 | 典型内容 |
 | --- | --- | --- |
@@ -85,7 +87,7 @@ phase 1 建议固定 4 层治理：
 
 ## 4. `gate` 类型与触发语义
 
-phase 1 建议至少固定 5 类 gate：
+当前主线建议至少固定 6 类 gate：
 
 ### 4.1 准入 gate
 
@@ -107,9 +109,17 @@ phase 1 建议至少固定 5 类 gate：
 
 判断是否允许 session 或工件进入 `closeout / archive-ready / closed`。
 
-### 4.6 gate 结果语义
+### 4.6 晋升 / 更新 gate
 
-phase 1 建议统一使用：
+判断是否允许某个 `GrowthProposal` 进入：
+
+- `memory`
+- `skill`
+- `runtime update`
+
+### 4.7 gate 结果语义
+
+当前主线建议统一使用：
 
 - `allow`
 - `hold`
@@ -186,7 +196,7 @@ phase 1 建议统一使用：
 - archive 结论
 - exception 豁免
 
-phase 1 要形成的不是重型审计系统，而是最小证据链：
+当前主线要形成的不是重型审计系统，而是最小证据链：
 
 - 人能读
 - 系统能指向
@@ -217,16 +227,16 @@ phase 1 要形成的不是重型审计系统，而是最小证据链：
 
 不同 pack 可以有不同细则，但必须通过同一 `global / core / pack / node` 结构表达。
 
-## 9. Phase 1 收敛范围
+## 9. 当前实现收敛范围
 
-phase 1 治理模型只做这些事：
+当前实现阶段的治理模型只做这些事：
 
 - 以 Markdown 工件表达主规则
 - 强人工确认
 - 确定性 gate 语义
 - 验证 `Coding Pack` 与 `Product Insights Pack` 两个 `reference packs` 的治理 shape
 
-phase 1 不做这些事：
+当前实现阶段不做这些事：
 
 - 不做组织级 RBAC
 - 不做多租户权限继承
@@ -252,8 +262,8 @@ phase 1 不做这些事：
 - `Markdown-first`：先保证人可读、可讨论、可复查，再考虑机器执行便利性。
 - 分层优先级明确：`global / core / pack / node` 的覆盖关系必须可解释、可追踪。
 - 默认收紧而非放松：下层默认细化和加严，放宽必须显式豁免。
-- 人负责最终裁决：phase 1 的关键审批和例外处理由人承担最终责任。
+- 人负责最终裁决：关键审批和例外处理仍由人承担最终责任。
 - `Evidence-linked governance`：所有关键治理动作都应留下可回指的证据链。
 - Pack 语义留在 pack：核心治理只定义中立语汇，不吸收领域细则进入 `Garage Core`。
-- phase 1 克制：先把治理语义写稳，再决定是否需要更重实现。
+- 当前主线克制：先把治理语义写稳，再决定是否需要更重实现。
 

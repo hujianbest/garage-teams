@@ -4,12 +4,14 @@
 - 状态: 草稿
 - 日期: 2026-04-11
 - 定位: 定义 `Garage` 作为独立可运行程序时的 provider 与 tool execution 层，明确宿主入口、runtime core、模型适配与工具执行之间的责任边界。
-- 当前阶段: phase 1
+- 当前阶段: 完整架构主线，实施将按切片推进
 - 关联文档:
   - `docs/GARAGE.md`
   - `docs/architecture/A110-garage-extensible-architecture.md`
   - `docs/architecture/A120-garage-core-subsystems-architecture.md`
+  - `docs/architecture/A140-garage-system-architecture.md`
   - `docs/features/F010-shared-contracts.md`
+  - `docs/features/F080-garage-self-evolving-learning-loop.md`
   - `docs/features/F220-runtime-bootstrap-and-entrypoints.md`
   - `docs/features/F210-runtime-home-and-workspace-topology.md`
 
@@ -24,7 +26,7 @@
 - provider 适配的责任边界
 - tool execution 的统一运行层
 - 这层与 `HostAdapter`、`Garage Core`、packs 的关系
-- phase 1 先冻结哪些运行时对象
+- 当前主线先冻结哪些运行时对象
 
 本文不覆盖：
 
@@ -157,7 +159,7 @@ tool execution 层的目标是：
 
 - 所有 provider 和 tool backends 最终都被归一化到同一组 runtime 事件
 
-phase 1 建议先冻结下面这组统一事件语义：
+当前主线建议先冻结下面这组统一事件语义：
 
 - execution started
 - partial output streamed
@@ -208,6 +210,8 @@ phase 1 建议先冻结下面这组统一事件语义：
 
 **core 决定“能不能做、为什么做、结果怎么留下”；execution 层决定“怎么真的去做”。**
 
+execution layer 产生的 traces 会进入 `evidence`，并进一步成为 learning loop 的观察输入，但 execution layer 本身不决定任何长期更新是否成立。
+
 ## 10. 与 packs 的关系
 
 packs 可以声明：
@@ -230,23 +234,23 @@ execution 层才负责：
 
 - 用哪个 adapter 去满足这项能力
 
-## 11. phase 1 收敛范围
+## 11. 当前实现收敛范围
 
-phase 1 只需要先证明：
+当前实现阶段只需要先证明：
 
 - `Garage` 有独立的 execution 层概念
 - provider 差异被吸收到 adapter
 - tool execution 有统一注册与结果归一化语义
 - 这层能被 `Session`、`Governance`、`Evidence` 正确约束
 
-phase 1 不要求：
+当前实现阶段不要求：
 
 - 多 provider 同轮并发编排
 - 分布式 worker pool
 - 远程工具市场
 - 复杂工具沙箱系统
 
-## 12. phase 1 非目标
+## 12. 当前实现非目标
 
 - 不新增新的 pack-facing shared contract
 - 不在当前阶段冻结全部工具 taxonomy
@@ -260,6 +264,6 @@ phase 1 不要求：
 - Tools are runtime capabilities：工具能力属于统一 runtime 能力面，而不是某个入口的临时附属品。
 - Governance before execution：关键执行动作先经过 gate、approval 与 evidence 要求判断。
 - Pack asks for capabilities, not vendors：packs 只声明需要什么能力，不绑定具体厂商或后端。
-- No new shared contract by accident：这层是 runtime 内部层，不在 phase 1 中新增第七类 pack-facing shared contract。
-- phase 1 克制：先冻结执行层边界和统一事件语义，再扩展 provider 数量与工具复杂度。
+- No new shared contract by accident：这层是 runtime 内部层，不在当前主线中新增第七类 pack-facing shared contract。
+- 当前主线克制：先冻结执行层边界和统一事件语义，再扩展 provider 数量与工具复杂度。
 

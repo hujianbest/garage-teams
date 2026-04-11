@@ -1,13 +1,14 @@
-# T000: Garage Phase 1 Development Tasks
+# T000: Garage Implementation Tracks
 
 - Task ID: `T000`
 - 状态: 草稿
 - 日期: 2026-04-11
-- 定位: `docs/architecture/`、`docs/design/` 与 `docs/features/` 负责解释 `Garage` 的 phase 1 设计与边界；`docs/tasks/` 负责把这套设计按开发顺序拆成可执行的任务切面，避免所有内容堆成一篇超长文档。
-- 当前阶段: phase 1
+- 定位: `docs/architecture/`、`docs/design/` 与 `docs/features/` 负责解释 `Garage` 的完整系统边界；`docs/tasks/` 负责把这套边界按实施顺序拆成 delivery slices。当前 `T010-T130` 是第一组主要实施切片，它们不再拥有产品主线定义权，只负责承接当前实现顺序。
+- 当前阶段: 完整架构主线下的第一组实施切片
 - 关联文档:
   - `docs/README.md`
   - `docs/GARAGE.md`
+  - `docs/ROADMAP.md`
   - `packs/README.md`
 
 ## 1. 这组文档回答什么
@@ -16,107 +17,109 @@
 
 - 应该先做什么，后做什么
 - 哪些任务可以并行，哪些必须串行
-- 每一阶段要交付什么
-- 每一阶段完成后如何判断“可以进入下一阶段”
+- 每个 delivery slice 要交付什么
+- 当前实现如何对齐完整架构
 
 一句话说：
 
-**`docs/architecture/`、`docs/design/`、`docs/features/` 解释设计，`docs/tasks/` 解释开发顺序。**
+**`docs/architecture/`、`docs/design/`、`docs/features/` 解释系统真相，`docs/tasks/` 解释当前交付顺序。**
 
-## 2. 命名规则
+## 2. 如何阅读当前任务树
+
+理解这组任务文档时，请先记住下面 4 个判断：
+
+1. 先读 `docs/architecture/`、`docs/features/`、`docs/design/`，再读 `docs/tasks/`。
+2. 当前 `T010-T130` 是第一组 implementation tracks，不是完整架构的全文镜像。
+3. task 文件名已经统一对齐到 `Txxx-<title-slug>.md` 规则，但这些文档仍然只是当前 implementation tracks。
+4. 当设计文档和 task 文档冲突时，应先回写设计文档，再重切任务文档。
+
+## 3. 命名规则
 
 - 目录入口使用 `docs/tasks/README.md`
 - `docs/tasks/README.md` 保留目录索引入口的 canonical 文件名
-- phase 1 的执行文档统一使用 `Txxx-<title-slug>.md`
-- `Txxx` 代表稳定 task identity；当前 `01..13` 对应 `T010..T130`
-- 推荐开发顺序继续由本页表格维护，而不是再编码进文件名前缀
+- task docs 统一使用稳定 `Txxx` 作为 identity
+- 当前 `T010-T130` 保留既有文件路径
+- 未来新增 task docs 继续使用 `Txxx-<title-slug>.md`
 
-## 3. 阅读与执行顺序
+## 4. 当前 implementation tracks
 
-| 顺序 | Task ID | 文件 | 目标 | 主要依赖 |
+| Track | Task IDs | 目标 | 主要输入 |
+| --- | --- | --- | --- |
+| Runtime Foundations | `T010-T060` | 搭基础 runtime skeleton、records、contracts、governance、artifact / evidence surface 与 continuity baseline | `A110`、`A120`、`A130`、`F010`、`F030`、`F050`、`F060`、`F070`、`F080` |
+| Reference Packs And Bridge | `T070-T100` | 搭 `Product Insights Pack`、`Coding Pack` 与当前 cross-pack bridge | `F110`、`F120`、`D110`、`D120`、`F070`、`F080` |
+| Standalone Runtime Surfaces | `T110-T130` | 把当前 repo-local 形态继续推进到 runtime topology、bootstrap 与 execution layer | `F210`、`F220`、`F230`、`F050`、`F060`、`F080` |
+
+## 5. 当前详细交付顺序
+
+| 顺序 | Task ID | 文件 | 当前角色 | 主要依赖 |
 | --- | --- | --- | --- | --- |
-| 01 | `T010` | `docs/tasks/T010-garage-phase-1-foundation-and-repository-layout.md` | 冻结 phase 1 仓库骨架、实现边界与入口规则 | `A110-garage-extensible-architecture.md` |
-| 02 | `T020` | `docs/tasks/T020-garage-phase-1-core-runtime-records.md` | 落 `Garage Core` 的运行时对象与记录语义 | `F030-core-runtime-records.md` |
-| 03 | `T030` | `docs/tasks/T030-garage-phase-1-shared-contracts-and-registry.md` | 落共享 contracts、校验、加载与 registry | `F010-shared-contracts.md`、`F020-shared-contract-schemas.md` |
-| 04 | `T040` | `docs/tasks/T040-garage-phase-1-session-lifecycle-and-governance.md` | 落 session 主链、handoff、gate、approval 与 exception | `F040-session-lifecycle-and-handoffs.md`、`F050-governance-model.md` |
-| 05 | `T050` | `docs/tasks/T050-garage-phase-1-artifact-routing-and-evidence-surface.md` | 落 file-backed artifact / evidence surface | `F060-artifact-and-evidence-surface.md` |
-| 06 | `T060` | `docs/tasks/T060-garage-phase-1-continuity-and-promotion.md` | 落 continuity 分层与 promotion 规则 | `A130-garage-continuity-memory-skill-architecture.md`、`F070-continuity-mapping-and-promotion.md` |
-| 07 | `T070` | `docs/tasks/T070-garage-phase-1-reference-pack-shells.md` | 搭两个 reference packs 的共同骨架 | `F110-reference-packs.md` |
-| 08 | `T080` | `docs/tasks/T080-garage-phase-1-product-insights-pack.md` | 落 `Product Insights Pack` | `D110-garage-product-insights-pack-design.md` |
-| 09 | `T090` | `docs/tasks/T090-garage-phase-1-coding-pack.md` | 落 `Coding Pack` | `D120-garage-coding-pack-design.md` |
-| 10 | `T100` | `docs/tasks/T100-garage-phase-1-cross-pack-bridge-and-phase-1-walkthrough.md` | 打通 `product-insights -> coding` 主桥并做端到端走通 | `F120-cross-pack-bridge.md` |
-| 11 | `T110` | `docs/tasks/T110-garage-phase-1-runtime-home-and-workspace-topology.md` | 把当前 repo-local dogfooding 形态提升成可显式绑定 `runtime home / workspace` 的运行时拓扑 | `F210-runtime-home-and-workspace-topology.md`、`F060-artifact-and-evidence-surface.md` |
-| 12 | `T120` | `docs/tasks/T120-garage-phase-1-runtime-bootstrap-and-entrypoints.md` | 落统一 launcher、profile / workspace / host binding 与 create / resume 启动链 | `F220-runtime-bootstrap-and-entrypoints.md`、`F210-runtime-home-and-workspace-topology.md` |
-| 13 | `T130` | `docs/tasks/T130-garage-phase-1-runtime-provider-and-tool-execution.md` | 落 provider adapters、tool registry、execution trace 与可治理的 runtime execution layer | `F230-runtime-provider-and-tool-execution.md` |
+| 01 | `T010` | `docs/tasks/T010-garage-foundation-and-repository-layout.md` | 第一组 runtime foundation 的仓库骨架与边界起点 | `A110-garage-extensible-architecture.md` |
+| 02 | `T020` | `docs/tasks/T020-garage-core-runtime-records.md` | 落 `Garage Core` 的运行时对象与记录语义 | `F030-core-runtime-records.md` |
+| 03 | `T030` | `docs/tasks/T030-garage-shared-contracts-and-registry.md` | 落 shared contracts、校验、加载与 registry | `F010-shared-contracts.md`、`F020-shared-contract-schemas.md` |
+| 04 | `T040` | `docs/tasks/T040-garage-session-lifecycle-and-governance.md` | 落 session 主链、handoff、gate、approval 与 exception | `F040-session-lifecycle-and-handoffs.md`、`F050-governance-model.md` |
+| 05 | `T050` | `docs/tasks/T050-garage-artifact-routing-and-evidence-surface.md` | 落 workspace-first artifact / evidence surface | `F060-artifact-and-evidence-surface.md` |
+| 06 | `T060` | `docs/tasks/T060-garage-continuity-and-promotion.md` | 落 continuity、promotion baseline 与学习 loop 的第一层实现切片 | `A130-garage-continuity-memory-skill-architecture.md`、`F070-continuity-mapping-and-promotion.md`、`F080-garage-self-evolving-learning-loop.md` |
+| 07 | `T070` | `docs/tasks/T070-garage-reference-pack-shells.md` | 搭两个 reference packs 的共同骨架 | `F110-reference-packs.md` |
+| 08 | `T080` | `docs/tasks/T080-garage-product-insights-pack.md` | 落 `Product Insights Pack`，并对齐成长 loop 的 candidate mapping | `D110-garage-product-insights-pack-design.md`、`F070-continuity-mapping-and-promotion.md`、`F080-garage-self-evolving-learning-loop.md` |
+| 09 | `T090` | `docs/tasks/T090-garage-coding-pack.md` | 落 `Coding Pack`，并对齐成长 loop 的 candidate mapping | `D120-garage-coding-pack-design.md`、`F070-continuity-mapping-and-promotion.md`、`F080-garage-self-evolving-learning-loop.md` |
+| 10 | `T100` | `docs/tasks/T100-garage-cross-pack-bridge-and-walkthrough.md` | 打通当前 reference packs 主桥并做端到端走通 | `F120-cross-pack-bridge.md` |
+| 11 | `T110` | `docs/tasks/T110-garage-runtime-home-and-workspace-topology.md` | 把 repo-local dogfooding 形态提升成显式 `runtime home / workspace` 拓扑 | `F210-runtime-home-and-workspace-topology.md`、`F060-artifact-and-evidence-surface.md` |
+| 12 | `T120` | `docs/tasks/T120-garage-runtime-bootstrap-and-entrypoints.md` | 落统一 launcher、profile / workspace / host binding 与 create / resume 启动链 | `F220-runtime-bootstrap-and-entrypoints.md`、`F210-runtime-home-and-workspace-topology.md` |
+| 13 | `T130` | `docs/tasks/T130-garage-runtime-provider-and-tool-execution.md` | 落 provider adapters、tool registry、execution trace 与受治理的 runtime execution layer | `F230-runtime-provider-and-tool-execution.md`、`F080-garage-self-evolving-learning-loop.md` |
 
-## 4. phase 1 guardrails
+## 6. 当前 implementation guardrails
 
 所有 task docs 默认继承下面这些约束：
 
+- task docs 跟随设计真相，不反向定义架构
 - `Markdown-first`
 - `file-backed`
 - `Contract-first`
 - core 只理解中立对象，不吸收 pack 领域词
 - 新增能力优先通过 pack 扩展，而不是修改 core 语义
+- `evidence -> proposal -> governance -> update` 是 canonical growth loop
+- workspace-first growth 优先于全局自动共享
 - 不新增独立 `BridgeContract`
-- continuity 默认保守，不做自动晋升
-- 不先做重型 database-first 控制面
-- 不先做多租户、多人实时协作和复杂权限系统
 - one runtime, many entry surfaces
 - `workspace facts` 不被 `runtime home` 吞并
-- packs 只声明 capabilities，不绑定 vendor
+- packs 只声明 capabilities，不绑定 vendors
 - provider differences stay below core
 
-## 5. 统一文档结构
+## 7. 设计到任务的映射
 
-每篇 task doc 尽量保持短小，并统一使用下面这组结构：
-
-- 任务目标
-- 输入设计文档
-- 本文范围
-- 非目标
-- 交付物
-- 实施任务拆解
-- 依赖与并行建议
-- 验收与验证
-- 完成后进入哪一篇
-
-## 6. 设计到任务的映射
-
-| 设计文档 | 主要落到哪些 task docs |
+| 设计文档 | 当前主要落到哪些 task docs |
 | --- | --- |
-| `A110-garage-extensible-architecture.md` | `01`、`07` |
-| `A120-garage-core-subsystems-architecture.md` | `01`、`02`、`03`、`04`、`05`、`12`、`13` |
-| `F220-runtime-bootstrap-and-entrypoints.md` | `12` |
-| `F230-runtime-provider-and-tool-execution.md` | `13` |
-| `F210-runtime-home-and-workspace-topology.md` | `11`、`12` |
-| `F030-core-runtime-records.md` | `02` |
-| `F040-session-lifecycle-and-handoffs.md` | `04`、`10` |
-| `F050-governance-model.md` | `04`、`06`、`10`、`13` |
-| `F060-artifact-and-evidence-surface.md` | `05`、`10`、`11`、`13` |
-| `F010-shared-contracts.md` | `03`、`07`、`12` |
-| `F020-shared-contract-schemas.md` | `03` |
-| `A130-garage-continuity-memory-skill-architecture.md` | `06` |
-| `F070-continuity-mapping-and-promotion.md` | `06`、`08`、`09` |
-| `F110-reference-packs.md` | `07` |
-| `D110-garage-product-insights-pack-design.md` | `08` |
-| `D120-garage-coding-pack-design.md` | `09` |
-| `F120-cross-pack-bridge.md` | `10` |
+| `A110-garage-extensible-architecture.md` | `T010`、`T070` |
+| `A120-garage-core-subsystems-architecture.md` | `T010`、`T020`、`T030`、`T040`、`T050`、`T120`、`T130` |
+| `A130-garage-continuity-memory-skill-architecture.md` | `T060` |
+| `A140-garage-system-architecture.md` | 作为全部切片的 system-level 对齐输入 |
+| `F220-runtime-bootstrap-and-entrypoints.md` | `T120` |
+| `F230-runtime-provider-and-tool-execution.md` | `T130` |
+| `F210-runtime-home-and-workspace-topology.md` | `T110`、`T120` |
+| `F030-core-runtime-records.md` | `T020` |
+| `F040-session-lifecycle-and-handoffs.md` | `T040`、`T100` |
+| `F050-governance-model.md` | `T040`、`T060`、`T100`、`T130` |
+| `F060-artifact-and-evidence-surface.md` | `T050`、`T100`、`T110`、`T130` |
+| `F010-shared-contracts.md` | `T030`、`T070`、`T120` |
+| `F020-shared-contract-schemas.md` | `T030` |
+| `F070-continuity-mapping-and-promotion.md` | `T060`、`T080`、`T090` |
+| `F080-garage-self-evolving-learning-loop.md` | `T060`、`T080`、`T090`、`T130` |
+| `F110-reference-packs.md` | `T070` |
+| `D110-garage-product-insights-pack-design.md` | `T080` |
+| `D120-garage-coding-pack-design.md` | `T090` |
+| `F120-cross-pack-bridge.md` | `T100` |
 
-## 7. 使用方式
+## 8. 后续重切建议
 
-建议按下面方式使用这组文档：
+当前任务树仍然是第一组实施切片，因此建议在主线设计稳定后优先重切下面这些方向：
 
-1. 先从 `01` 到 `03` 搭出平台最小骨架。
-2. 再从 `04` 到 `06` 落地 core 的控制流、文件表面和 continuity 规则。
-3. 再从 `07` 到 `10` 验证两个 reference packs 与主桥的 phase 1 平台语义。
-4. 最后从 `11` 到 `13` 把当前 repo-local dogfooding 形态往“独立可运行程序”方向推进。
+- 为 `F080` 单独切出更明确的 growth engine / runtime update delivery slice
+- 把 `T060` 从 continuity baseline 扩成更完整的 proposal lifecycle implementation track
+- 在新增 capability packs 前，先明确它们复用现有 growth loop 的方式
 
-如果开发中发现某篇 task doc 变得过长，优先新增新的 phase 1 task 文档，而不是继续把所有细节塞回现有文档里。
-
-## 8. 维护约定
+## 9. 维护约定
 
 - task docs 保持执行导向，不重复设计文档里的长篇论证。
 - 设计变更优先回写 `docs/architecture/`、`docs/design/` 或 `docs/features/`；任务变更优先回写 `docs/tasks/`。
-- phase 2 或非 `Garage` 任务，不要继续塞进这组 phase 1 文档。
 - 新增 task doc 时，先更新本页索引与依赖顺序。
+- 如果某个 task 已经明显变成独立 capability 或稳定系统语义，应把真相源提升回 `docs/features/` 或 `docs/architecture/`，而不是继续堆在 task doc 里。
