@@ -128,7 +128,10 @@ class RegistryIndex:
     ) -> None:
         _ensure_unique(self.nodes, node.node_id, "node")
         validate_contract_version(node.contract_version)
-        validate_extensions(node.extensions)
+        validate_extensions(
+            node.extensions,
+            allowed_extension_keys=("executionCapabilities",),
+        )
         if node.pack_id != pack_id:
             raise RegistryLoadError(
                 f"Node {node.node_id!r} declares packId {node.pack_id!r}, expected {pack_id!r}."

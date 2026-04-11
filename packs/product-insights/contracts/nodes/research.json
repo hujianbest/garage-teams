@@ -20,5 +20,10 @@
   ],
   "policyRefs": [
     "policies/evidence-sufficiency.md"
+  ],
+  "executionCapabilities": [
+    "llm.analysis",
+    "workspace.read",
+    "research.source-capture"
   ]
 }

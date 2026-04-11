@@ -16,6 +16,8 @@ from core.records import (
     LineageLink,
     LineageLinkType,
     ObjectRef,
+    SessionState,
+    SessionStatus,
 )
 from foundation import WorkspaceBinding
 
@@ -48,6 +50,73 @@ def _json_default(value: Any) -> Any:
         return str(value)
     if hasattr(value, "value"):
         return value.value
+    return value
+
+
+def _object_ref_to_mapping(ref: ObjectRef) -> dict[str, str]:
+    return {"kind": ref.kind, "objectId": ref.object_id}
+
+
+def _object_ref_from_mapping(raw: Mapping[str, Any]) -> ObjectRef:
+    kind = raw.get("kind")
+    object_id = raw.get("objectId")
+    if not isinstance(kind, str) or not isinstance(object_id, str):
+        raise ValueError("Expected object reference payload to contain string kind and objectId fields.")
+    return ObjectRef(kind=kind, object_id=object_id)
+
+
+def _session_state_to_mapping(state: SessionState) -> dict[str, Any]:
+    return {
+        "sessionId": state.session_id,
+        "intentRef": _object_ref_to_mapping(state.intent_ref),
+        "contextPointerRef": _object_ref_to_mapping(state.context_pointer_ref),
+        "sessionStatus": state.session_status.value,
+        "currentPack": state.current_pack,
+        "currentNode": state.current_node,
+        "summary": state.summary,
+        "pendingGateRefs": [_object_ref_to_mapping(ref) for ref in state.pending_gate_refs],
+    }
+
+
+def _session_state_from_mapping(raw: Mapping[str, Any]) -> SessionState:
+    session_id = raw.get("sessionId")
+    session_status = raw.get("sessionStatus")
+    current_pack = raw.get("currentPack")
+    current_node = raw.get("currentNode")
+    summary = raw.get("summary")
+    pending_gate_refs = raw.get("pendingGateRefs", [])
+    if not isinstance(session_id, str):
+        raise ValueError("Session payload must include string field 'sessionId'.")
+    if not isinstance(session_status, str):
+        raise ValueError("Session payload must include string field 'sessionStatus'.")
+    if not isinstance(current_pack, str):
+        raise ValueError("Session payload must include string field 'currentPack'.")
+    if not isinstance(current_node, str):
+        raise ValueError("Session payload must include string field 'currentNode'.")
+    if not isinstance(summary, str):
+        raise ValueError("Session payload must include string field 'summary'.")
+    if not isinstance(pending_gate_refs, list):
+        raise ValueError("Session payload field 'pendingGateRefs' must be a list.")
+    return SessionState(
+        session_id=session_id,
+        intent_ref=_object_ref_from_mapping(_require_mapping(raw, "intentRef")),
+        context_pointer_ref=_object_ref_from_mapping(_require_mapping(raw, "contextPointerRef")),
+        session_status=SessionStatus(session_status),
+        current_pack=current_pack,
+        current_node=current_node,
+        summary=summary,
+        pending_gate_refs=tuple(_object_ref_from_mapping(_ensure_mapping(item)) for item in pending_gate_refs),
+    )
+
+
+def _require_mapping(raw: Mapping[str, Any], key: str) -> Mapping[str, Any]:
+    value = raw.get(key)
+    return _ensure_mapping(value)
+
+
+def _ensure_mapping(value: Any) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ValueError("Expected mapping payload.")
     return value
 
 
@@ -124,6 +193,37 @@ class FileBackedSurfaceManager:
             file_path=file_path,
             sidecar_path=sidecar_path,
         )
+
+    def write_session_state(self, state: SessionState) -> ArtifactRoute:
+        route = self.resolve_session_route(session_id=state.session_id)
+        route.file_path.parent.mkdir(parents=True, exist_ok=True)
+        route.sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+        route.file_path.write_text(
+            json.dumps(_session_state_to_mapping(state), indent=2, ensure_ascii=True, default=_json_default) + "\n",
+            encoding="utf-8",
+        )
+        route.sidecar_path.write_text(
+            json.dumps(
+                {
+                    "sessionId": state.session_id,
+                    "workspaceId": self.workspace.workspace_id,
+                    "surface": SurfaceKind.SESSIONS.value,
+                },
+                indent=2,
+                ensure_ascii=True,
+                default=_json_default,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return route
+
+    def read_session_state(self, session_id: str) -> SessionState:
+        route = self.resolve_session_route(session_id=session_id)
+        payload = json.loads(route.file_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("Expected top-level session payload to be a JSON object.")
+        return _session_state_from_mapping(payload)
 
     def write_artifact(
         self,

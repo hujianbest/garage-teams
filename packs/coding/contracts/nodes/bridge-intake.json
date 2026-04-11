@@ -23,5 +23,10 @@
   ],
   "handoffHints": {
     "upstreamPack": "product-insights"
-  }
+  },
+  "executionCapabilities": [
+    "llm.structuring",
+    "workspace.read",
+    "workspace.write"
+  ]
 }

@@ -29,5 +29,10 @@
   "handoffHints": {
     "targetPack": "coding",
     "targetNode": "coding.bridge-intake"
-  }
+  },
+  "executionCapabilities": [
+    "llm.synthesis",
+    "workspace.read",
+    "workspace.write"
+  ]
 }

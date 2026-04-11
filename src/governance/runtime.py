@@ -41,7 +41,10 @@ class RuntimeContext:
     session_id: str
     pack_id: str
     node_id: str
-    action: SessionAction
+    action: SessionAction | str
+
+    def action_token(self) -> str:
+        return self.action.value if isinstance(self.action, SessionAction) else self.action
 
     def tokens(self) -> set[str]:
         return {
@@ -49,7 +52,7 @@ class RuntimeContext:
             self.session_id,
             self.pack_id,
             self.node_id,
-            self.action.value,
+            self.action_token(),
         }
 
 
@@ -115,7 +118,7 @@ class GovernanceRuntime:
             )
             decision = GateDecision(
                 decision_id=f"gate.{context.session_id}.{gate_type.value}",
-                action_ref=ObjectRef(kind="action", object_id=context.action.value),
+                action_ref=ObjectRef(kind="action", object_id=context.action_token()),
                 policy_set_ref=ObjectRef(kind="policy-set", object_id=policy_set.policy_id),
                 verdict=GateVerdict.ALLOW,
                 rationale="No stricter governance rule matched the current context.",
@@ -141,7 +144,7 @@ class GovernanceRuntime:
         )
         decision = GateDecision(
             decision_id=f"gate.{context.session_id}.{gate_type.value}",
-            action_ref=ObjectRef(kind="action", object_id=context.action.value),
+            action_ref=ObjectRef(kind="action", object_id=context.action_token()),
             policy_set_ref=ObjectRef(kind="policy-set", object_id=policy_set.policy_id),
             verdict=strongest.verdict,
             missing=tuple(

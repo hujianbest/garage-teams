@@ -19,5 +19,11 @@
   ],
   "policyRefs": [
     "policies/implementation-safety.md"
+  ],
+  "executionCapabilities": [
+    "llm.codegen",
+    "workspace.read",
+    "workspace.write",
+    "repo.modify"
   ]
 }
