@@ -24,4 +24,4 @@
 - 平台中立 core 逻辑
 - 共享 contract 定义
 - 与 pack 无关的 host adapter 逻辑
-- `src/garage/` 中的 runtime package 代码
+- `src/` 中的 runtime package 代码

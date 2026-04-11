@@ -1,7 +1,7 @@
 from pathlib import Path
 import unittest
 
-from garage.foundation import WorkspaceBinding
+from foundation import WorkspaceBinding
 
 
 class WorkspaceBindingTests(unittest.TestCase):

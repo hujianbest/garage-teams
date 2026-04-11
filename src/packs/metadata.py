@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
-from garage.continuity import GrowthTarget
+from continuity import GrowthTarget
 
 
 class PackMetadataError(ValueError):

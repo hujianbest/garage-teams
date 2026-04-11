@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from garage.registry import RegistryLoadError, build_registry
+from registry import RegistryLoadError, build_registry
 
 
 def _write_json(path: Path, payload: dict[str, object]) -> None:

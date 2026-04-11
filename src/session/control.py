@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from garage.core.records import GateDecision, GateVerdict, SessionState
-from garage.governance.runtime import GateEvaluation, GateType, GovernanceRuntime, RuntimeContext
-from garage.session.lifecycle import SessionAction, apply_action, describe_transition
+from core.records import GateDecision, GateVerdict, SessionState
+from governance.runtime import GateEvaluation, GateType, GovernanceRuntime, RuntimeContext
+from session.lifecycle import SessionAction, apply_action, describe_transition
 
 
 class BlockedGateError(RuntimeError):

@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from garage.core.records import GateDecision, GateVerdict, ObjectRef, PolicySet
-from garage.session.lifecycle import SessionAction
+from core.records import GateDecision, GateVerdict, ObjectRef, PolicySet
+from session.lifecycle import SessionAction
 
 
 class GovernanceScope(StrEnum):

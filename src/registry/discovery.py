@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
-from garage.contracts import (
+from contracts import (
     ArtifactContract,
     ContractParseError,
     ContractValidationError,

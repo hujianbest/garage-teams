@@ -1,12 +1,12 @@
 import unittest
 
-from garage.bridge import (
+from bridge import (
     AcceptanceVerdict,
     build_reference_bridge_walkthrough_fixture,
     routing_for_verdict,
 )
-from garage.core import SessionStatus
-from garage.session import SessionAction
+from core import SessionStatus
+from session import SessionAction
 
 
 class BridgeWorkflowTests(unittest.TestCase):

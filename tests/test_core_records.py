@@ -1,6 +1,6 @@
 import unittest
 
-from garage.core import (
+from core import (
     APPEND_ONLY_RECORD_TYPES,
     CURRENT_SLOT_RECORD_TYPES,
     ArtifactDescriptor,
@@ -13,7 +13,7 @@ from garage.core import (
     build_session_creation_fixture,
     write_semantics_for,
 )
-from garage.core.records import WriteSemantics
+from core.records import WriteSemantics
 
 
 class CoreRecordTests(unittest.TestCase):

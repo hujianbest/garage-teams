@@ -2,9 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from garage.core import ArtifactDescriptor, AuthorityMarker, EvidenceRecord, ObjectRef
-from garage.foundation import WorkspaceBinding
-from garage.surfaces import FileBackedSurfaceManager
+from core import ArtifactDescriptor, AuthorityMarker, EvidenceRecord, ObjectRef
+from foundation import WorkspaceBinding
+from surfaces import FileBackedSurfaceManager
 
 
 class FileBackedSurfaceTests(unittest.TestCase):

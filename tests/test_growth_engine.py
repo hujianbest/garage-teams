@@ -1,7 +1,7 @@
 import unittest
 
-from garage.continuity import ForbiddenPromotionPathError, GrowthEngine, GrowthTarget, MemoryEntry
-from garage.core import EvidenceRecord, ObjectRef
+from continuity import ForbiddenPromotionPathError, GrowthEngine, GrowthTarget, MemoryEntry
+from core import EvidenceRecord, ObjectRef
 
 
 class GrowthEngineTests(unittest.TestCase):

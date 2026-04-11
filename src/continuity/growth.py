@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from garage.core.records import EvidenceRecord, ObjectRef
+from core.records import EvidenceRecord, ObjectRef
 
 
 class GrowthTarget(StrEnum):

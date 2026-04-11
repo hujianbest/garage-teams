@@ -9,7 +9,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Mapping
 
-from garage.core.records import (
+from core.records import (
     ArtifactDescriptor,
     AuthorityMarker,
     EvidenceRecord,
@@ -17,7 +17,7 @@ from garage.core.records import (
     LineageLinkType,
     ObjectRef,
 )
-from garage.foundation import WorkspaceBinding
+from foundation import WorkspaceBinding
 
 
 class SurfaceKind(StrEnum):

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from garage.core.records import (
+from core.records import (
     ArtifactDescriptor,
     ArtifactIntent,
     EvidenceRecord,
@@ -14,7 +14,7 @@ from garage.core.records import (
     SessionState,
     SessionStatus,
 )
-from garage.session.lifecycle import SessionAction, apply_action
+from session.lifecycle import SessionAction, apply_action
 
 
 class AcceptanceVerdict(StrEnum):

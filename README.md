@@ -1,6 +1,6 @@
 # Garage
 
-`Garage` 是一个面向 `solo creator` 的 `Creator OS`。当前仓库根目录按 `Garage` 的逻辑根目录使用，既承接主线设计文档，也承接当前 reference pack surface、`src/garage/` runtime implementation surface 和 file-backed runtime surfaces。
+`Garage` 是一个面向 `solo creator` 的 `Creator OS`。当前仓库根目录按 `Garage` 的逻辑根目录使用，既承接主线设计文档，也承接当前 reference pack surface、`src/` runtime implementation surface 和 file-backed runtime surfaces。
 
 ## 当前定位
 
@@ -65,7 +65,7 @@
 
 当前仓库里最接近 live runtime source 的入口是：
 
-- `src/garage/`
+- `src/`
 - `tests/`
 - `pyproject.toml`
 
@@ -83,7 +83,7 @@
 
 因此当前仓库里已经有两类不同表面：
 
-- `src/garage/` 是 `Garage` runtime 的当前实现面。
+- `src/` 是 `Garage` runtime 的当前实现面。
 - `packs/*/skills/` 与 `.agents/skills/` 是来源资产、参考 workflow 和 skill 工具链。
 
 ## 关键文档

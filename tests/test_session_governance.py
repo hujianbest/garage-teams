@@ -1,8 +1,8 @@
 import unittest
 
-from garage.core import GateVerdict, SessionStatus, build_session_creation_fixture
-from garage.governance import GateType, GovernanceRule, GovernanceRuntime, GovernanceScope, RuntimeContext
-from garage.session import BlockedGateError, InvalidSessionTransitionError, SessionAction, SessionController
+from core import GateVerdict, SessionStatus, build_session_creation_fixture
+from governance import GateType, GovernanceRule, GovernanceRuntime, GovernanceScope, RuntimeContext
+from session import BlockedGateError, InvalidSessionTransitionError, SessionAction, SessionController
 
 
 class SessionGovernanceTests(unittest.TestCase):

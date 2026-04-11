@@ -108,7 +108,7 @@
 
 - `docs/` 已按 `README.md`、`VISION.md`、`GARAGE.md`、`ROADMAP.md`、`architecture/`、`design/`、`features/`、`tasks/`、`wiki/` 分层。
 - 根级 `pyproject.toml` 已建立当前 Python package 与测试入口。
-- `src/garage/` 已成为 `Garage` runtime 的首个独立实现面。
+- `src/` 已成为 `Garage` runtime 的首个独立实现面。
 - `tests/` 已建立当前 runtime package 的最小验证面。
 - `packs/` 已成为当前可见的 pack surface。
 - `packs/coding/` 与 `packs/product-insights/` 已成为两个 reference packs 的当前目录入口。
@@ -124,5 +124,5 @@
 当前阶段已经能够明确回答：
 
 - 当前主线文档和 pack source 的真实入口在哪里。
-- `docs/` 负责设计与任务，`src/garage/` 负责平台中立 runtime 实现，`packs/` 负责 pack surface，`.garage/` 与 root-level surfaces 负责运行时事实面。
-- `core / contracts / hosts` 已有首轮实现落点 `src/garage/`，并继续与 `packs/*/skills/`、`.agents/skills/` 保持边界分离。
+- `docs/` 负责设计与任务，`src/` 负责平台中立 runtime 实现，`packs/` 负责 pack surface，`.garage/` 与 root-level surfaces 负责运行时事实面。
+- `core / contracts / hosts` 已有首轮实现落点 `src/`，并继续与 `packs/*/skills/`、`.agents/skills/` 保持边界分离。

@@ -12,16 +12,13 @@ dependencies = []
 
 [tool.setuptools]
 include-package-data = true
+py-modules = ["foundation"]
 
 [tool.setuptools.package-dir]
 "" = "src"
 
-[tool.setuptools.package-data]
-garage = ["py.typed"]
-
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["garage*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

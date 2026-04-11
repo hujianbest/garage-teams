@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from enum import StrEnum
 
-from garage.core.records import SessionState, SessionStatus
+from core.records import SessionState, SessionStatus
 
 
 class SessionAction(StrEnum):

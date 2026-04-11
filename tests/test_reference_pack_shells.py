@@ -1,9 +1,9 @@
 import unittest
 from pathlib import Path
 
-from garage.continuity import GrowthTarget
-from garage.packs import load_pack_continuity_map
-from garage.registry import build_registry
+from continuity import GrowthTarget
+from packs import load_pack_continuity_map
+from registry import build_registry
 
 
 class ReferencePackShellTests(unittest.TestCase):
