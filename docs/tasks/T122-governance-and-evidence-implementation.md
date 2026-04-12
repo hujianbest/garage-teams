@@ -14,3 +14,21 @@
 - governance gates and approvals
 - evidence surface
 - archive-visible work progression
+
+## 2. 最小交付物
+
+- gate / approval / archive 主链
+- evidence surface 基线
+- governance-visible work progression
+
+## 3. 依赖
+
+- `F133`
+- `F134`
+- `D121`
+
+## 4. 验收
+
+- 关键工作动作可被 gate / approval 约束
+- evidence 与治理结果可被共同回读
+- archive 结果对用户和系统都可见

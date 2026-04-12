@@ -13,3 +13,15 @@
 - runtime home / workspace 绑定
 - bootstrap 主链
 - profile authority resolution
+
+## 2. 最小交付物
+
+- 可检查的 runtime home / workspace topology
+- 统一 bootstrap 链
+- `RuntimeProfile` authority resolution
+
+## 3. 验收
+
+- 不同入口共享同一 bootstrap / topology 主线
+- runtime home 与 workspace 不再互相吞并
+- provider authority 的 owner 清楚可实现

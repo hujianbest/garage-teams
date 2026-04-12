@@ -13,3 +13,21 @@
 - 稳定 CLI 入口
 - create / resume / attach / submitStep 最小主链
 - 不复制私有 runtime
+
+## 2. 最小交付物
+
+- 可用的 CLI 入口命令面
+- 明确的 session / workspace / profile summary
+- 统一失败语义
+
+## 3. 依赖
+
+- `F102`
+- `F113`
+- `D101`
+
+## 4. 验收
+
+- CLI 可 create / resume / attach
+- CLI 不需要私有 runtime 语义
+- CLI 的错误与状态反馈可由下游实现直接对应

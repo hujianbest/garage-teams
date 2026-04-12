@@ -13,3 +13,15 @@
 - shared contracts
 - schema validation
 - registry-backed binding
+
+## 2. 最小交付物
+
+- shared contract shapes
+- schema validation path
+- registry discovery and binding
+
+## 3. 验收
+
+- packs 通过 shared contracts 进入系统
+- schema 形状可被校验
+- registry 可以被 runtime core、governance 和 execution 共同消费

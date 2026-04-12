@@ -37,11 +37,16 @@
 | Family | 作用 | 主要输入 |
 | --- | --- | --- |
 | `T10` | Entry surfaces implementation | `F10`、`F11`、`D10` |
-| `T11` | Runtime core and topology implementation | `F11`、`F12` |
+| `T11` | Runtime core and topology implementation | `F11`、`F12`、`F16` |
 | `T12` | Governance and workspace truth implementation | `F13`、`D12` |
 | `T13` | Continuity and growth implementation | `F14`、`D12` |
 | `T14` | Pack platform and collaboration implementation | `F15`、`D11` |
 | `T15` | Product hardening and delivery implementation | `F16`、`D10`、`D12` |
+
+说明：
+
+- `T11` 中的 `T113` 负责 execution authority placement 的核心实现，因此会显式消费 `F16`
+- `T15` 继续承接 `F16` 的 secrets、ops、observability 与更深产品面
 
 ## 5. 阅读顺序
 

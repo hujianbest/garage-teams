@@ -13,3 +13,22 @@
 - shared host bridge seam
 - concrete host adapter injection paths
 - host hints stay below runtime truth
+
+## 2. 最小交付物
+
+- shared host bridge seam
+- 至少一条具体宿主适配路径
+- host hint / context injection 边界
+- host failure / rejection 回退语义
+
+## 3. 依赖
+
+- `F103`
+- `F161`
+- `D103`
+
+## 4. 验收
+
+- HostBridge 只注入能力，不拥有系统真相
+- 具体宿主路径可以建立在 shared bridge seam 上
+- provider authority / pack truth / growth truth 不会被 host 抢走

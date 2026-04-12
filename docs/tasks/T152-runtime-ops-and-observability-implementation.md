@@ -14,3 +14,21 @@
 - runtime diagnostics
 - execution trace and observability
 - evidence-linked operational visibility
+
+## 2. 最小交付物
+
+- runtime diagnostics baseline
+- execution trace readback / observability baseline
+- evidence-linked operational views
+
+## 3. 依赖
+
+- `F163`
+- `F164`
+- `D121`
+
+## 4. 验收
+
+- 运行中问题可通过 trace / diagnostics / evidence 共同定位
+- observability 不需要再自己定义第二套 trace truth
+- 后续 Web depth 与 ops 扩展有稳定基线

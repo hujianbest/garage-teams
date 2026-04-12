@@ -13,3 +13,15 @@
 - workspace-first facts
 - artifact routing
 - authority-preserving write paths
+
+## 2. 最小交付物
+
+- workspace facts 的权威目录与读写规则
+- neutral artifact intent -> authoritative destination 的 routing 逻辑
+- authority-preserving write semantics
+
+## 3. 验收
+
+- artifacts / evidence / sessions / archives / .garage 的归属清楚
+- routing 不需要 pack 私有路径约定
+- 下游 evidence / bridge 不会再次发明事实面

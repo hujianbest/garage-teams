@@ -13,3 +13,15 @@
 - authority-backed secrets
 - runtime doctor
 - distribution/install path
+
+## 2. 最小交付物
+
+- secrets / credential resolution
+- runtime doctor
+- distribution / install layout baseline
+
+## 3. 验收
+
+- provider authority 不会因 secrets/distribution 再次漂移
+- runtime home 可被诊断、安装、升级
+- 下游 ops / observability / web depth 有稳定交付前提

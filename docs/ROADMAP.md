@@ -49,13 +49,13 @@
 
 | Family | 作用 | 对应 architecture 主线 | 当前实施切片 |
 | --- | --- | --- | --- |
-| `F10` | Agent Teams product surface：团队对象、独立工作环境、能力注入层 | `1`、`10` | `T140`、`T150`、`T160` |
-| `F11` | Runtime topology and entry bootstrap：runtime home、workspace、bootstrap、SessionApi | `10`、`11`、`101` | `T110`、`T120`、`T140`、`T150`、`T160`、`T170` |
-| `F12` | Garage Team runtime core：records、session、handoff、review、registry | `2`、`11`、`102` | `T020`、`T030`、`T040` |
-| `F13` | Governance and workspace truth：workspace facts、artifact routing、evidence、gates | `20`、`30`、`104`、`105` | `T040`、`T050`、`T100`、`T110` |
-| `F14` | Continuity and growth：memory、skill、GrowthProposal、promotion | `21`、`31`、`106` | `T060`、`T080`、`T090`、`T130` |
-| `F15` | Pack platform and collaboration：contracts、packs、registry、bridge | `40`、`41`、`107`、`111` | `T030`、`T070`、`T080`、`T090`、`T100` |
-| `F16` | Execution and provider/tool plane：authority、execution、trace、outcomes | `12`、`103` | `T130`、`T170`、`T180`、`T200`、`T201` |
+| `F10` | Agent Teams product surface：团队对象、独立工作环境、能力注入层 | `1`、`10` | `T10`、`T101`、`T102`、`T103` |
+| `F11` | Runtime topology and entry bootstrap：runtime home、workspace、bootstrap、SessionApi | `10`、`11`、`101` | `T10`、`T11`、`T101`、`T102`、`T103`、`T111` |
+| `F12` | Garage Team runtime core：records、session、handoff、review、registry | `2`、`11`、`102` | `T11`、`T112` |
+| `F13` | Governance and workspace truth：workspace facts、artifact routing、evidence、gates | `20`、`30`、`104`、`105` | `T12`、`T121`、`T122` |
+| `F14` | Continuity and growth：memory、skill、GrowthProposal、promotion | `21`、`31`、`106` | `T13`、`T131`、`T132` |
+| `F15` | Pack platform and collaboration：contracts、packs、registry、bridge | `40`、`41`、`107`、`111` | `T14`、`T141`、`T142`、`T143` |
+| `F16` | Execution and provider/tool plane：authority、execution、trace、outcomes | `12`、`103` | `T11`、`T113`、`T15`、`T151`、`T152`、`T153` |
 
 ## 5. 当前 Feature Specs
 

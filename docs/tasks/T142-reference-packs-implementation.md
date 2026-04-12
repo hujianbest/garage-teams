@@ -14,3 +14,22 @@
 - product insights pack
 - coding pack
 - reference capability calibration
+
+## 2. 最小交付物
+
+- Product Insights pack 基线
+- Coding pack 基线
+- 作为 capability calibration 的 reference behavior
+
+## 3. 依赖
+
+- `F151`
+- `F153`
+- `D111`
+- `D112`
+
+## 4. 验收
+
+- reference packs 能代表产品能力面
+- packs 和 shared runtime / bridge / continuity 主线关系清楚
+- 下游协作与 bridge 实现有稳定输入
