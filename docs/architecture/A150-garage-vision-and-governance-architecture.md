@@ -3,12 +3,14 @@
 - Architecture ID: `A150`
 - 状态: 草稿
 - 日期: 2026-04-11
-- 定位: 在 `A110` 已冻结顶层分层、`A120` 已冻结 runtime 子系统、`A140` 已给出完整系统主链之后，继续冻结 `VisionAndGovernance` 这一层本身的内部架构，明确愿景工件、治理工件、运行时治理执行与成长治理之间的关系。
+- 定位: 在 `A105`、`A110`、`A115`、`A120`、`A140` 已分别冻结产品对象、平台边界、产品 surfaces、`Garage Team runtime` 与完整系统主链之后，继续冻结 `VisionAndGovernance` 这一层本身的内部架构，明确愿景工件、治理工件、运行时治理执行与成长治理之间的关系。
 - 当前阶段: 完整架构主线，实施将按切片推进
 - 关联文档:
   - `docs/VISION.md`
   - `docs/GARAGE.md`
+  - `docs/architecture/A105-garage-team-workspace-and-first-class-objects.md`
   - `docs/architecture/A110-garage-extensible-architecture.md`
+  - `docs/architecture/A115-product-surfaces-and-host-capability-injection.md`
   - `docs/architecture/A120-garage-core-subsystems-architecture.md`
   - `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`
   - `docs/architecture/A140-garage-system-architecture.md`
@@ -24,7 +26,7 @@
 
 这篇文档只回答一个问题：
 
-**当 `Garage` 把“人定方向，AI 在治理中放大”当成非谈判前提时，`VisionAndGovernance` 这一层本身应该怎样被设计，才能既是长期架构的上游约束，又是真正参与 runtime 的稳定子系统。**
+**当 `Garage` 把“辅助创作者的 Agent Teams 工作环境”与“人定方向，AI 在治理中放大”都当成非谈判前提时，`VisionAndGovernance` 这一层本身应该怎样被设计，才能既是长期架构的上游约束，又是真正参与 `Garage Team runtime` 的稳定子系统。**
 
 本文覆盖：
 

@@ -3,13 +3,14 @@
 - Architecture ID: `A170`
 - 状态: 草稿
 - 日期: 2026-04-11
-- 定位: 在 `A160` 已冻结 pack platform 之后，继续冻结 `Garage` 的 cross-pack bridge 架构，明确一个 pack 如何把工作结果、判断依据与 handoff 状态稳定交给另一个 pack，同时保持 artifact-first、evidence-first 与 governance-bounded 的边界。
+- 定位: 在 `A160` 已冻结 pack platform 之后，继续冻结 `Garage` 的 cross-pack bridge 架构，明确一个能力面如何把工作结果、判断依据与 handoff 状态稳定交给另一个能力面，同时保持 artifact-first、evidence-first 与 governance-bounded 的边界。
 - 当前阶段: 完整架构主线，实施将按切片推进
 - 关联文档:
   - `docs/architecture/A110-garage-extensible-architecture.md`
   - `docs/architecture/A120-garage-core-subsystems-architecture.md`
   - `docs/architecture/A140-garage-system-architecture.md`
   - `docs/architecture/A160-garage-pack-platform-architecture.md`
+  - `docs/architecture/A105-garage-team-workspace-and-first-class-objects.md`
   - `docs/features/F010-shared-contracts.md`
   - `docs/features/F040-session-lifecycle-and-handoffs.md`
   - `docs/features/F050-governance-model.md`
@@ -23,7 +24,7 @@
 
 这篇文档只回答一个问题：
 
-**当 `Garage` 允许多个 packs 协作时，一个 pack 应该如何把结果稳定交给另一个 pack，而不是依赖隐式聊天上下文、宿主缓存或“大家心里都懂”的 handoff 习惯。**
+**当 `Garage Team` 允许多个能力面协作时，一个 pack 应该如何把结果稳定交给另一个 pack，而不是依赖隐式聊天上下文、宿主缓存或“大家心里都懂”的 handoff 习惯。**
 
 本文覆盖：
 

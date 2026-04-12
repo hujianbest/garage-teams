@@ -3,10 +3,11 @@
 - Architecture ID: `A160`
 - 状态: 草稿
 - 日期: 2026-04-11
-- 定位: 在 `A110` 已冻结 `SharedContracts + CapabilityPacks` 作为能力扩展 seam、`A120` 已冻结 `Registry` 作为 runtime 子系统之后，继续冻结 `Garage` 的 pack platform 架构，明确共享契约、pack 注册、pack 激活与 reference pack 校准之间的关系。
+- 定位: 在 `A105` 已冻结 `Garage Team` 是一等产品对象、`A110` 已冻结能力扩展 seam、`A120` 已冻结 `Registry` 作为 `Garage Team runtime` 子系统之后，继续冻结 `Garage` 的 pack platform 架构，明确共享契约、pack 注册、pack 激活与 reference pack 校准之间的关系。
 - 当前阶段: 完整架构主线，实施将按切片推进
 - 关联文档:
   - `docs/GARAGE.md`
+  - `docs/architecture/A105-garage-team-workspace-and-first-class-objects.md`
   - `docs/architecture/A110-garage-extensible-architecture.md`
   - `docs/architecture/A120-garage-core-subsystems-architecture.md`
   - `docs/architecture/A140-garage-system-architecture.md`
@@ -22,7 +23,7 @@
 
 这篇文档只回答一个问题：
 
-**当 `Garage` 希望持续接入 `coding`、`product insights`、`writing`、`video` 等不同能力时，平台中的 pack 扩展面应该如何被架构化，才能让新能力主要通过声明、注册和绑定进入系统，而不是反向修改 core。**
+**当 `Garage` 希望让 `Garage Team` 持续吸收 `coding`、`product insights`、`writing`、`video` 等不同能力时，平台中的 pack 扩展面应该如何被架构化，才能让新能力主要通过声明、注册和绑定进入系统，而不是反向修改 core。**
 
 本文覆盖：
 

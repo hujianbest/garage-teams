@@ -109,6 +109,7 @@
 - `docs/tasks/` 只负责实施切片、开发顺序、交付物与验收，不重复拥有主线设计真相。
 - `docs/wiki/` 负责外部项目分析、采用方式、路径映射与 supporting references，不应反向成为当前主线的唯一依据。
 - 当 `docs/VISION.md` 与 `docs/GARAGE.md` 的职责边界发生明显调整时，至少同步检查 `README.md`、`README.zh-CN.md`、`docs/ROADMAP.md` 与 `docs/architecture/A140-garage-system-architecture.md` 是否仍沿用旧产品语言。
+- 当 `docs/architecture/` 的主线 owner docs 被重切或新增（例如新增 `A105`、`A115`）时，至少同步检查 `docs/ROADMAP.md`、`docs/tasks/README.md`、`README.md`、`README.zh-CN.md`、`docs/features/F220-runtime-bootstrap-and-entrypoints.md`、`docs/features/F230-runtime-provider-and-tool-execution.md` 是否仍沿用旧的 architecture spine。
 
 ## 6. 当前约束
 

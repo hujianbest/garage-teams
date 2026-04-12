@@ -3,12 +3,14 @@
 - Architecture ID: `A140`
 - 状态: 草稿
 - 日期: 2026-04-11
-- 定位: 在 `A110`、`A120`、`A130` 已分别冻结顶层分层、runtime 子系统与 continuity 主链之后，给出 `Garage` 的完整端到端系统架构视图，统一回答“系统如何运行、为什么这样取舍、关键 ADR 是什么”。
+- 定位: 在 `VISION`、`GARAGE`、`A105`、`A110`、`A115`、`A120`、`A130` 已分别冻结产品愿景、产品定义、团队对象、平台边界、产品 surfaces、runtime 子系统与 continuity 主链之后，给出 `Garage` 的完整端到端系统架构视图，统一回答“系统如何运行、为什么这样取舍、关键 ADR 是什么”。
 - 当前阶段: 完整架构主线，实施将按切片推进
 - 关联文档:
   - `docs/VISION.md`
   - `docs/GARAGE.md`
+  - `docs/architecture/A105-garage-team-workspace-and-first-class-objects.md`
   - `docs/architecture/A110-garage-extensible-architecture.md`
+  - `docs/architecture/A115-product-surfaces-and-host-capability-injection.md`
   - `docs/architecture/A120-garage-core-subsystems-architecture.md`
   - `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`
   - `docs/features/F010-shared-contracts.md`
@@ -24,7 +26,7 @@
 
 这篇文档只回答一个问题：
 
-**在把 `Garage` 视为一个完整的长期 runtime 之后，它的端到端系统设计到底是什么，主要架构决策又是什么。**
+**在把 `Garage` 视为一个辅助创作者的 `Agent Teams` 工作环境，以及支撑它的 `Garage Team runtime` 之后，它的端到端系统设计到底是什么，主要架构决策又是什么。**
 
 本文覆盖：
 
@@ -43,7 +45,7 @@
 
 ### 1.1 这份系统设计由什么设计公理驱动
 
-这篇系统设计文不是从“先支持哪些功能”倒推出来的，而是从 `docs/VISION.md` 中已经冻结的设计公理推出来的。
+这篇系统设计文不是从“先支持哪些功能”倒推出来的，而是从 `docs/VISION.md`、`docs/GARAGE.md` 以及前置 architecture owner docs 中已经冻结的产品判断推出来的。
 
 这里最关键的 5 个输入判断是：
 
@@ -53,7 +55,12 @@
 - 长期连续性先于单轮聪明：`memory / session / skill / evidence` 必须分层，runtime 必须高于单次入口存在。
 - 成长必须 `evidence-first`、`workspace-first`、`governance-bounded`：任何长期更新都必须先有证据、先有 proposal，再进入长期资产和 runtime update。
 
-因此，`A140` 的目标不是再讲一遍愿景，而是把这些公理翻译成完整系统在需求、分层、主链和 ADR 上的具体取舍。
+再额外加上两条前置输入：
+
+- `Garage Team` 是一等产品对象，`Garage` 首先是工作环境，不是开发者集成框架。
+- `CLI / Web` 是独立产品 surfaces，`HostBridge` 是能力注入层，而不是产品本体来源。
+
+因此，`A140` 的目标不是再讲一遍愿景或产品定义，而是把这些判断翻译成完整系统在需求、分层、主链和 ADR 上的具体取舍。
 
 ## 2. 需求摘要
 
@@ -64,6 +71,7 @@
 - 让个人创作者在同一个系统里持续推进从洞察、设计、实现到表达的长期主线。
 - 让创作者进入的是一个 `Agent Teams` 工作环境，而不是一堆模型和工具开关。
 - 让不同入口 family，例如 `CLIEntry`、`WebEntry`、`HostBridgeEntry`，都进入同一套 runtime 语义。
+- 让 `CLIEntry` 与 `WebEntry` 可以独立成立为工作环境，而 `HostBridgeEntry` 可以把底层能力注入已有工具。
 - 让 AI 团队协作以 `session` 为主线，通过角色、节点、handoff、review 与 approval 共同推进工作。
 - 让不同能力以 pack 形式接入，并通过 shared contracts 与 core 协作。
 - 让 artifacts、evidence、sessions、archives 构成 workspace-first 的主事实面。
@@ -110,11 +118,14 @@
 
 ## 4. 总体架构
 
-本节不是重新定义 `A110` 的顶层分层，而是在 `A110` 已经冻结的边界之内，给出一个完整 runtime 的端到端系统视图。
+本节不是重新定义 `A105`、`A110`、`A115`、`A120` 的 owner question，而是在这些 owner docs 已冻结的边界之内，给出一个完整系统的端到端视图。
 
 换句话说：
 
+- `A105` 负责回答“用户真正拥有的对象是什么，workspace 如何锚定它”
 - `A110` 负责回答“系统有哪些顶层层次，以及每层不该越界到哪里”
+- `A115` 负责回答“独立工作环境和宿主能力注入层如何分工”
+- `A120` 负责回答“支撑 `Garage Team` 的 runtime 子系统图是什么”
 - `A140` 负责回答“这些层次在一次真实系统运行里怎样被串起来”
 
 ```mermaid
@@ -122,7 +133,7 @@ flowchart TB
     creator[Creator] --> entry[EntrySurfaces]
     entry --> bootstrap[Bootstrap]
     bootstrap --> sessionApi[SessionApi]
-    sessionApi --> team[TeamRuntime]
+    sessionApi --> team[GarageTeamRuntime]
     team --> core[GarageCore]
 
     governance[VisionAndGovernance] --> core
@@ -150,7 +161,8 @@ flowchart TB
 这张图表达的是责任方向，而不是实现先后顺序：
 
 - 用户从入口进入，但入口不拥有系统真相。
-- bootstrap 把外部入口翻译成统一的 runtime 启动动作，让不同产品入口仍然进入同一个 `Garage Team runtime`。
+- `CLIEntry` 与 `WebEntry` 是独立工作环境表面，`HostBridgeEntry` 是能力注入表面。
+- bootstrap 把这些表面翻译成统一的 runtime 启动动作，让不同产品入口仍然进入同一个 `Garage Team runtime`。
 - 所有入口 family 都先汇入 `SessionApi`，再进入统一会话边界。
 - team runtime 是用户感知到的 `Agent Teams` 工作环境，真正稳定的语义收敛在 core。
 - packs 通过 contracts 接入，execution layer 负责真正执行。
@@ -186,7 +198,7 @@ flowchart TB
 
 #### 决策
 
-所有入口都必须先经过统一 `Bootstrap` 与 `SessionApi`，再进入同一个 `Garage Runtime`。
+所有入口都必须先经过统一 `Bootstrap` 与 `SessionApi`，再进入同一个 `Garage Team runtime`。
 
 #### 影响
 
@@ -323,8 +335,10 @@ flowchart TB
 
 后续由不同文档继续展开：
 
-- `A110`：顶层分层原则
-- `A120`：runtime 子系统地图
+- `A105`：`Garage Team` 与 workspace-first 产品对象
+- `A110`：顶层平台边界与扩展 / 成长 seams
+- `A115`：产品 surfaces 与宿主能力注入
+- `A120`：`Garage Team runtime` 子系统地图
 - `A130`：continuity 与 proposal-driven growth 主链
 - `F070`：pack-specific 的 continuity 映射与晋升规则
 - `F080`：active self-evolving learning loop 的稳定 capability cut

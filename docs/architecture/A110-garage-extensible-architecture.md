@@ -1,311 +1,217 @@
-# A110: Garage Extensible And Self-Evolving Architecture
+# A110: Garage Platform Boundaries, Extension, And Growth Seams
 
 - Architecture ID: `A110`
 - 状态: 草稿
 - 日期: 2026-04-11
-- 定位: 定义 `Garage` 的顶层分层架构，明确一个长期 agent runtime 如何同时满足两条主线：对新能力开放的可扩展性，以及从工作经验中持续变强的可成长性。
+- 定位: 在 `A105` 已冻结 `Garage Team` 作为一等产品对象、`A115` 已冻结产品入口与宿主能力注入关系之后，继续定义 `Garage` 的顶层平台边界，明确哪些层负责承接产品本体，哪些 seam 负责扩展新能力，哪些 seam 负责让团队持续成长。
 - 当前阶段: 完整架构主线，实施将按切片推进
 - 关联文档:
   - `docs/VISION.md`
   - `docs/GARAGE.md`
+  - `docs/architecture/A105-garage-team-workspace-and-first-class-objects.md`
+  - `docs/architecture/A115-product-surfaces-and-host-capability-injection.md`
   - `docs/architecture/A120-garage-core-subsystems-architecture.md`
   - `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`
   - `docs/architecture/A140-garage-system-architecture.md`
   - `docs/features/F010-shared-contracts.md`
-  - `docs/features/F070-continuity-mapping-and-promotion.md`
   - `docs/features/F080-garage-self-evolving-learning-loop.md`
-  - `docs/features/F110-reference-packs.md`
-  - `docs/wiki/W030-hermes-agent-harness-engineering-analysis.md`
-  - `docs/wiki/W040-hermes-agent-core-design-ideas.md`
-  - `docs/wiki/W010-clowder-ai-harness-engineering-analysis.md`
-  - `docs/wiki/W140-ahe-platform-first-multi-agent-architecture.md`
+  - `docs/features/F210-runtime-home-and-workspace-topology.md`
+  - `docs/features/F220-runtime-bootstrap-and-entrypoints.md`
+  - `docs/features/F230-runtime-provider-and-tool-execution.md`
 
-## 1. 这篇文档要解决什么
+## 1. 文档目标与范围
 
-`Garage` 不是一个只服务当前能力集合的项目，也不是一个“先做几个 workflow，再慢慢拼起来”的临时工作台。
+这篇文档只回答一个问题：
 
-它需要同时回答两个长期问题：
+**如果 `Garage` 首先是一个 `Agent Teams` 工作环境，那么它的顶层平台边界应该怎样切，才能既支撑产品本体，又允许能力持续扩展、团队持续成长，而不让入口、宿主或单一能力面反向定义系统。**
 
-1. 当未来新增 `writing`、`video`、`research`、`course` 或其他能力时，系统怎样在不推翻核心的前提下持续扩展。
-2. 当团队不断做事时，系统怎样把经验沉淀成长期资产、方法和运行时改进，让团队本身持续成长。
+本文覆盖：
 
-因此，这篇文档只做一件事：
+- 平台顶层层次与责任边界
+- 能力扩展 seam
+- 团队成长 seam
+- 哪些东西绝不能被入口、宿主或单一 pack 复制
 
-- 冻结 `Garage` 的顶层架构边界
+本文不覆盖：
 
-这篇文档不负责：
-
+- 具体 runtime 子系统图
 - 具体 schema 字段全集
-- 具体 pack 的角色清单和节点图
-- 具体工具实现或 provider 协议
-- 具体实施顺序与交付拆解
-
-也就是说，这里先回答“系统作为长期 runtime 应该怎么长”，而不是立刻回答“每个零件具体怎么写”。
+- 具体 pack 角色树和节点图
+- 具体执行协议或任务拆解
 
 ## 2. 顶层设计目标
 
-`Garage` 的顶层架构需要同时满足下面 8 个目标：
+`Garage` 的顶层平台边界需要同时满足下面 8 个目标：
 
-1. 新增能力时，主要通过新增 pack、role、node 和 runtime capability 进入系统，而不是修改核心。
-2. 平台层保持中立，不被 `coding`、`writing`、`video` 等任何单一领域锁死。
-3. 不同入口共享同一套 runtime 语义，而不是各自长出一套私有 workflow。
-4. 团队协作既能承接当前工作，也能把经验持续转化成长期资产。
-5. `memory / session / skill / evidence` 必须分层，成长路径必须有边界。
-6. 主动成长必须存在，但不能绕开 governance、review、approval 和 evidence。
-7. 主事实面优先落在 `workspace`，让系统保持可读、可追溯、可恢复。
-8. 架构拆解应按“总 -> 分”推进：先冻结层次与责任，再展开内部对象与 capability cuts。
+1. 用户面对的是 `Garage Team`，而不是模型或工具开关。
+2. `CLIEntry` 和 `WebEntry` 能直接成立为独立工作环境。
+3. `HostBridgeEntry` 只作为能力注入层存在，不能反向成为系统真相源。
+4. 新能力优先通过 packs、contracts 与 registration 进入系统，而不是回头修改 core。
+5. 团队做过的事情要能沉淀成长期资产，而不是永远停留在一次性 session 里。
+6. `memory / session / skill / evidence` 必须长期分层，不能混成一个历史桶。
+7. 主动成长必须存在，但必须受 evidence 与治理约束。
+8. workspace-first facts 必须继续成为长期团队状态的可读锚点。
 
-### 2.1 这组目标背后的 5 条设计公理
+## 3. 这组目标背后的 5 条设计公理
 
-`Garage` 的顶层架构不是从“先支持哪些功能”反推出来的，而是从 `docs/VISION.md` 中的 5 条设计公理推出来的。
+这组目标不是从“今天先做哪些功能”倒推出来的，而是从 `docs/VISION.md` 里的 5 条设计公理推出来的。
 
-| 设计公理 | 对架构的直接要求 |
+| 设计公理 | 对顶层边界的直接要求 |
 | --- | --- |
-| 团队先于工具 | `role`、`session`、`handoff`、`review`、`memory`、`skill` 必须是一等对象，系统不能退化成 model/tool shell。 |
-| 人定方向，AI 在治理中放大 | `Governance`、`approval`、`exception`、`archive` 必须是内建能力，而不是事后附加层。 |
-| 扩展与成长是两条并列主线 | 架构必须同时存在 `Shared Contracts + Capability Packs` 和 `GrowthSystem + ContinuityAssets` 两条骨架。 |
-| 长期连续性先于单轮聪明 | `memory / session / skill / evidence` 必须分层，且 runtime 必须高于入口长期存在。 |
-| 所有成长都必须 `evidence-first`、`workspace-first`、`governance-bounded` | `workspace` 必须是主事实面，`GrowthProposal` 必须是显式治理对象，原始 `session` 不得直接自动晋升为长期资产。 |
-
-### 2.2 这 5 条公理如何翻译成顶层边界
-
-因此，`A110` 必须先冻结下面这组顶层判断：
-
-- 系统的最小协作单位是团队，不是单个模型调用。
-- 扩展新能力时优先新增 pack 和 contracts，而不是修改 core。
-- 成长团队本身时优先新增 evidence、proposal 和 update path，而不是隐式自动学习。
-- 长期连续性必须分层保存，不能把历史、事实、方法和证据混成一个桶。
-- 主动成长必须落在 workspace 可读真相面与治理边界内，而不是退回宿主缓存或黑箱状态。
-
-## 3. 外部参考如何吸收
-
-`Garage` 不从零发明架构，而是吸收两类已经被验证过的结构思想。
-
-### 3.1 从 Hermes 吸收的部分
-
-主要吸收：
-
-- 长期主体视角：系统不是一次性对话器，而是长期存在的 agent runtime
-- 多入口统一核心：不同入口不应复制一套核心逻辑
-- `memory / session / skill` 分层：长期事实、会话过程状态、可复用方法必须拆开，`evidence` 另行作为可追溯记录层独立存在
-- 主动成长：系统不仅记住过去，还应从经验中主动提出成长候选
-- seam 先定义边界：开放能力和开放成长都必须先约束写入面与治理面
-
-不直接照抄：
-
-- 单体 monolith 形态
-- 过深的实现细节
-- 对个人 runtime 的具体产品外形复刻
-- 无边界的自动学习想象
-
-### 3.2 从 Clowder / platform-first 思路吸收的部分
-
-主要吸收：
-
-- 平台作为控制面，而不是 workflow 外壳
-- `model / runtime / platform` 边界分离
-- 共享契约独立成层
-- 治理工件化：愿景、规则、门禁和架构都先写成工件
-- adapter 吃掉宿主差异，避免 workflow 分叉
-
-不直接照抄：
-
-- 团队级复杂控制面
-- 宽边界平台的全部复杂度
-- 先做重型服务控制面再反推产品
+| 团队先于工具 | 产品第一语言必须是 team / agent / role / handoff / review / memory / skill，而不是 model/tool shell。 |
+| 人定方向，AI 在治理中放大 | 执行与成长都必须被治理工件和 runtime 判定约束。 |
+| 扩展与成长并列 | 顶层必须同时存在能力扩展 seam 与团队成长 seam。 |
+| 长期连续性先于单轮聪明 | runtime 必须高于单次入口长期存在，continuity 资产必须分层。 |
+| `evidence-first`、`workspace-first`、`governance-bounded` | workspace facts 是长期锚点，成长必须从 evidence 出发并经过显式治理。 |
 
 ## 4. 顶层骨架与边界原则
 
 从顶层看，`Garage` 应被定义成：
 
-**一个 `workspace-first`、`multi-entry`、`self-evolving` 的 `Creator OS Runtime`：它通过统一核心承接团队协作，通过 shared contracts 承接可扩展能力面，通过 growth system 承接从经验到长期资产的主动成长。**
+**一个 `workspace-first`、`multi-entry` 的 `Agent Teams` 工作环境，以及支撑它的可扩展、可持续成长的 `Garage Team runtime`。**
 
-但 `A110` 在这里不试图定义完整端到端主链、canonical lifecycle 或 ADR；这些属于 `A140`。
+`A110` 在这里只回答 4 个边界问题：
 
-`A110` 在这一节只回答 4 个边界问题：
-
-1. 谁负责接住用户与宿主表面。
-2. 谁负责把外部入口翻译成统一 runtime 动作。
+1. 谁负责承载产品表面与团队对象。
+2. 谁负责把不同入口翻译成统一 runtime 动作。
 3. 谁负责持有长期稳定的平台语义。
 4. 系统通过什么 seam 扩展能力，又通过什么 seam 成长自己。
 
 ```mermaid
 flowchart TB
-    creator[Creator] --> entry[ExperienceAndEntry]
-    vision[VisionAndGovernance] --> core[GarageCore]
+    creator[Creator] --> surfaces[ProductSurfaces]
+    surfaces --> bootstrap[BootstrapAndEntryBinding]
 
-    entry --> bootstrap[BootstrapAndHostAdapters]
-    bootstrap --> core
+    bootstrap --> teamRuntime[GarageTeamRuntime]
+    visionGov[VisionAndGovernance] --> teamRuntime
 
     packs[CapabilityPacks] --> contracts[SharedContracts]
-    contracts --> core
+    contracts --> teamRuntime
 
-    core --> execution[ExecutionLayer]
-    core --> workspace[WorkspaceSurfaces]
+    teamRuntime --> workspace[WorkspaceFacts]
     workspace --> evidence[EvidenceAndArchive]
-    evidence --> growth[GrowthSystem]
+    evidence --> growth[GrowthAndUpdateSeam]
     growth --> continuity[MemoryAndSkillAssets]
-    continuity --> core
+    continuity --> teamRuntime
 ```
 
-这张图表达的是顶层骨架，而不是系统运行顺序：
+这张图表达的是顶层骨架，而不是实现顺序：
 
-- `ExperienceAndEntry` 只拥有外部接触面，不拥有 runtime 真相。
-- `BootstrapAndHostAdapters` 负责把入口差异翻译成统一 runtime 动作。
-- `GarageCore` 负责持有长期稳定的中立平台语义。
+- `ProductSurfaces` 承载产品入口，但不拥有 runtime 真相。
+- `BootstrapAndEntryBinding` 把不同入口翻译成统一 runtime 动作。
+- `GarageTeamRuntime` 持有长期稳定的团队协作语义。
 - `SharedContracts + CapabilityPacks` 是能力扩展 seam。
-- `WorkspaceSurfaces + EvidenceAndArchive + GrowthSystem + MemoryAndSkillAssets` 是主动成长 seam。
-- 如果要看这些层怎样被串成一次完整运行，应进入 `A140`，而不是在 `A110` 里重复定义系统主链。
+- `WorkspaceFacts + EvidenceAndArchive + GrowthAndUpdateSeam + MemoryAndSkillAssets` 是团队成长 seam。
 
-## 5. 第一层拆解：8 个顶层分层
+## 5. 顶层分层
 
-### 5.1 Vision And Governance
+### 5.1 Product Surfaces
 
-这一层负责编写、维护和冻结：
+负责：
 
-- 项目愿景
-- 术语
-- 规则
-- 门禁
-- 审批语义
-- 归档语义
-- 自主成长的治理边界
+- 承载 `CLIEntry` 与 `WebEntry` 这两个独立工作环境
+- 承载 `HostBridgeEntry` 作为能力注入表面
+- 承载用户与 `Garage Team` 的直接交互
 
-它的作用，是先把系统原则写成工件，再让 runtime 和 packs 去读取、注入和执行这些原则。
+不负责：
 
-### 5.2 Experience And Entry
+- 持有 runtime 真相
+- 私有化 session / execution 语义
+- 定义 pack 或 provider 语义
 
-这一层是用户接触系统的地方，例如未来的：
+### 5.2 Bootstrap And Entry Binding
 
-- IDE 入口
-- CLI 入口
-- 聊天入口
-- 轻 UI
-- 其他宿主表面
-
-这一层只负责接入、展示和交互承接，不负责领域逻辑，不拥有 runtime 真相。
-
-### 5.3 Bootstrap And Host Adapters
-
-这一层负责：
+负责：
 
 - 解析启动意图
-- 绑定 profile、workspace 和 host adapter
-- 把不同入口翻译成统一 runtime 启动动作
+- 绑定 profile、workspace 与 host adapter
+- 把不同入口表面翻译成统一 runtime 动作
 
-它不负责：
+不负责：
 
 - pack 业务语义
-- 长期连续性判断
-- 工具或模型厂商协议细节
+- 长期成长判断
+- provider/tool 的实现细节
 
-### 5.4 Team Runtime
+### 5.3 Garage Team Runtime
 
-这是用户看到的“AI 创作团队”。
+负责：
 
-但这一层不是写死的角色集合，而是团队协作语义层。它负责：
+- 承载 team / agent / role / handoff / review 的长期协作语义
+- 让不同入口 family 进入同一套 team runtime
+- 让 memory、skill 和当前 session 在同一条团队主线里被激活
 
-- 角色协作
-- 任务交接
-- 上下文衔接
-- review 与补位
-- 人类判断点对齐
-- 已有 `memory` / `skill` 对当前工作的激活
+不负责：
 
-角色本身由各个 pack 注册，而不是由平台硬编码。
+- 持有宿主私有状态
+- 退化成某一个 pack 的私有协作层
+- 直接替代 workspace facts
 
-### 5.5 Garage Core
+### 5.4 Shared Contracts
 
-这是整个系统的稳定核心。
+负责：
 
-它只理解中立对象：
+- 冻结 capability 接入共同语言
+- 保证 core 继续只理解中立对象
+- 让 packs 通过注册和映射扩展团队能力
 
-- `session`
-- `pack`
-- `role`
-- `node`
-- `artifact`
-- `evidence`
-- `approval`
-- `archive`
-- `growthProposal`
+不负责：
 
-它不直接理解：
+- 代替 pack 设计
+- 代替 session 激活当前上下文
+- 代替治理或执行本身
 
-- `spec`
-- `article`
-- `shotlist`
-- `insight memo`
-- `prompt draft`
+### 5.5 Capability Packs
 
-这些都属于 pack 或 runtime update 层语义。
+负责：
 
-### 5.6 Shared Contracts
+- 承载不同领域的 team capability family
+- 承载各自的 roles、nodes、artifact mapping 与 pack-local overlay
+- 把领域语义映射到平台共同语言上
 
-这一层是扩展能力的关键。
+不负责：
 
-它定义：
+- 改写平台中立词汇表
+- 让单一能力面上升为平台核心
+- 持有 runtime authority 真相
 
-- pack 如何接入
-- role 如何注册
-- node 如何声明输入输出
-- artifact 如何落盘与回读
-- evidence 如何记录与关联
-- host 如何适配
-- pack 能如何声明成长候选来源与更新边界
+### 5.6 Workspace Facts
 
-如果这一层设计正确，未来新增能力主要表现为“新增 contract 实现”，而不是“回头修改 core”。
+负责：
 
-### 5.7 Execution Layer
+- 承载 artifacts、evidence、sessions、archives 与 `.garage/`
+- 作为团队长期状态和结果的主事实面
+- 保证系统可读、可追溯、可恢复
 
-这一层负责：
+不负责：
 
-- provider adapters
-- tool registry
-- execution request / response
-- execution trace
+- 替代 runtime home
+- 吞并 install-scoped 配置和缓存
+- 变成任意全局状态桶
 
-它是真正去“做事”的运行面，但不决定：
+### 5.7 Growth And Update Seam
 
-- 哪个动作在治理上是否允许
-- 哪个结果是否值得进入长期资产
+负责：
 
-### 5.8 Workspace Surfaces And Growth System
+- 从 evidence 中形成成长候选
+- 把成长候选送入治理与长期资产路径
+- 承接 memory / skill / runtime update 的晋升语义
 
-这一层承接两类事情：
+不负责：
 
-1. `workspace` 主事实面
-2. 从工作经验到长期成长的主动循环
+- 绕开治理直接更新长期资产
+- 退化成黑箱自动学习
+- 代替当前 session 的执行主线
 
-它包括：
-
-- artifacts
-- evidence
-- sessions
-- archives
-- sidecars / indexes
-- `memory`
-- `skill`
-- growth proposals
-- runtime updates
-
-这里的关键判断是：
-
-- 系统既要留下事实，也要从事实中成长
-- 成长默认从 `workspace` 内部开始，而不是一上来就走全局黑箱升级
-
-## 6. 第二层拆解：三类稳定对象
-
-从长期演化的角度看，`Garage` 至少需要区分三类稳定对象：
+## 6. 三类稳定对象
 
 ### 6.1 平台稳定对象
 
 这些对象应尽量长期保持稳定：
 
 - bootstrap 语义
-- core 中立对象
+- team runtime 的中立对象
 - shared contracts
-- governance hooks
 - workspace authority 规则
 - growth proposal lifecycle
 
@@ -314,10 +220,50 @@ flowchart TB
 这些对象应允许不断增长和替换：
 
 - packs
-- pack 内部角色
-- pack 内部节点图
-- pack 术语
-- pack 模板、prompts、artifact mapping
+- roles
+- nodes
+- artifact mapping
+- runtime capabilities
+- host adapters
+
+### 6.3 可成长长期对象
+
+这些对象应允许因为真实工作不断晋升和更新：
+
+- memory
+- skill
+- policy refinement
+- runtime update proposals
+
+## 7. 边界上的 6 条红线
+
+1. `Garage Team` 不能退化成 model/tool shell。
+2. `CLIEntry`、`WebEntry` 与 `HostBridgeEntry` 不能各自长私有 runtime 语义。
+3. packs 只能扩展团队能力，不能反向定义平台核心。
+4. workspace facts 不能被 runtime home 或宿主缓存吞并。
+5. provider / vendor 语义不能上浮到 team runtime 或 pack 主体层。
+6. 主动成长不能绕开 evidence 和治理直接固化。
+
+## 8. 这篇文档与其他文档的关系
+
+这篇文档负责：
+
+- 冻结 `Garage` 的顶层平台边界
+- 明确产品表面、统一 runtime、能力扩展 seam 与团队成长 seam 之间的关系
+- 说明哪些层不该被入口、宿主或单一能力面复制
+
+后续由不同文档继续展开：
+
+- `A120`：解释 `Garage Team runtime` 的子系统图
+- `A130`：解释 continuity、memory、skill、evidence 和 growth proposals
+- `A140`：把这些层次串成完整系统主链与 ADR
+- `A150`：继续展开治理层内部架构
+- `A160`：继续展开 pack platform
+- `A170`：继续展开 cross-pack bridge
+
+## 9. 一句话总结
+
+`A110` 的作用，是把 `Garage` 从“一个可能不断贴补术语的 runtime 项目”收成一套清晰的平台边界：产品表面在前，统一 team runtime 在中，扩展 seam 和成长 seam 在后，而且任何入口、宿主或单一能力面都不能再反向定义系统本体。
 - pack-specific review checklist
 
 ### 6.3 可成长长期资产

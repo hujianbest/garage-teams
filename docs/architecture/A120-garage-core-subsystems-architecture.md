@@ -1,17 +1,18 @@
-# A120: Garage Runtime Subsystems Architecture
+# A120: Garage Team Runtime Subsystems Architecture
 
 - Architecture ID: `A120`
 - 状态: 草稿
 - 日期: 2026-04-11
-- 定位: 在 `A110` 已冻结顶层分层架构之后，进一步定义 `Garage` 完整 runtime 的稳定子系统，明确哪些子系统负责启动、协调、执行、追溯与成长，以及它们之间如何协作。
+- 定位: 在 `A105` 已冻结 `Garage Team` 是一等产品对象、`A110` 已冻结平台边界与扩展 / 成长 seams 之后，进一步定义支撑这一产品的 `Garage Team runtime` 稳定子系统图。
 - 当前阶段: 完整架构主线，实施将按切片推进
 - 关联文档:
   - `docs/GARAGE.md`
+  - `docs/architecture/A105-garage-team-workspace-and-first-class-objects.md`
   - `docs/architecture/A110-garage-extensible-architecture.md`
+  - `docs/architecture/A115-product-surfaces-and-host-capability-injection.md`
   - `docs/architecture/A130-garage-continuity-memory-skill-architecture.md`
   - `docs/architecture/A140-garage-system-architecture.md`
   - `docs/features/F010-shared-contracts.md`
-  - `docs/features/F030-core-runtime-records.md`
   - `docs/features/F050-governance-model.md`
   - `docs/features/F060-artifact-and-evidence-surface.md`
   - `docs/features/F080-garage-self-evolving-learning-loop.md`
@@ -23,14 +24,14 @@
 
 这篇文档只回答一个问题：
 
-**当 `Garage` 被视为一个完整的长期 runtime 时，它内部应拆成哪些稳定子系统，才能同时支撑多入口、一致执行、workspace-first 真相面，以及 evidence 驱动的主动成长。**
+**当 `Garage` 作为一个 `Agent Teams` 工作环境成立时，支撑它的 `Garage Team runtime` 应拆成哪些稳定子系统，才能同时支撑多入口、一致执行、workspace-first 真相面，以及 evidence 驱动的持续成长。**
 
 本文覆盖：
 
-- 完整 runtime 的子系统边界
+- `Garage Team runtime` 的子系统边界
 - 子系统之间的主链交互
 - 关键稳定对象
-- 哪些职责属于 core，哪些职责属于 execution、growth 或 workspace 层
+- 哪些职责属于 team runtime 主体，哪些职责属于 execution、governance、workspace 或 continuity 层
 
 本文不覆盖：
 
@@ -39,33 +40,36 @@
 - 具体 tool 实现代码
 - 具体实施任务顺序
 
-## 2. 为什么需要 runtime 子系统图
+## 2. 为什么需要 `Garage Team runtime` 子系统图
 
-如果只停留在顶层分层而没有稳定子系统图，`Garage` 很容易出现三类混乱：
+在新的产品定义下，`Garage` 不是一个抽象 runtime 项目再去找产品外形，而是先有 `Garage Team` 这个产品对象，再要求系统稳定支撑它。
 
-- 入口、bootstrap、session 恢复和 provider 调用混在一起
-- `memory / skill / evidence / archive` 这些长期对象没有明确宿主
-- “主动成长”被写成一个口号，却没有稳定的 runtime 位置
+如果没有稳定子系统图，系统很容易继续发生三类混乱：
 
-因此，在完整架构里，需要把 `Garage` 明确拆成可以长期维护的子系统，而不是让每个入口、每个 pack 或每次新能力扩展都重新发明控制流。
+- 产品入口、bootstrap、session 恢复和 provider 调用继续混在一起
+- `Garage Team` 只停留在产品话术里，runtime 内部却没有对应的主体
+- `memory / skill / evidence / archive` 没有明确宿主，成长继续只剩口号
+
+因此，`A120` 要把 `Garage Team runtime` 本身拆成长期可维护的稳定子系统。
 
 ## 3. 子系统总览
 
-建议把 `Garage` runtime 稳定拆成下面 11 个子系统：
+建议把 `Garage Team runtime` 稳定拆成下面 12 个子系统：
 
 | 子系统 | 主要作用 |
 | --- | --- |
-| `EntrySurface` | 接住用户交互与外部宿主入口 |
+| `EntrySurface` | 接住 `CLIEntry`、`WebEntry`、`HostBridgeEntry` 等产品入口 family |
 | `Bootstrap` | 统一启动、恢复、profile 解析与 host 绑定 |
-| `SessionApi` | 提供 entry-facing 的 session 命令面，把外部请求翻译成统一 session-bound runtime 动作 |
-| `Session` | 统一当前工作主线、上下文和 handoff 边界 |
-| `Registry` | 统一发现 pack、role、node、artifact role 与 capability 声明 |
+| `SessionApi` | 统一 entry-facing 的 create / resume / submit / approval 命令面 |
+| `TeamRuntime` | 承接 `Garage Team` 的协作主体语义 |
+| `Session` | 统一当前工作主线、上下文与 handoff 边界 |
+| `Registry` | 统一发现 packs、roles、nodes、artifact roles 与 capabilities |
 | `Governance` | 执行 review、approval、gate、archive 与成长治理 |
 | `ArtifactRouting` | 把中立工件意图映射到权威 workspace surfaces |
-| `EvidenceAndArchive` | 记录决策、验证、审计、archive 与 lineage |
+| `EvidenceAndArchive` | 记录 decision、verification、approval、archive 与 lineage |
 | `ExecutionLayer` | 统一 provider 调用、tool 调用与 execution trace |
-| `GrowthEngine` | 从 evidence 形成 proposal，并驱动 `memory / skill / runtime update` 的晋升流程 |
-| `ContinuityStores` | 承载 `memory`、`skill` 等长期资产及其回读语义 |
+| `GrowthEngine` | 从 evidence 形成 `GrowthProposal` 并驱动长期更新路径 |
+| `ContinuityStores` | 承载 `memory`、`skill`、runtime update lineage 等长期资产 |
 
 ## 4. 完整 runtime 结构图
 
@@ -74,8 +78,9 @@ flowchart LR
     entry[EntrySurface] --> bootstrap[Bootstrap]
     bootstrap --> sessionApi[SessionApi]
 
-    subgraph runtime [GarageRuntime]
-        sessionApi --> session[Session]
+    subgraph runtime [GarageTeamRuntime]
+        sessionApi --> team[TeamRuntime]
+        team --> session[Session]
         session --> registry[Registry]
         session --> governance[Governance]
         session --> routing[ArtifactRouting]
@@ -94,7 +99,7 @@ flowchart LR
         routing --> evidence
         evidence --> growth
         growth --> continuity[ContinuityStores]
-        continuity --> session
+        continuity --> team
     end
 
     routing --> workspace[WorkspaceSurfaces]
@@ -104,11 +109,11 @@ flowchart LR
 这张图表示的是责任方向，而不是实现顺序：
 
 - 所有入口都先进入 `Bootstrap`，再通过 `SessionApi` 进入统一会话边界
-- `Session` 是所有工作推进的统一边界
-- `SessionApi` 负责承接 entry-facing 的创建、恢复、提交步骤与审批请求，不让入口直接碰 `Session` / `ExecutionLayer`
-- `Registry`、`Governance`、`ArtifactRouting`、`ExecutionLayer` 与 `EvidenceAndArchive` 围绕 `Session` 协作
-- `GrowthEngine` 不直接替代 `Session` 或 `Governance`，而是消费 evidence 并提出更新路径
-- `ContinuityStores` 通过回读影响未来的 session，但不能直接篡改当前证据
+- `TeamRuntime` 承接产品层可感知的 `Garage Team` 协作主体
+- `Session` 是当前工作推进的统一边界，但不等于整个 team runtime
+- `Registry`、`Governance`、`ArtifactRouting`、`ExecutionLayer` 与 `EvidenceAndArchive` 围绕当前工作主线协作
+- `GrowthEngine` 不直接替代 `TeamRuntime` 或 `Governance`，而是消费 evidence 并提出长期更新路径
+- `ContinuityStores` 通过回读影响未来 team work，但不能直接篡改当前证据
 
 ## 5. 建议先冻结的稳定对象
 
@@ -117,6 +122,7 @@ flowchart LR
 - `RuntimeProfile`
 - `WorkspaceBinding`
 - `HostAdapterBinding`
+- `GarageTeamRef`
 - `SessionIntent`
 - `SessionState`
 - `SessionSnapshot`
@@ -149,7 +155,7 @@ flowchart LR
 不负责：
 
 - pack 业务语义
-- session 真相
+- team runtime 真相
 - provider 或 tool 协议
 
 ### 6.2 Bootstrap
@@ -160,7 +166,6 @@ flowchart LR
 - 绑定 `WorkspaceBinding`
 - 绑定 `HostAdapterBinding`
 - 创建或恢复 runtime services
-- 创建或恢复 `Session`
 
 不负责：
 
@@ -173,22 +178,36 @@ flowchart LR
 负责：
 
 - 对外暴露统一的 create / resume / submitStep / approval / closeout / interrupt 语义
-- 把 `EntrySurface` 或 `HostAdapterContract` 的外部请求翻译成 session-bound runtime 动作
-- 保证 `CLIEntry`、`WebEntry` 与 `HostBridgeEntry` 共享同一个 entry-facing session seam
+- 把外部请求翻译成 session-bound runtime 动作
+- 保证不同产品入口复用同一个命令面
 
 不负责：
 
 - 重做 bootstrap 的 profile / workspace / host 解析
-- 绕过 `Governance` 或 `Session` 直接驱动 execution
+- 绕过 `TeamRuntime` 或 `Session` 直接驱动 execution
 - 承担 provider 协议或 pack 业务语义
 
-### 6.4 Session
+### 6.4 TeamRuntime
 
 负责：
 
-- 创建、恢复、暂停和关闭工作主线
+- 承接 `Garage Team` 的协作主体语义
+- 激活 agents、roles、memory、skills 与 review 关系
+- 把 entry-facing 请求接入统一团队工作主线
+
+不负责：
+
+- 代替 `Session` 成为当前工作状态桶
+- 代替 `Registry` 注册能力
+- 代替 `Governance` 给出 verdict
+
+### 6.5 Session
+
+负责：
+
+- 创建、恢复、暂停和关闭当前工作主线
 - 维护当前 `pack / role / node / handoff / context`
-- 作为所有动作的统一会话边界
+- 作为当前动作的统一会话边界
 
 不负责：
 
@@ -196,12 +215,12 @@ flowchart LR
 - evidence 的长期判定
 - skill 的长期沉淀
 
-### 6.5 Registry
+### 6.6 Registry
 
 负责：
 
-- 发现 packs、roles、nodes、artifact role 和 capability 声明
-- 为 session、governance、routing 和 execution 提供统一查询入口
+- 发现 packs、roles、nodes、artifact roles 和 capability 声明
+- 为 `Session`、`Governance`、`ArtifactRouting` 与 `ExecutionLayer` 提供统一查询入口
 
 不负责：
 
@@ -209,7 +228,7 @@ flowchart LR
 - 保存当前会话状态
 - 持久化长期资产
 
-### 6.6 Governance
+### 6.7 Governance
 
 负责：
 
@@ -223,7 +242,7 @@ flowchart LR
 - 直接生成领域内容
 - 直接编写规则原文
 
-### 6.7 ArtifactRouting
+### 6.8 ArtifactRouting
 
 负责：
 
@@ -236,7 +255,7 @@ flowchart LR
 - 决定是否进入长期资产
 - 承担 archive 或 evidence 的审计语义
 
-### 6.8 EvidenceAndArchive
+### 6.9 EvidenceAndArchive
 
 负责：
 
@@ -250,7 +269,7 @@ flowchart LR
 - 替代 session 本身
 - 变成通用历史垃圾桶
 
-### 6.9 ExecutionLayer
+### 6.10 ExecutionLayer
 
 负责：
 
@@ -266,7 +285,7 @@ flowchart LR
 - 决定当前结果是否值得长期保存
 - 定义 pack 术语
 
-### 6.10 GrowthEngine
+### 6.11 GrowthEngine
 
 负责：
 
@@ -281,13 +300,13 @@ flowchart LR
 - 把所有 observed pattern 都自动固化
 - 直接替代 pack 或人类判断
 
-### 6.11 ContinuityStores
+### 6.12 ContinuityStores
 
 负责：
 
 - 保存 `memory`
 - 保存 `skill`
-- 为未来 session 提供回读语义
+- 为未来 team work 提供回读语义
 - 保存与长期资产相关的 lineage 与版本关系
 
 不负责：
@@ -300,15 +319,15 @@ flowchart LR
 
 ### 7.1 启动与恢复主链
 
-`EntrySurface -> Bootstrap -> SessionApi -> Session`
+`EntrySurface -> Bootstrap -> SessionApi -> TeamRuntime -> Session`
 
-这条主链确保所有入口都通过同一套 profile / workspace / host 绑定逻辑进入系统，并先汇入统一的 entry-facing session seam。
+这条主链确保所有入口都先经过同一套 profile / workspace / host 绑定逻辑，再汇入统一的 team runtime 和当前 session。
 
 ### 7.2 工作执行主链
 
-`SessionApi -> Session -> Registry / Governance / ExecutionLayer -> ArtifactRouting -> EvidenceAndArchive`
+`SessionApi -> TeamRuntime -> Session -> Registry / Governance / ExecutionLayer -> ArtifactRouting -> EvidenceAndArchive`
 
-这条主链确保系统先有统一会话边界，再解析能力、执行工作、留下结果和证据。
+这条主链确保系统先有统一团队主体和当前会话边界，再解析能力、执行工作、留下结果和证据。
 
 ### 7.3 成长主链
 
@@ -318,15 +337,15 @@ flowchart LR
 
 ### 7.4 长期资产回流主链
 
-`ContinuityStores -> Session`
+`ContinuityStores -> TeamRuntime`
 
-这条主链确保过去形成的 `memory / skill` 能回流到新的工作，但不能倒置为“长期资产反向替代当前证据”。
+这条主链确保过去形成的 `memory / skill` 回流到未来团队工作，但不能倒置为“长期资产反向替代当前证据”。
 
 ## 8. 子系统边界上的三条红线
 
 为了避免 runtime 逐渐失控，至少要守住下面三条红线：
 
-1. `EntrySurface` 不能拥有自己的私有 runtime 语义，也不能绕过 `SessionApi` 直接驱动 `Session` 或 `ExecutionLayer`。
+1. `EntrySurface` 不能拥有自己的私有 runtime 语义，也不能绕过 `SessionApi`、`TeamRuntime` 或 `Session` 直接驱动 `ExecutionLayer`。
 2. `ExecutionLayer` 不能替代 `Governance` 决定是否允许某个动作。
 3. `GrowthEngine` 不能绕开 `EvidenceAndArchive` 与 `Governance` 直接写长期资产。
 
@@ -334,7 +353,9 @@ flowchart LR
 
 这篇文档负责：
 
-- 冻结完整 runtime 的子系统地图
+- 冻结 `Garage Team runtime` 的子系统地图
+- 解释 `TeamRuntime`、`Session`、`Governance`、`ExecutionLayer`、`Evidence` 与 `ContinuityStores` 的关系
+- 说明产品入口如何进入同一个 runtime 主体
 
 后续由不同文档继续展开：
 
@@ -346,4 +367,4 @@ flowchart LR
 
 ## 10. 一句话总结
 
-`Garage` 想成为一个真正的长期 runtime，就必须先把启动、协调、执行、追溯、成长和长期资产这几类职责稳定拆开；否则入口会反向定义系统，执行会污染核心，成长会失去边界。
+`A120` 的作用，是把 `Garage Team runtime` 从产品定义里的抽象主语，变成一套清晰可维护的子系统地图；否则 `Garage Team` 只会停留在文案里，而不会真的成为系统主体。
