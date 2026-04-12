@@ -20,7 +20,7 @@
 
 它不替代：
 
-- `docs/GARAGE.md` 的主线叙事
+- `docs/GARAGE.md` 的当前产品定义
 - `docs/tasks/README.md` 的实施顺序索引
 - 具体 feature 文档自身的详细设计
 

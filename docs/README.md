@@ -20,8 +20,8 @@
 
 | 路径 | 作用 |
 | --- | --- |
-| `docs/VISION.md` | `Garage` 的愿景、产品哲学与长期方向 |
-| `docs/GARAGE.md` | `Garage` 的项目定义、主线阅读入口与系统定位 |
+| `docs/VISION.md` | `Garage` 的产品愿景、初衷与不可退让的产品哲学 |
+| `docs/GARAGE.md` | `Garage` 的产品具体定义、当前能力、入口、边界与阅读入口 |
 | `docs/ROADMAP.md` | `docs/features/` 的 feature map、能力分组与实施路线索引 |
 | `docs/architecture/` | 顶层平台架构、核心子系统、治理 / pack / bridge 子系统架构、continuity 与整体系统设计 |
 | `docs/design/` | pack-specific 或子系统级详细设计，例如 `Coding Pack` 与 `Product Insights Pack` |
@@ -54,8 +54,8 @@
 
 如果你的目标更明确，也可以直接跳到对应入口：
 
-- 想理解 `Garage` 为什么必须存在，读 `docs/VISION.md`
-- 想理解 `Garage` 是什么系统、有哪些主线阅读入口，读 `docs/GARAGE.md`
+- 想理解 `Garage` 为什么必须存在、它想改变什么工作方式，读 `docs/VISION.md`
+- 想理解 `Garage` 当前是什么产品、有哪些入口、能力和边界，读 `docs/GARAGE.md`
 - 想理解平台边界、治理层、pack platform、cross-pack bridge、长期连续性和完整系统设计，读 `docs/architecture/`
 - 想理解 contracts、governance、artifact surface、continuity、learning loop 与 runtime 语义，读 `docs/features/`
 - 想理解 `Coding Pack`、`Product Insights Pack` 等详细设计，读 `docs/design/`
@@ -99,8 +99,8 @@
 
 ## 5. 维护约定
 
-- `docs/VISION.md` 负责讲清楚 `Garage` 为什么存在、它想成为什么。
-- `docs/GARAGE.md` 负责讲清楚 `Garage` 是什么系统、主线在哪、应该从哪里读起。
+- `docs/VISION.md` 负责讲清楚 `Garage` 为什么存在、它想改变什么工作方式，以及哪些产品哲学不能退让。
+- `docs/GARAGE.md` 负责讲清楚 `Garage` 当前是什么产品、有哪些入口、能力、边界与主线阅读入口。
 - `docs/ROADMAP.md` 负责维护 `docs/features/` 的 feature map、稳定 ID 与路线索引。
 - `docs/architecture/` 负责讲“平台为什么这样设计”和“关键边界怎么切”。
 - `docs/design/` 负责讲具体 pack 或具体子系统的详细设计。
@@ -108,6 +108,7 @@
 - `docs/architecture/`、`docs/design/` 与 `docs/features/` 共同构成主线真相源；修改其中任一类时，应先从当前文档的 `关联文档` 和同主题邻近文档开始检查一致性。如名称、边界、生命周期、图示或共享语义发生变化，应同步更新相关 owner docs，或先明确需要回写的上游真相源。
 - `docs/tasks/` 只负责实施切片、开发顺序、交付物与验收，不重复拥有主线设计真相。
 - `docs/wiki/` 负责外部项目分析、采用方式、路径映射与 supporting references，不应反向成为当前主线的唯一依据。
+- 当 `docs/VISION.md` 与 `docs/GARAGE.md` 的职责边界发生明显调整时，至少同步检查 `README.md`、`README.zh-CN.md`、`docs/ROADMAP.md` 与 `docs/architecture/A140-garage-system-architecture.md` 是否仍沿用旧产品语言。
 
 ## 6. 当前约束
 

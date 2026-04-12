@@ -62,6 +62,7 @@
 `Garage` 至少需要满足下面这些功能要求：
 
 - 让个人创作者在同一个系统里持续推进从洞察、设计、实现到表达的长期主线。
+- 让创作者进入的是一个 `Agent Teams` 工作环境，而不是一堆模型和工具开关。
 - 让不同入口 family，例如 `CLIEntry`、`WebEntry`、`HostBridgeEntry`，都进入同一套 runtime 语义。
 - 让 AI 团队协作以 `session` 为主线，通过角色、节点、handoff、review 与 approval 共同推进工作。
 - 让不同能力以 pack 形式接入，并通过 shared contracts 与 core 协作。
@@ -95,13 +96,13 @@
 
 从 system design 角度，`Garage` 最适合被定义成：
 
-**一个 local-first、workspace-first、multi-entry、self-evolving 的 modular runtime control plane。**
+**一个 local-first、workspace-first、multi-entry 的 `Agent Teams` 工作环境，以及支撑它的 self-evolving `Garage Team runtime`。**
 
 关键样式选择如下：
 
 | 设计问题 | 备选模式 | 当前选择 | 原因 |
 | --- | --- | --- | --- |
-| 平台形态 | 微服务平台 / 重型控制面 / 本地 modular runtime | 本地 modular runtime | 当前更需要统一 runtime 语义和长期成长能力，而不是先做分布式部署。 |
+| 平台形态 | 微服务平台 / 重型控制面 / 本地 Agent Teams 工作环境 | 本地 Agent Teams 工作环境 + 共享 runtime | 当前更需要先把创作者可直接进入的工作环境做对，再用统一 runtime 承接长期成长能力，而不是先做分布式部署。 |
 | 能力扩展方式 | 核心硬编码能力 / pack 接入 | `Shared Contracts + Capability Packs` | 需要长期承接新能力面，同时保持 core 中立。 |
 | 主事实面 | 数据库优先 / 文件优先 | `workspace-first` 文件面 | 需要可读、可追溯、可恢复、可迁移。 |
 | 成长方式 | 被动记忆 / 无治理自动学习 / 证据驱动成长 | `Evidence -> Proposal -> Governance -> Update` | 需要让成长主动发生，但不能失控。 |
@@ -149,9 +150,9 @@ flowchart TB
 这张图表达的是责任方向，而不是实现先后顺序：
 
 - 用户从入口进入，但入口不拥有系统真相。
-- bootstrap 把外部入口翻译成统一的 runtime 启动动作。
+- bootstrap 把外部入口翻译成统一的 runtime 启动动作，让不同产品入口仍然进入同一个 `Garage Team runtime`。
 - 所有入口 family 都先汇入 `SessionApi`，再进入统一会话边界。
-- team runtime 是用户感知到的协作层，真正稳定的语义收敛在 core。
+- team runtime 是用户感知到的 `Agent Teams` 工作环境，真正稳定的语义收敛在 core。
 - packs 通过 contracts 接入，execution layer 负责真正执行。
 - evidence 和 workspace surfaces 共同形成主事实与追溯面。
 - growth engine 消费 evidence，并在治理下把经验转成长期更新。
@@ -181,7 +182,7 @@ flowchart TB
 
 #### 背景
 
-如果 `CLIEntry`、`WebEntry` 与 `HostBridgeEntry` 都各自维护一套恢复逻辑、工具语义和状态边界，`Garage` 很快会退化成多个互不兼容的宿主壳层。
+如果 `CLIEntry`、`WebEntry` 与 `HostBridgeEntry` 都各自维护一套恢复逻辑、工具语义和状态边界，`Garage` 很快会退化成多个互不兼容的产品壳层和宿主壳层。
 
 #### 决策
 
