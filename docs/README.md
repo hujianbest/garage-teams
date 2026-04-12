@@ -24,9 +24,9 @@
 | `docs/GARAGE.md` | `Garage` 的产品具体定义、当前能力、入口、边界与阅读入口 |
 | `docs/ROADMAP.md` | `docs/features/` 的 feature map、能力分组与实施路线索引 |
 | `docs/architecture/` | 以 `L0 / L1 / L2` 组织的架构主线：整体架构、分层架构、子系统架构 |
-| `docs/design/` | 显式分层的详细设计树：跨 pack 产品/交互设计、入口产品设计、治理/成长体验设计、pack/子系统详细设计 |
+| `docs/design/` | pack-specific 或子系统级详细设计，例如 `Coding Pack` 与 `Product Insights Pack` |
 | `docs/features/` | 跟随新 architecture 主线组织的稳定 capability families 与共享语义 |
-| `docs/tasks/` | 按新 feature 主线组织的实施切片、开发轨道与交付顺序；它们跟随主线设计，不反向拥有主线真相 |
+| `docs/tasks/` | 实施切片、开发轨道与交付顺序；它们跟随主线设计，不反向拥有主线真相 |
 | `docs/wiki/` | 外部项目分析、历史背景、采用方式、路径映射与 supporting references |
 
 这里最重要的区分是：
@@ -45,7 +45,7 @@
 4. `docs/ROADMAP.md`
 5. `docs/architecture/`
 6. `docs/features/`
-7. `docs/design/README.md`
+7. `docs/design/`
 8. `docs/tasks/README.md`
 
 如果你想按新的架构主线细读，建议使用下面这条顺序：
@@ -58,9 +58,9 @@
 - 想理解 `Garage` 当前是什么产品、有哪些入口、能力和边界，读 `docs/GARAGE.md`
 - 想理解 Garage Team runtime 的整体架构、分层关系与关键子系统，读 `docs/architecture/`
 - 想理解产品能力、入口能力、governance、workspace truth、continuity、execution 与扩展语义，读 `docs/features/`
-- 想理解跨 pack 产品设计、入口体验设计和 pack 详细设计，读 `docs/design/README.md`
+- 想理解 `Coding Pack`、`Product Insights Pack` 等详细设计，读 `docs/design/`
 - 想理解能力 map、feature 分组与路线索引，读 `docs/ROADMAP.md`
-- 想理解按新主线拆出的 implementation slices，读 `docs/tasks/README.md`
+- 想理解实施轨道与落地顺序，读 `docs/tasks/README.md`
 - 想看外部参考、历史分析与映射资料，读 `docs/wiki/`
 
 ## 4. Docs 编号规则
@@ -85,17 +85,20 @@
 - 如果文件名使用编号前缀，文件名中的 ID 必须和头部 meta、一级标题保持一致。
 - `docs/README.md`、`docs/VISION.md`、`docs/GARAGE.md`、`docs/ROADMAP.md` 为了入口稳定性保留 canonical 文件名，但仍使用 `Mxxx` 作为稳定文档 ID。
 - `docs/architecture/` 当前按层次使用数字文件名：`L0=1位编号`、`L1=2位编号`、`L2=3位编号`。
-- `docs/design/` 当前按显式层次使用 `D` 编号：顶层 design families 使用 2 位编号，详细设计使用 3 位编号。
-- `docs/tasks/` 当前按显式层次使用 `T` 编号：任务流使用 2 位编号，执行切片使用 3 位编号。
-- `docs/tasks/README.md` 作为目录索引保留 canonical 文件名；单个 task docs 统一使用 `Txxx-<title-slug>.md`，其中 `Txxx` 是稳定检索 ID，推荐执行顺序由 `docs/tasks/README.md` 维护。
+- `docs/features/` 当前使用两层结构：family 使用 `F10-F19`，具体 spec 使用 `F101-F199`。
+- `docs/design/` 当前使用两层结构：family 使用 `D10-D19`，具体 spec 使用 `D101-D199`。
+- `docs/tasks/README.md` 作为目录索引保留 canonical 文件名；`docs/tasks/` 当前使用两层结构：family 使用 `T10-T19`，具体 task spec 使用 `T101-T199`。
 
 当前保留下面这些号段：
 
 - `M000-M099`：top-level main docs
 - `A000-A199`：旧 architecture docs 预留引用区；当前主线不再继续扩展
-- `D000-D199`：design docs
-- `F100-F199`：当前 feature families 主线
-- `T000-T299`：implementation tracks、delivery tasks 与 phased execution slices
+- `D10-D19`：当前 design families
+- `D101-D199`：当前 design specs
+- `F10-F19`：顶层 feature families
+- `F101-F199`：当前 feature specs 主线
+- `T10-T19`：当前 task families
+- `T101-T199`：当前 task specs
 - `W000-W199`：wiki / references
 
 ## 5. 维护约定
@@ -104,8 +107,8 @@
 - `docs/GARAGE.md` 负责讲清楚 `Garage` 当前是什么产品、有哪些入口、能力、边界与主线阅读入口。
 - `docs/ROADMAP.md` 负责维护 `docs/features/` 的 feature map、稳定 ID 与路线索引。
 - `docs/architecture/` 负责讲“Garage Team runtime 应如何按 L0/L1/L2 分层设计”。
-- `docs/design/` 负责讲跨 pack 产品/交互设计、入口产品设计，以及 pack 或子系统的详细设计。
-- `docs/features/` 负责讲稳定 capability families 与共享系统语义。
+- `docs/design/` 负责讲具体 pack、入口或子系统的详细设计。
+- `docs/features/` 负责讲稳定 capability families 与具体 capability specs 的共享系统语义。
 - `docs/architecture/`、`docs/design/` 与 `docs/features/` 共同构成主线真相源；修改其中任一类时，应先从当前文档的 `关联文档` 和同主题邻近文档开始检查一致性。如名称、边界、生命周期、图示或共享语义发生变化，应同步更新相关 owner docs，或先明确需要回写的上游真相源。
 - `docs/tasks/` 只负责实施切片、开发顺序、交付物与验收，不重复拥有主线设计真相。
 - `docs/wiki/` 负责外部项目分析、采用方式、路径映射与 supporting references，不应反向成为当前主线的唯一依据。

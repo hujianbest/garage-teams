@@ -108,13 +108,12 @@ python -m unittest discover -s tests
 - `docs/architecture/1-garage-system-overview.md`
 - `docs/architecture/2-garage-runtime-reference-model.md`
 - `docs/architecture/10-entry-and-host-injection-layer.md`
-- `docs/features/F100-agent-teams-product-surface.md`
-- `docs/features/F110-runtime-topology-and-entry-bootstrap.md`
-- `docs/features/F160-execution-and-provider-tool-plane.md`
+- `docs/features/F10-agent-teams-product-surface.md`
+- `docs/features/F11-runtime-topology-and-entry-bootstrap.md`
+- `docs/features/F16-execution-and-provider-tool-plane.md`
 
 如果你想看实现顺序与任务拆解，读：
 
-- `docs/design/README.md`
 - `docs/tasks/README.md`
 
 仓库结构：

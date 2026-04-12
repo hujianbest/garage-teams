@@ -108,13 +108,12 @@ Read these if you want the current runtime model:
 - `docs/architecture/1-garage-system-overview.md`
 - `docs/architecture/2-garage-runtime-reference-model.md`
 - `docs/architecture/10-entry-and-host-injection-layer.md`
-- `docs/features/F100-agent-teams-product-surface.md`
-- `docs/features/F110-runtime-topology-and-entry-bootstrap.md`
-- `docs/features/F160-execution-and-provider-tool-plane.md`
+- `docs/features/F10-agent-teams-product-surface.md`
+- `docs/features/F11-runtime-topology-and-entry-bootstrap.md`
+- `docs/features/F16-execution-and-provider-tool-plane.md`
 
 Read this if you want the implementation sequence:
 
-- `docs/design/README.md`
 - `docs/tasks/README.md`
 
 Repository structure:

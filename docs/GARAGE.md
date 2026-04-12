@@ -12,9 +12,9 @@
   - `docs/architecture/1-garage-system-overview.md`
   - `docs/architecture/2-garage-runtime-reference-model.md`
   - `docs/architecture/10-entry-and-host-injection-layer.md`
-  - `docs/features/F100-agent-teams-product-surface.md`
-  - `docs/features/F110-runtime-topology-and-entry-bootstrap.md`
-  - `docs/features/F160-execution-and-provider-tool-plane.md`
+  - `docs/features/F10-agent-teams-product-surface.md`
+  - `docs/features/F11-runtime-topology-and-entry-bootstrap.md`
+  - `docs/features/F16-execution-and-provider-tool-plane.md`
   - `docs/tasks/README.md`
   - `packs/README.md`
 
@@ -187,18 +187,16 @@
 4. `docs/ROADMAP.md`
 5. `docs/architecture/1-garage-system-overview.md`
 6. `docs/architecture/2-garage-runtime-reference-model.md`
-7. `docs/features/F100-agent-teams-product-surface.md`
-8. `docs/features/F110-runtime-topology-and-entry-bootstrap.md`
-9. 其余 `docs/architecture/`、`docs/features/`
-10. `docs/design/README.md`
-11. `docs/tasks/README.md`
+7. `docs/features/F10-agent-teams-product-surface.md`
+8. `docs/features/F11-runtime-topology-and-entry-bootstrap.md`
+9. 其余 `docs/architecture/`、`docs/features/`、`docs/design/`
+10. `docs/tasks/README.md`
 
 按主题跳读时：
 
 - 想理解为什么要做 `Garage`：读 `docs/VISION.md`
 - 想理解 `Garage` 当前是什么产品：读本文
 - 想理解系统如何支撑这个产品定义：读 `docs/architecture/` 与 `docs/features/`
-- 想理解产品/交互和 pack 细节如何被设计出来：读 `docs/design/README.md`
 - 想理解当前怎么逐步把它做出来：读 `docs/tasks/README.md`
 
 ## 9. 一句话总结
