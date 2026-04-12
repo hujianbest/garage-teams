@@ -1,8 +1,0 @@
-{
-  "artifactRole": "closeout-summary",
-  "contractVersion": "v1alpha1",
-  "primaryFormat": "markdown",
-  "authorityRule": "latest-wins",
-  "readWriteSemantics": "authoritative-current-slot",
-  "lifecycleHint": "closeout-summary-surface"
-}

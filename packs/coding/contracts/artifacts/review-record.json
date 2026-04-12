@@ -1,8 +1,0 @@
-{
-  "artifactRole": "review-record",
-  "contractVersion": "v1alpha1",
-  "primaryFormat": "markdown",
-  "authorityRule": "latest-wins",
-  "readWriteSemantics": "authoritative-current-slot",
-  "lifecycleHint": "review-decision-surface"
-}

@@ -2,7 +2,7 @@
 
 ## 结论
 
-需修改
+已确认
 
 ## 发现项
 
@@ -24,7 +24,7 @@
 
 ## 下一步
 
-- `ahe-specify`
+- `ahe-design-review`
 
 ## 记录位置
 
@@ -32,6 +32,6 @@
 
 ## 交接说明
 
-- 当前结论为 `需修改`，不进入 `规格真人确认`，先回到 `ahe-specify`
-- 优先补强 `SessionApi`、`WebEntry`、evidence/trace/continuity 主链这三组 feature 规格
-- 当前仓库未发现可用的 `task-progress.md`，因此本次未同步阶段状态工件
+- 当前结论已更新为 `已确认`，可进入后续 `ahe-design-review`
+- 进入设计评审前，建议优先核对 `SessionApi`、`WebEntry`、evidence/trace/continuity 主链这三组规格补强项
+- `task-progress.md` 已建立，后续请持续同步阶段状态工件

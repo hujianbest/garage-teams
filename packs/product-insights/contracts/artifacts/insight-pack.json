@@ -1,8 +1,0 @@
-{
-  "artifactRole": "insight-pack",
-  "contractVersion": "v1alpha1",
-  "primaryFormat": "markdown",
-  "authorityRule": "latest-wins",
-  "readWriteSemantics": "authoritative-current-slot",
-  "lifecycleHint": "research-signal-synthesis"
-}
