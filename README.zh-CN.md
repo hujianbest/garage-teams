@@ -2,179 +2,133 @@
 
 [English](README.md) | **中文**
 
-`Garage` 是一个面向 `solo creator` 的开源 `Agent Teams` 工作环境。
+`Garage` 是一个面向 `独立创作者` 的开源 `Agent Skills` 工作台。
 
-它遵循一个核心原则：**one runtime, many entry surfaces**。
+它遵循一个核心原则：**技能驱动、工作流编排的开发模式**。
 
-- CLI、Web、HostBridge 共用同一套 runtime truth
-- runtime/governance/continuity/contracts/packs 以可组合 Python 模块实现
-- 仓库通过任务、评审、门禁、批准工件驱动开发流程
+- 基于技能的可组合架构
+- AHE（Agent-Harness-Engineering）工作流实现系统化开发
+- 两套完整技能家族：产品洞察 → 编码实现
+- 基于 Packs 的可复用技能集合组织
+- 机器辅助开发与清晰的治理边界
 
-当前状态：已具备可运行的开发基线与完整自动化任务证据链，但还不是生产级发布版本。
+当前状态：V1开发基线，完整的AHE工作流技能集。
 
-## Quick Install
+## 快速开始
 
-环境要求：
+这是一个技能仓库，组织为两个互补的工作流家族：
 
-- `Python 3.12+`
+**产品洞察技能** - 当你有模糊想法或需要产品清晰度时：
+- 从 `using-ahe-product-workflow` 开始确定你的入口点
+- 通过洞察收集、机会映射、概念塑造逐步推进
+- 准备好实现时通过桥接技能进入编码工作流
 
-安装当前开发版：
+**编码技能** - 当你有清晰需求并需要实现时：
+- 从 `ahe-specify` 开始编写详细需求
+- 继续通过设计、任务、实现和审查流程
+- 在整个开发过程中使用质量门禁
 
-```bash
-python -m pip install -e .
-```
+对于Claude Code用户，可以直接通过 `/skill-name` 命令模式调用技能。
 
-安装完成后可用：
-
-```bash
-garage --help
-```
-
-如果你希望在未安装时，直接从仓库里导入 Python 模块：
-
-```bash
-export PYTHONPATH=src
-```
-
-PowerShell：
-
-```powershell
-$env:PYTHONPATH = "src"
-```
-
-## Quick Start
-
-创建 session：
-
-```bash
-garage create --team garage --workspace default --profile dev
-```
-
-恢复一个已有 session：
-
-```bash
-garage resume --session <session-id>
-```
-
-附着 workspace：
-
-```bash
-garage attach --session <session-id> --workspace default
-```
-
-提交一步：
-
-```bash
-garage step --session <session-id> --input "hello"
-```
-
-查询状态：
-
-```bash
-garage status --session <session-id>
-```
-
-运行测试：
-
-```bash
-pytest
-```
-
-## 已实现能力
-
-- **入口层**
-  - CLI 入口（`create/resume/attach/step/status`）
-  - Web control-plane 基线与 web-depth guardrails
-  - HostBridge handoff/rework seam
-- **Runtime 核心**
-  - runtime home/profile authority 基线
-  - session lifecycle runtime core
-  - execution authority + trace/evidence 引用
-- **Workspace Truth 与 Governance**
-  - workspace surfaces 的 file-backed artifact routing
-  - governance gate 判定与 evidence 引用输出
-- **Continuity 与 Growth**
-  - continuity stores（memory/skills buckets）
-  - growth proposal 生命周期（`accepted/rejected/deferred`）
-- **Contracts/Registry/Packs**
-  - shared contract validation
-  - registry discovery
-  - reference pack metadata catalog
-- **Hardening 与 Ops**
-  - credential resolution 基线
-  - runtime home doctor 基线
-  - runtime diagnostics event ops
-
-## 当前限制
-
-- 面向终端用户的完整发布版
-- 完整 Web 产品深度与 UX 打磨
-- 全部 runtime stores 的持久化实现
-- 更高级 provider backend 与 secrets 分层来源
-- daemon/supervisor/multi-workspace orchestration
-- 分布式或远程控制面
-
-## Documentation
-
-建议从这里开始：
-
-- `docs/README.md`
-- `docs/VISION.md`
-- `docs/GARAGE.md`
-- `docs/ROADMAP.md`
-
-架构与特性真相：
-
-- `docs/architecture/1-garage-system-overview.md`
-- `docs/architecture/2-garage-runtime-reference-model.md`
-- `docs/architecture/10-entry-and-host-injection-layer.md`
-- `docs/features/F10-agent-teams-product-surface.md`
-- `docs/features/F11-runtime-topology-and-entry-bootstrap.md`
-- `docs/features/F16-execution-and-provider-tool-plane.md`
-
-设计与任务：
-
-- `docs/design/`
-- `docs/tasks/README.md`
-- `docs/tasks/2026-04-13-garage-mainline-tasks.md`
-- `docs/tasks/2026-04-13-garage-mainline-task-board.md`
-
-仓库结构：
+## 项目结构
 
 | 路径 | 用途 |
 | --- | --- |
-| `src/` | runtime/entry/governance/continuity/contracts/packs 实现 |
-| `tests/` | 基于 pytest 的回归测试 |
-| `docs/reviews/` | 评审阶段证据记录 |
-| `docs/verification/` | 门禁/finalize 证据记录 |
-| `docs/approvals/` | 批准步骤记录（含 auto 模式） |
-| `docs/tasks/` | 任务计划与队列投影 |
-| `task-progress.md` | 当前 workflow 状态快照 |
+| `packs/coding/skills/` | AHE编码工作流技能（specify、design、tasks、review等） |
+| `packs/product-insights/skills/` | AHE产品洞察技能（framing、research、concept、bridge） |
+| `packs/coding/skills/docs/` | AHE编码工作流文档和指南 |
+| `packs/product-insights/skills/docs/` | AHE产品洞察文档和约定 |
+| `docs/wiki/` | 架构分析和设计文档 |
+| `.agents/` | Agent特定配置和扩展 |
+| `AGENTS.md` | AHE工作流文档约定 |
 
-## Contributing
+## 产品洞察技能
 
-`Garage` 仍在持续演进，当前高价值贡献包括：
+当你有模糊想法或需要产品清晰度时使用这些技能：
 
-- 强化共享 runtime seams
-- 改进任务/评审/门禁证据质量
-- 扩展失败路径与可恢复性测试覆盖
-- 保持 docs/features/design/tasks 一致性
+- **入口与路由**
+  - `using-ahe-product-workflow` - 产品洞察家族的公开入口
 
-一个基础的贡献者流程：
+- **核心工作流**
+  - `ahe-outcome-framing` - 定义期望结果、目标用户和替代方案
+  - `ahe-insight-mining` - 从网络、GitHub和社区提取证据
+  - `ahe-opportunity-mapping` - 映射JTBD机会并优先级排序
+  - `ahe-concept-shaping` - 生成和评估多个概念方向
+  - `ahe-assumption-probes` - 设计低成本验证实验
+  - `ahe-spec-bridge` - 将洞察压缩为编码工作流的规格输入
 
-```bash
-git clone <your-fork-or-repo-url>
-cd Garage
-python -m pip install -e .
-pytest
-```
+## 编码技能
 
-做较大改动前，建议先读：
+当你有清晰需求并需要实现时使用这些技能：
 
-- `AGENTS.md`
-- `docs/README.md`
-- `docs/architecture/`
-- `docs/features/`
-- `docs/tasks/README.md`
+- **上游链路**
+  - `ahe-specify` - 支持延后的需求规格说明
+  - `ahe-spec-review` - 带质量评审标准的规格评审
+  - `ahe-design` - 架构和设计文档
+  - `ahe-tasks` - 任务分解和规划
 
-这个项目是 documentation-led：`docs/architecture/`、`docs/features/`、`docs/design/` 定义系统真相，`docs/tasks/` 定义可执行交付切片。
+- **执行与评审**
+  - `ahe-test-driven-dev` - TDD指导与实践
+  - `ahe-code-review` - 代码审查和质量保证
+  - `ahe-test-review` - 测试覆盖率和验证
+  - `ahe-design-review` - 设计审查和验证
+  - `ahe-tasks-review` - 任务分解评审
+
+- **质量门禁**
+  - `ahe-bug-patterns` - 常见bug模式检测
+  - `ahe-completion-gate` - 完成标准验证
+  - `ahe-regression-gate` - 回归预防
+  - `ahe-traceability-review` - 需求可追溯性
+
+- **支持技能**
+  - `ahe-increment` - 增量开发指导
+  - `ahe-hotfix` - 热修复工作流支持
+  - `ahe-finalize` - 项目完成和关闭
+  - `ahe-workflow-router` - 工作流编排和路由
+
+## 文档
+
+**产品洞察：**
+- `packs/product-insights/skills/docs/` - 产品洞察工作流指南
+- `packs/product-insights/skills/using-ahe-product-workflow/SKILL.md` - 入口点指南
+
+**编码：**
+- `packs/coding/skills/docs/` - AHE编码工作流指南
+- `packs/coding/skills/README.md` - 编码技能概览
+
+**架构：**
+- `docs/wiki/W120-ahe-workflow-externalization-guide.md` - 外部工作流集成
+- `docs/wiki/W140-ahe-platform-first-multi-agent-architecture.md` - 架构概览
+- `docs/wiki/` - 工程分析和设计思路
+
+**约定：**
+- `AGENTS.md` - AHE文档约定
+
+## 最新更新
+
+最近的发展重点在于增强两个工作流家族：
+
+**产品洞察：**
+- 完整的产品洞察工作流，从想法到规格桥接
+- 多agent辩论协议用于概念验证
+- 研究和证据收集技能
+
+**编码：**
+- 增强的 `ahe-specify` 技能，包含需求编写契约
+- 新增 `ahe-spec-review` 技能，带全面的评审标准
+- 改进的粒度和延后指导
+- 新增技能质量评估框架
+
+## 贡献指南
+
+`Garage` 专注于高质量的agent技能。有价值的贡献包括：
+
+- 遵循AHE模式的新工作流技能
+- 增强的评审标准和质量门禁
+- 不同领域的额外packs
+- 改进的文档和示例
+- 跨平台兼容性改进
+
+## 许可证
+
+本项目专注于开源的agent辅助开发工具。
