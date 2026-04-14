@@ -19,7 +19,7 @@
   - `docs/reviews/spec-review-F001-garage-agent-operating-system-r2.md`（规格 review PASS）
   - `docs/wiki/W140-ahe-platform-first-multi-agent-architecture.md`（架构参考）
   - `docs/wiki/W150-garage-design-vs-hermes-openclaw-clowder-deerflow.md`（对比参考）
-  - `docs/wiki/W160-garage-design-principles.md`（项目设计原则）
+  - `docs/soul/design-principles.md`（项目设计原则）
 - Constraints:
   - Phase 1 不引入数据库、常驻服务、Web UI
   - 优先使用 markdown、JSON、文件系统存储
