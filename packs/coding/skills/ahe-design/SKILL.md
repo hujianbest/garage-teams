@@ -306,6 +306,18 @@ direct invoke 常见信号：
 
 如果设计稿仍未达到评审门槛，不要伪造 handoff；明确还缺什么，再继续本节点修订。
 
+## Supporting References
+
+按需读取：
+
+- `ahe-design/references/design-principles-guide.md` — 面向 docs-first、workspace-first、Agent-native 项目的架构设计原则指南。当项目属于这种类型时，设计过程中应使用该指南判断方案好坏。
+
+读取规则：
+
+- 当项目特征匹配 docs-first / workspace-first / Agent-native 时，在提出候选方案前读取该指南
+- 用指南中的判定标准检查每个候选方案是否违反了某条原则
+- 不需要把指南内容复制到设计文档中，只需确保设计决策与原则一致
+
 ## Common Rationalizations
 
 | Rationalization | Reality |
