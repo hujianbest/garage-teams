@@ -9,17 +9,18 @@
 
 ## Current Workflow State
 
-- Current Stage: ahe-tasks（任务拆解）
+- Current Stage: 任务计划草稿已完成
 - Workflow Profile: full
 - Execution Mode: 主链推进
-- Current Active Task: 任务拆解
-- Pending Reviews And Gates: 无
+- Current Active Task: T1（待 review 通过后激活）
+- Pending Reviews And Gates: ahe-tasks-review
 - Relevant Files:
   - `docs/features/F001-garage-agent-operating-system.md`（已批准规格）
   - `docs/designs/2026-04-15-garage-agent-os-design.md`（已批准设计）
   - `docs/reviews/design-review-F001-garage-agent-os.md`（设计评审记录）
   - `docs/approvals/F001-spec-approval.md`（规格审批）
   - `docs/approvals/F001-design-approval.md`（设计审批）
+  - `docs/tasks/2026-04-15-garage-agent-os-tasks.md`（任务计划）
   - `docs/wiki/W140-ahe-platform-first-multi-agent-architecture.md`（架构参考）
   - `docs/soul/design-principles.md`（项目设计原则）
 - Constraints:
@@ -30,8 +31,9 @@
 
 ## Progress Notes
 
-- What Changed: 设计已批准，进入 ahe-tasks
+- What Changed: 任务计划草稿完成，22 个任务 5 个里程碑
 - Evidence Paths:
+  - `docs/tasks/2026-04-15-garage-agent-os-tasks.md`（任务计划）
   - `docs/approvals/F001-design-approval.md`（设计审批记录）
   - `docs/designs/2026-04-15-garage-agent-os-design.md`（已批准设计）
   - `docs/reviews/design-review-F001-garage-agent-os.md`（评审记录，7 发现项已修复）
@@ -42,6 +44,7 @@
   - 2026-04-15: 评审结论"需修改"（7 发现项：1 High, 5 Medium, 1 Low）
   - 2026-04-15: 修复所有 7 个发现项 + 1 个薄弱点
   - 2026-04-15: 用户确认批准设计
+  - 2026-04-15: 进入 ahe-tasks，完成 22 任务 5 里程碑的任务拆解
 - Open Risks:
   - Claude Code session API 能力需在第一个技术验证 spike 中确认
   - 知识表示的具体 schema 需要在使用中迭代
@@ -57,8 +60,9 @@
 
 ## Next Step
 
-- Next Action Or Recommended Skill: ahe-tasks
+- Next Action Or Recommended Skill: ahe-tasks-review
 - Blockers: 无
 - Notes:
-  - 设计已批准，可安全进入任务拆解
-  - 第一个任务应为 Claude Code session API 技术验证 spike
+  - 任务计划已完成，5 里程碑 22 任务
+  - 第一个任务 T1 为 Claude Code session API 技术验证 spike
+  - 待 ahe-tasks-review 通过后进入实现
