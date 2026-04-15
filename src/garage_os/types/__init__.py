@@ -167,6 +167,15 @@ class Checkpoint:
 
 
 @dataclass
+class RecoveryResult:
+    """Result of a session recovery operation."""
+
+    metadata: SessionMetadata
+    recovery_method: str
+    recovery_log: List[str] = field(default_factory=list)
+
+
+@dataclass
 class SyncLogEntry:
     """A log entry for artifact synchronization operations."""
 
@@ -191,5 +200,6 @@ __all__ = [
     "ErrorCategory",
     "StateTransition",
     "Checkpoint",
+    "RecoveryResult",
     "SyncLogEntry",
 ]

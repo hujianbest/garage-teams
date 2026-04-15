@@ -1,5 +1,7 @@
 """Session management for Garage Agent OS workflows."""
 
+import hashlib
+import json
 import re
 from datetime import datetime
 from pathlib import Path
@@ -10,6 +12,7 @@ from garage_os.types import (
     SessionState,
     SessionContext,
     Checkpoint,
+    RecoveryResult,
 )
 from garage_os.storage import FileStorage
 
@@ -283,7 +286,7 @@ class SessionManager:
             Created checkpoint
         """
         now = datetime.now()
-        checkpoint_id = f"cp-{now.strftime('%Y%m%d-%H%M%S')}"
+        checkpoint_id = f"cp-{now.strftime('%Y%m%d-%H%M%S-%f')}"
 
         checkpoint = Checkpoint(
             checkpoint_id=checkpoint_id,
@@ -303,6 +306,9 @@ class SessionManager:
             "state_snapshot": checkpoint.state_snapshot,
         }
         checksum = self._storage.write_json(checkpoint_path, serialized)
+        # Add checksum to serialized data for inclusion in file
+        serialized["checksum"] = checksum
+        self._storage.write_json(checkpoint_path, serialized)
 
         checkpoint.checksum = checksum
         return checkpoint
@@ -406,3 +412,225 @@ class SessionManager:
             host_version=data.get("host_version", "unknown"),
             garage_version=data.get("garage_version", "0.1.0"),
         )
+
+    def recover_session(self, session_id: str) -> Optional[RecoveryResult]:
+        """Recover a session using a 5-level fallback strategy.
+
+        Recovery priority:
+        1. Valid session.json (checksum verified)
+        2. Latest valid checkpoint (if session.json corrupted)
+        3. Previous valid checkpoint (if latest checkpoint corrupted)
+        4. Artifact-first rebuild (scan artifacts directory)
+        5. No data available (return None)
+
+        Args:
+            session_id: Session identifier to recover
+
+        Returns:
+            RecoveryResult if recovery succeeded, None otherwise
+        """
+        recovery_log = []
+
+        # Level 1: Try to recover from session.json
+        session_path = f"sessions/active/{session_id}/session.json"
+        session_data = self._storage.read_json(session_path)
+
+        if session_data is not None:
+            # Validate checksum
+            stored_checksum = session_data.get("checksum")
+            if stored_checksum and self._validate_checksum(session_data, stored_checksum):
+                # Checksum valid, recover from session.json
+                metadata = self._deserialize_metadata(session_data)
+                recovery_log.append("Recovered from valid session.json")
+                return RecoveryResult(
+                    metadata=metadata,
+                    recovery_method="session_json",
+                    recovery_log=recovery_log,
+                )
+            else:
+                recovery_log.append("session.json checksum validation failed")
+        else:
+            recovery_log.append("session.json not found or could not be read")
+
+        # Level 2 & 3: Try to recover from checkpoint
+        checkpoint_result = self._find_valid_checkpoint(session_id)
+        if checkpoint_result is not None:
+            checkpoint_data, is_latest = checkpoint_result
+            metadata = self._deserialize_metadata(checkpoint_data)
+            method_suffix = " (fallback)" if not is_latest else ""
+            recovery_log.append(f"Recovered from checkpoint{method_suffix}")
+            return RecoveryResult(
+                metadata=metadata,
+                recovery_method="checkpoint" if is_latest else "checkpoint_fallback",
+                recovery_log=recovery_log,
+            )
+
+        # Level 4: Artifact-first rebuild
+        metadata = self._rebuild_from_artifacts(session_id)
+        if metadata is not None:
+            recovery_log.append("Rebuilt from artifacts directory")
+            return RecoveryResult(
+                metadata=metadata,
+                recovery_method="artifact_first",
+                recovery_log=recovery_log,
+            )
+
+        # Level 5: No data available
+        return None
+
+    def _validate_checksum(self, data: dict, expected_checksum: str) -> bool:
+        """Validate checksum of data.
+
+        Args:
+            data: Data dictionary to validate
+            expected_checksum: Expected SHA-256 checksum
+
+        Returns:
+            True if checksum matches, False otherwise
+        """
+        # Create a copy without the checksum field
+        # (checksum is computed from data WITHOUT the checksum field)
+        data_copy = data.copy()
+        data_copy.pop("checksum", None)
+
+        # Serialize the data as JSON (same way as write_json)
+        json_str = json.dumps(data_copy, indent=2, ensure_ascii=False)
+        computed_checksum = hashlib.sha256(json_str.encode("utf-8")).hexdigest()
+
+        return computed_checksum == expected_checksum
+
+    def _find_valid_checkpoint(self, session_id: str) -> Optional[tuple[dict, bool]]:
+        """Find the latest valid checkpoint for a session.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            Tuple of (session metadata dict reconstructed from checkpoint, is_latest)
+            where is_latest indicates if this is the first (newest) checkpoint checked.
+            Returns None if no valid checkpoint found.
+        """
+        checkpoint_dir = f"sessions/active/{session_id}/checkpoints"
+
+        # List all checkpoint files
+        checkpoint_files = self._storage.list_files(checkpoint_dir, "*.json")
+
+        if not checkpoint_files:
+            return None
+
+        # Sort by filename (newest first based on timestamp in filename)
+        checkpoint_files.sort(key=lambda p: p.name, reverse=True)
+
+        is_first_checkpoint = True
+
+        for checkpoint_file in checkpoint_files:
+            # Read checkpoint data
+            checkpoint_data = self._storage.read_json(
+                f"sessions/active/{session_id}/checkpoints/{checkpoint_file.name}"
+            )
+
+            if checkpoint_data is None:
+                is_first_checkpoint = False
+                continue
+
+            # Validate checksum
+            stored_checksum = checkpoint_data.get("checksum")
+            if stored_checksum and self._validate_checksum(checkpoint_data, stored_checksum):
+                # Valid checkpoint found - reconstruct session metadata
+                # Try to read session.json even if checksum is invalid
+                session_path = f"sessions/active/{session_id}/session.json"
+                session_data = self._storage.read_json(session_path)
+
+                # Create a session metadata dict from checkpoint
+                if session_data is not None:
+                    # Use session data as base (even with invalid checksum)
+                    session_data["updated_at"] = checkpoint_data.get("timestamp")
+                    return (session_data, is_first_checkpoint)
+                else:
+                    # No session data at all, create minimal metadata from checkpoint
+                    return ({
+                        "session_id": session_id,
+                        "pack_id": "unknown",
+                        "topic": f"Recovered from checkpoint {checkpoint_data.get('checkpoint_id')}",
+                        "state": "idle",
+                        "current_node_id": checkpoint_data.get("node_id"),
+                        "created_at": checkpoint_data.get("timestamp"),
+                        "updated_at": checkpoint_data.get("timestamp"),
+                        "context": {
+                            "pack_id": "unknown",
+                            "topic": "Recovered from checkpoint",
+                            "graph_variant_id": None,
+                            "user_goals": [],
+                            "constraints": [],
+                            "metadata": {},
+                        },
+                        "artifacts": [],
+                        "host": "claude-code",
+                        "host_version": "unknown",
+                        "garage_version": "0.1.0",
+                    }, is_first_checkpoint)
+            else:
+                # Checksum invalid, move to next checkpoint
+                is_first_checkpoint = False
+
+        return None
+
+    def _rebuild_from_artifacts(self, session_id: str) -> Optional[SessionMetadata]:
+        """Rebuild session metadata from artifacts directory.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            Reconstructed SessionMetadata if artifacts exist, None otherwise
+        """
+        from garage_os.types import ArtifactReference, ArtifactRole, ArtifactStatus
+
+        artifacts_dir = f"sessions/active/{session_id}/artifacts"
+
+        # Check if artifacts directory exists
+        if not self._storage.exists(artifacts_dir):
+            return None
+
+        # List artifact files
+        artifact_files = self._storage.list_files(artifacts_dir, "*")
+
+        if not artifact_files:
+            return None
+
+        # Create artifact references from files
+        now = datetime.now()
+        artifacts = []
+        for artifact_file in artifact_files:
+            if artifact_file.is_file():
+                artifact_ref = ArtifactReference(
+                    artifact_role=ArtifactRole.OTHER,
+                    path=artifact_file,
+                    status=ArtifactStatus.APPROVED,
+                    created_at=now,
+                    updated_at=None,
+                    checksum=None,
+                )
+                artifacts.append(artifact_ref)
+
+        # Create minimal session metadata
+        context = SessionContext(
+            pack_id="unknown",
+            topic="Recovered session",
+            user_goals=[],
+            constraints=[],
+        )
+
+        metadata = SessionMetadata(
+            session_id=session_id,
+            pack_id="unknown",
+            topic="Recovered session",
+            state=SessionState.IDLE,
+            current_node_id=None,
+            created_at=now,
+            updated_at=now,
+            context=context,
+            artifacts=artifacts,
+        )
+
+        return metadata
