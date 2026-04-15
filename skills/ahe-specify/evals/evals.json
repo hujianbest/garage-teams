@@ -192,6 +192,23 @@
         "先向用户提出最小定向确认问题",
         "其余纯 wording 或结构问题仍由本节点直接修订"
       ]
+    },
+    {
+      "id": 17,
+      "prompt": "请读取附件中的真实工件，作为 `ahe-specify` 继续这轮 spec review 回修。不要重新开启整轮需求澄清；你要根据附件判断哪些项可直接修，哪些项必须先向用户确认。",
+      "expected_output": "应从附件中识别出：`FR-004` 的拆分一旦落地，会触及第一期范围边界和 deferred 判断，因此不能继续当作纯 LLM-FIXABLE 静默修完；应只向用户发起最小定向确认，同时把 `FR-002` 缺失来源等纯结构问题留给本节点直接修订。",
+      "files": [
+        "fixtures/split-boundary-repair/task-progress.md",
+        "fixtures/split-boundary-repair/user-input-notes.md",
+        "fixtures/split-boundary-repair/spec-draft.md",
+        "fixtures/split-boundary-repair/spec-review-record.md"
+      ],
+      "expectations": [
+        "会读取附件中的当前轮范围与待确认边界，而不是只复述 prompt",
+        "识别 `FR-004` 拆分会触及范围边界或 deferred 归属",
+        "只向用户提出最小定向确认问题，而不是重新整轮澄清",
+        "其余纯结构性或 wording 问题仍由本节点直接修订"
+      ]
     }
   ]
 }

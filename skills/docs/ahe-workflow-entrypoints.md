@@ -20,11 +20,11 @@ direct invoke 不是主路径替代品，而是在“当前节点已经足够明
 
 ## Boundary With Product Discovery
 
-在进入 `ahe-coding-skills` 之前，先判断当前问题是否其实仍属于上游 product discovery。
+在进入 AHE coding workflow family 之前，先判断当前问题是否其实仍属于上游 product discovery。
 
 以下场景不要直接进入 coding family，而应先进入：
 
-- `ahe-product-skills/using-ahe-product-workflow`
+- `using-ahe-product-workflow`
 
 典型信号：
 
@@ -33,7 +33,7 @@ direct invoke 不是主路径替代品，而是在“当前节点已经足够明
 - 用户还在问“应该先打哪个 wedge / concept / opportunity”
 - 用户还在问“先验证哪个假设、先跑什么 probe”
 
-只有当当前请求已经主要转为“把方向写成正式规格、设计或任务计划”，才进入 `ahe-coding-skills`。
+只有当当前请求已经主要转为“把方向写成正式规格、设计或任务计划”，才进入 coding family。
 
 如果上游已经产出：
 
@@ -93,7 +93,7 @@ direct invoke 不是主路径替代品，而是在“当前节点已经足够明
 
 | 节点类别 | 代表 skill | 典型入口条件 | 不该这样进入的典型情况 |
 |---|---|---|---|
-| Upstream discovery | `ahe-product-skills/using-ahe-product-workflow` | 仍在判断产品 thesis、wedge、probe 或是否值得做 | 已明确进入 formal spec / design / task planning，且 coding family 前置条件已满足 |
+| Upstream discovery | `using-ahe-product-workflow` | 仍在判断产品 thesis、wedge、probe 或是否值得做 | 已明确进入 formal spec / design / task planning，且 coding family 前置条件已满足 |
 | Public Entry | `using-ahe-workflow` | 新会话、命令入口、family discovery、需要判断 direct invoke 还是 route-first | 当前已经进入 runtime recovery、需要 authoritative route / stage / profile 判断 |
 | Orchestrator | `ahe-workflow-router` | 阶段不清、需要恢复编排、需要判断 profile 或下一步 | 把它当成每次新会话都必须直接暴露给用户的 public shell |
 | Authoring | `ahe-specify` / `ahe-design` / `ahe-tasks` | 当前明确是在补齐规格、设计或任务计划正文；上游前置条件满足 | 阶段不清、其实该做 review、其实该走支线、或已进入实现 |
@@ -114,7 +114,7 @@ review skills 有双重入口语义：
 差异：
 
 - direct invoke 时，调用方需要自己先确认这真的是 review-only 场景
-- 无论是 direct invoke 还是 chain invoke，review 的实际执行都仍遵循 `ahe-coding-skills/ahe-workflow-router/references/review-dispatch-protocol.md`：由父会话构造 review request，并派发 reviewer subagent（旧工件若仍引用 legacy 路径前缀下的同文件，语义等价，按读时归一化理解即可）
+- 无论是 direct invoke 还是 chain invoke，review 的实际执行都仍遵循当前 skill pack 中 `ahe-workflow-router/references/review-dispatch-protocol.md`：由父会话构造 review request，并派发 reviewer subagent（旧工件若仍引用 legacy 安装路径下的同文件，语义等价，按读时归一化理解即可）
 - 无论哪种模式，review skill 只负责给出 review 记录与结构化摘要，不负责推进主链
 
 ## Public Entry Mode vs Router Mode vs Direct Invoke
@@ -136,7 +136,7 @@ review skills 有双重入口语义：
 
 - 用户当前请求
 - 用户是否显式要求 `interactive` / `auto`
-- `ahe-coding-skills/docs/ahe-workflow-entrypoints.md`
+- `docs/ahe-workflow-entrypoints.md`
 - 与入口判断直接相关的少量工件线索
 - 命令 bias 或用户点名的 skill 意图
 

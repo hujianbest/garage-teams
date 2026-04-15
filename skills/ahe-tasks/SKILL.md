@@ -1,426 +1,127 @@
 ---
 name: ahe-tasks
-description: 产出可评审任务计划。适用于需求规格与设计都已批准，且当前需要在编码前明确里程碑、任务顺序、依赖、完成条件、验证证据、测试设计种子、唯一 `Current Active Task` 选择规则，以及 router 可读取的后续 task ready / reselection 契约的场景；若上游尚未稳定、当前阶段不清或仍需 authoritative workflow routing，先回到 `ahe-workflow-router`。
+description: 产出可评审任务计划。适用于规格与设计都已批准，需要在编码前明确里程碑、任务顺序、依赖、完成条件的场景。若上游未稳定，先回到 ahe-workflow-router。
 ---
 
 # AHE 任务拆解
 
-创建任务计划，把已批准设计转化为可执行、可追溯、可验证的工作单元，并把计划准备到可交给 `ahe-tasks-review` 的状态。
-
-## Overview
-
-这个 skill 的职责不是“列几个待办”，而是把实现过程拆成能被冷启动执行的任务单元，并明确依赖、验证方式、预期证据、当前活跃任务的选择规则，以及后续任务的 ready / reselection 契约。
-
-高质量任务计划至少要明确：
-
-- 里程碑
-- 有序任务
-- 依赖关系
-- 任务级完成条件
-- 验证预期与新鲜证据
-- 当前活跃任务选择规则
-- 可供 router 重选下一任务的 ready / dependency 信号
+创建任务计划，把已批准设计转化为可执行、可追溯、可验证的工作单元，准备到可交给 `ahe-tasks-review` 的状态。
 
 ## When to Use
 
-在这些场景使用：
+适用：
+- 规格与设计都已批准，需要任务计划
+- `ahe-tasks-review` 返回 `需修改` 或 `阻塞`，需按 findings 修订
+- 需要为 `ahe-test-driven-dev` 准备任务输入和测试设计种子
 
-- 需求规格与设计都已批准，当前需要把设计转成任务计划
-- `ahe-tasks-review` 返回 `需修改` 或 `阻塞`，需要按 findings 修订计划
-- 当前需要为 `ahe-test-driven-dev` 准备更稳定的任务输入和测试设计种子
+不适用 → 改用：
+- 规格未稳定/未批准 → `ahe-specify` / `ahe-spec-review`
+- 设计未稳定/未批准 → `ahe-design` / `ahe-design-review`
+- 任务计划已批准，需进入实现 → `ahe-test-driven-dev`
+- 阶段不清/证据冲突 → `ahe-workflow-router`
 
-不要在这些场景使用：
-
-- 规格仍未稳定、待评审或未批准，先回到 `ahe-specify` / `ahe-spec-review`
-- 设计仍是草稿、待评审或未批准，先回到 `ahe-design` / `ahe-design-review`
-- 任务计划已批准，当前需要进入实现，改用 `ahe-test-driven-dev`
-- 当前只是要求执行任务评审，且证据支持应进入评审节点，改用 `ahe-tasks-review`
-- 当前是支线、阶段不清或证据冲突，先回到 `ahe-workflow-router`
-
-direct invoke 常见信号：
-
-- “把这份设计拆成任务计划”
-- “先不要写代码，先把任务顺序和依赖梳理清楚”
-- “这份 tasks plan 被 review 打回了，继续改”
-- “给实现阶段准备好 active task 和验证入口”
-
-## Standalone Contract
-
-当用户直接点名 `ahe-tasks` 时，至少确认以下条件：
-
-- 需求规格已批准
-- 设计已批准
-- 当前问题确实需要任务规划，而不是上游修订、下游实现或 review-only
-
-如果出现以下任一情况，不要强行继续，应先回到 `ahe-workflow-router`：
-
-- 当前阶段不清
-- 上游规格 / 设计仍不稳定或批准证据冲突
-- 请求同时混入支线、review-only 或实现阶段信号
-- 用户点名了 `ahe-tasks`，但现有工件显示当前更适合进入其它节点
-
-## Chain Contract
-
-作为主链节点被串联调用时，默认读取：
-
-- `ahe-workflow-router` 已识别的当前主题与 profile
-- `AGENTS.md` 中与任务计划相关的路径映射、模板覆盖和拆解约束
-- 已批准需求规格、设计、相关 review 记录与 `task-progress.md`
-- 与当前范围直接相关的最少项目上下文
-
-本节点完成后应写回：
-
-- 一份可评审任务计划
-- 关键需求 / 设计到里程碑与任务的追溯
-- 测试设计种子、唯一 `Current Active Task` 选择规则，以及供 router 重选下一任务的 queue projection
-- canonical handoff：`ahe-tasks-review`
-
-是否进入 `ahe-tasks-review`、何时把权威版 `Current Active Task` 写回状态工件、何时进入 `ahe-test-driven-dev`，都交回父会话 / `ahe-workflow-router` 统一编排。
+Direct invoke 信号："把设计拆成任务"、"先别写代码，先梳理任务顺序"、"tasks plan 被 review 打回了"。
 
 ## Hard Gates
 
-- 在任务计划通过评审并写入批准结论之前，不得开始实现。
-- 在 `ahe-tasks-review` 给出“通过”结论并将批准结论写入计划或等价评审工件之前，不得进入 `ahe-test-driven-dev`。
-- 当前请求若尚未经过 `using-ahe-workflow` 或 `ahe-workflow-router` 的入口判断，不直接开始任务规划。
-
-## Quality Bar
-
-交给 `ahe-tasks-review` 前，计划至少应具备这些特征：
-
-- 每个关键任务都足够小，可以被单任务推进
-- 任务能回指到规格 / 设计中的依据，而不是凭感觉新增
-- 每个任务都知道会触碰哪些文件或工件
-- 每个任务都知道如何验证完成
-- 任务计划为 `ahe-test-driven-dev` 准备了测试设计种子，但没有越权替代测试设计 approval step
-- 任务计划不仅能锁定首个 active task，也能在后续 completion gate 通过后支撑 router 重选下一 task
-
-## Inputs / Required Artifacts
-
-默认情况下，任务计划保存到：
-
-- `docs/tasks/YYYY-MM-DD-<topic>-tasks.md`
-
-若 `AGENTS.md` 为当前项目声明了任务计划路径映射，优先使用映射路径。
-
-任务计划交评审前，文档至少应体现：
-
-- 状态字段，例如 `状态: 草稿`
-- 主题或范围标识
-- 当前活跃任务选择规则
-- 若要支持 task-to-task 自动推进，任务计划正文中的任务队列投影视图，或等价 task board artifact 路径
-- 可供评审定位的章节结构
-
-若项目尚未形成固定进度记录格式，默认使用：
-
-- `ahe-coding-skills/templates/task-progress-template.md`
-
-下游 AHE skill 默认读取 canonical progress schema；如果项目仍沿用通用模板，请在实际进度工件中显式采用这些字段，而不要假定 generic 字段别名会被自动兼容。
-
-任务计划交给 `ahe-tasks-review` 后，还应同步：
-
-- `task-progress.md` 中的 `Current Stage`
-- `task-progress.md` 中的 `Next Action Or Recommended Skill`
+- 任务计划通过评审并写入批准结论前，不得开始实现
+- `ahe-tasks-review` 给出"通过"前，不进入 `ahe-test-driven-dev`
+- 若请求未经过入口判断，先回到 `ahe-workflow-router`
 
 ## Workflow
 
-### 1. 阅读已批准输入并提取任务拆解信号
+### 1. 阅读已批准输入并提取拆解信号
 
-阅读：
+阅读：已批准规格、已批准设计、项目上下文、`AGENTS.md` 路径映射、`task-progress.md`。
 
-- 已批准需求规格
-- 已批准设计
-- 当前项目上下文（如相关）
-- `AGENTS.md` 中与任务计划相关的路径映射、模板覆盖和任务拆解约束
-- `task-progress.md` 中的当前阶段记录（如果存在）
+至少提取：主要工作流、依赖与顺序、测试影响、风险区域、关键需求/设计锚点。
 
-至少提取：
+若因 review findings 重新进入：先读 findings，优先修复粒度过大、缺少完成条件、依赖遗漏等问题，不重做未受影响的任务。
 
-- 主要工作流
-- 依赖与顺序
-- 测试影响
-- 风险或不确定区域
-- 关键需求 / 设计决策的稳定锚点
+### 2. 文件/工件影响图
 
-若当前是因为 `ahe-tasks-review` 返回 `需修改` 或 `阻塞` 而重新进入本 skill：
+列任务前，先明确本轮涉及哪些工件：会创建/修改哪些文件、配置、文档、状态工件、测试/验证入口。锁定任务边界，避免"实现某模块"式脱离工件现实的任务。
 
-- 先读取评审 findings
-- 优先修复粒度过大、缺少完成条件、依赖遗漏或追溯不清等关键问题
-- 只针对仍然阻塞修订的问题补充确认
-- 不要把已确认且未受影响的任务全部重做
-- 如果阻塞来源于上游规格 / 设计仍不稳定，先回到 `ahe-workflow-router`
+### 3. 定义里程碑与追溯
 
-### 2. 先做文件 / 工件影响图
-
-在正式列任务前，先明确本轮会涉及哪些工件：
-
-- 会创建哪些文件
-- 会修改哪些文件、配置、文档或状态工件
-- 会新增或更新哪些测试 / 验证入口
-
-这一步的目标不是把实现写出来，而是锁定任务边界，避免出现“实现某模块”这类脱离工件现实的任务。
-
-### 3. 定义里程碑与追溯关系
-
-把工作分组为能产生明确阶段性成果的里程碑。
-
-每个里程碑应包含：
-
-- 目标
-- 包含的任务
-- 退出标准
-- 对应的需求 / 设计依据
-
-至少对关键需求和关键设计决策建立显式追溯关系，说明它们分别落到哪些里程碑与任务。
+分组为能产生阶段性成果的里程碑。每个里程碑含：目标、包含的任务、退出标准、对应的需求/设计依据。对关键需求和设计决策建立显式追溯。
 
 ### 4. 拆解为可执行任务单元
 
-任务必须足够小，能够被明确执行和验证，并适合单任务推进。
+任务必须小到能被单任务推进和验证。
 
-优先使用这类任务单元：
+优先使用：为单一行为/接口补齐可验证闭环、为高风险路径补齐实现与验证、为依赖切换/数据迁移/状态更新完成收口。
 
-- 为某个单一行为或接口补齐一个可验证闭环
-- 为某个高风险路径补齐实现与验证
-- 为某个依赖切换、数据迁移或状态更新完成可验证收口
-
-避免使用这类模糊任务项：
-
-- 实现某模块
-- 完成功能
-- 后面再优化
+避免：实现某模块、完成功能、后面再优化。
 
 对每个关键任务，至少明确：
 
-- 任务 ID
-- 目标
-- 前置依赖
-- Ready When
-- 初始队列状态（如 `ready` / `pending`）
-- Selection Priority
-- 会触碰哪些工件
-- 验证方式
-- 预期证据
-- 完成条件
-- 首个活跃任务或高风险任务的测试设计种子
+- 任务 ID、目标、前置依赖
+- Ready When、初始队列状态、Selection Priority
+- 触碰工件、验证方式、预期证据、完成条件
+- 首个活跃任务或高风险任务的测试设计种子（主要行为 + 关键边界 + 适合 fail-first 的点）
 
-`测试设计种子` 至少说明：
+### 5. 强化依赖与当前活跃任务规则
 
-- 主要行为
-- 关键边界或负向场景
-- 哪些点适合在 `ahe-test-driven-dev` 中优先做 fail-first
+为每个任务给出：依赖的前置任务/工件、推荐验证命令或入口、预期结果/新鲜证据、ready/pending 判断依据。
 
-若项目尚未使用独立 task board，上述字段应足以让父会话稳定投影出唯一 `next-ready task`；若项目已有独立 board，则在任务计划中显式声明其路径或等价引用。若需要新建 board，优先使用 `ahe-coding-skills/templates/task-board-template.md`。
-
-### 5. 强化依赖、验证与当前活跃任务规则
-
-对每个任务，尽量给出：
-
-- 依赖它之前完成的任务或工件
-- 推荐的执行命令或验证入口
-- 预期结果或新鲜证据
-- 用于 queue projection 的 ready / pending 判断依据
-
-如果命令尚不能唯一确定，至少指出应在哪个测试、脚本、记录或工件中看到验证结果。
-
-并至少为计划补一条规则：
-
-- 如何从任务计划中选定唯一 `Current Active Task`
+至少补一条规则：
+- 如何从计划中选定唯一 `Current Active Task`
 - 当前任务完成后，router 如何基于依赖、ready 条件与优先级重选下一任务
 
 ### 6. 编写任务计划
 
-若 `AGENTS.md` 为当前项目声明了任务计划模板、章节骨架或当前活跃任务规则，优先遵循这些约定。
+按 `references/task-plan-template.md` 的默认结构起草。若 `AGENTS.md` 声明了模板覆盖，优先遵循。
 
-若未提供任务计划模板覆盖，则使用以下默认结构：
+任务队列投影和 board 操作详见 `references/task-board-guide.md`。
 
-```markdown
-# <主题> 任务计划
+### 7. 评审前自检
 
-- 状态: 草稿
-- 主题: <主题>
-
-## 1. 概述
-## 2. 里程碑
-## 3. 文件 / 工件影响图
-## 4. 需求与设计追溯
-## 5. 任务拆解
-
-### T1. <任务名>
-- 目标:
-- 依赖:
-- Ready When:
-- 初始队列状态:
-- Selection Priority:
-- 触碰工件:
-- 测试设计种子:
-- 验证方式:
-- 预期证据:
-- 完成条件:
-
-## 6. 依赖与关键路径
-## 7. 完成定义与验证策略
-## 8. 当前活跃任务选择规则
-## 9. 任务队列投影视图 / `Task Board Path`
-## 10. 风险与顺序说明
-```
-
-### 6.1 最小示例：任务计划 -> task board
-
-如果你不确定 queue projection 应该写到什么粒度，优先做到“router 能唯一判断下一个 task”。
-
-最小示例：
-
-```markdown
-## 5. 任务拆解
-
-### T1. 建立解析器骨架
-- 目标: 补齐最小 parser 主路径
-- 依赖: -
-- Ready When: spec / design / tasks approval 已完成
-- 初始队列状态: ready
-- Selection Priority: P1
-- 触碰工件: `src/parser.ts`, `tests/parser.test.ts`
-- 测试设计种子: 主路径解析 + 非法输入失败
-- 验证方式: `npm test -- parser`
-- 预期证据: fail-first 失败记录 + parser tests 转绿
-- 完成条件: parser 主路径通过，且实现交接块已写回
-
-### T2. 接入 CLI 命令
-- 目标: 让 CLI 调用 parser
-- 依赖: T1
-- Ready When: T1=`done`
-- 初始队列状态: pending
-- Selection Priority: P2
-- 触碰工件: `src/cli.ts`, `tests/cli.test.ts`
-- 测试设计种子: CLI 成功调用 + 参数缺失失败
-- 验证方式: `npm test -- cli`
-- 预期证据: CLI tests 转绿
-- 完成条件: CLI 命令接入完成，且实现交接块已写回
-
-## 8. 当前活跃任务选择规则
-- 若存在且仅存在一个 `ready` 任务，则将其锁定为 `Current Active Task`
-- 若存在多个同优先级 `ready` 任务，则停止自动推进并回到 `ahe-workflow-router`
-
-## 9. 任务队列投影视图 / `Task Board Path`
-- Task Board Path: `docs/tasks/2026-04-09-parser-task-board.md`
-- Board Projection:
-  - T1 初始 `ready`
-  - T2 初始 `pending`
-  - 当 T1=`done` 后，T2 -> `ready`
-```
-
-对应的最小 task board 可以写成：
-
-```markdown
-# Task Board
-
-- Source Task Plan: `docs/tasks/2026-04-09-parser-tasks.md`
-- Current Active Task: T1
-
-## Task Queue
-
-| Task ID | Status | Depends On | Ready When | Selection Priority |
-|---|---|---|---|---|
-| T1 | in_progress | - | spec / design / tasks approval 已完成 | P1 |
-| T2 | pending | T1 | T1=`done` | P2 |
-```
-
-这样当 T1 完成实现质量链并通过 `ahe-completion-gate` 后，父会话只需把 T1 标成 `done`、把 T2 投影为 `ready`，router 就能稳定重选 T2 继续进入 `ahe-test-driven-dev`。
-
-编写要求：
-
-- 不把任务计划写成设计文档副本
-- 不把里程碑标题当成真实任务
-- 让关键任务具备冷启动可执行性
-- 让关键任务能够追溯回规格与设计
-- 让每个任务都能回答“做完的证据是什么”
-
-### 7. 评审前自检与 reviewer 派发
-
-交给 `ahe-tasks-review` 前，请确认：
-
+交 `ahe-tasks-review` 前确认：
 - 不存在大到无法单任务推进的任务
-- 关键任务有明确依赖、验证方式和完成条件
-- 关键任务能追溯回规格或设计依据
-- 风险区域已经体现在任务顺序、验证或显式风险说明中
-- 计划已经给出唯一 `Current Active Task` 选择规则
-- 计划还能让 router 在后续 completion gate 通过后稳定重选下一 task
-- 对首个活跃任务或高风险任务，测试设计种子已足以帮助 `ahe-test-driven-dev` 进入测试设计 approval step
+- 关键任务有依赖、验证方式、完成条件
+- 关键任务能追溯回规格/设计
+- 风险区域已体现在顺序或验证中
+- 已给出唯一 Current Active Task 选择规则
+- router 可稳定重选下一 task
+- 测试设计种子足以帮助 `ahe-test-driven-dev` 进入测试设计
 
-任务计划准备好后，不要在父会话里内联执行 `ahe-tasks-review`。正确做法是：
-
-1. 将任务计划保存到约定路径
-2. 组装最小 tasks review request
-3. 启动独立 reviewer subagent，并在该 subagent 中调用 `ahe-tasks-review`
-4. 由 reviewer subagent 写 review 记录并回传结构化摘要
-5. 父会话读取 reviewer 返回结果后继续：
-   - 若结论为 `通过`，先进入 `任务真人确认`；只有 approval step 已完成后，才把批准结果写入任务计划或等价评审工件，并进入 `ahe-test-driven-dev`
-   - 若结论为 `需修改`，携带关键 findings 回到本 skill 修订
-   - 若结论为 `阻塞` 且 `reroute_via_router=true`（或历史字段 `reroute_via_starter=true`）或 `next_action_or_recommended_skill=ahe-workflow-router`，回到 `ahe-workflow-router` 重编排
-   - 其他 `阻塞`，携带关键 findings 回到本 skill 补条件或修订
-
-建议的首个活跃任务应先写在任务计划正文中；只有在 `ahe-tasks-review` 通过且 `任务真人确认` 这一 approval step 已完成后，再把权威版 `Current Active Task` 写入 `task-progress.md` 或等价状态工件。
-
-后续任务的切换不要在这里预先写死成多个 `Current Active Task`；由 `ahe-workflow-router` 在每次 `ahe-completion-gate` 通过后，根据任务计划中的 queue projection 或独立 task board 重选下一任务。
+按 `references/reviewer-handoff.md` 派发独立 reviewer subagent 执行 `ahe-tasks-review`。
 
 ## Output Contract
 
-本节点完成时，至少应产出：
-
-- 一份可评审任务计划
-- 里程碑、任务追溯、工件影响图、测试设计种子与可回读的任务队列投影视图
+完成时产出：
+- 可评审任务计划（保存到 `AGENTS.md` 声明的 task-plan 路径；若无项目覆写，使用默认任务计划路径，如 `docs/tasks/YYYY-MM-DD-<topic>-tasks.md`）
+- 里程碑、追溯、工件影响图、测试设计种子、任务队列投影
 - canonical handoff：`ahe-tasks-review`
 
-交接前请同步：
+状态同步：`task-progress.md` Current Stage → "任务计划草稿已完成"，Next Action → `ahe-tasks-review`。
 
-- 将任务计划保存到约定路径
-- 将 `task-progress.md` 中的 `Current Stage` 更新为能唯一映射到“任务计划草稿已完成、等待评审”的规范阶段名
-- 将 `task-progress.md` 中的 `Next Action Or Recommended Skill` 更新为 `ahe-tasks-review`
-- 若使用独立 task board，在任务计划或 `task-progress.md` 中写明其路径
+若计划未达评审门槛，不伪造 handoff；明确写出缺口。
 
-推荐输出：
-
-```markdown
-任务计划草稿已起草完成，下一步应派发独立 reviewer subagent 执行 `ahe-tasks-review`。
-
-推荐下一步 skill: `ahe-tasks-review`
-```
-
-注意：只有 `ahe-tasks-review` 返回 `通过`，且 `任务真人确认` 这一 approval step 已完成、批准结论已写入任务计划或等价评审工件后，才进入 `ahe-test-driven-dev`。
-
-如果计划仍未达到评审门槛，不要伪造 handoff；明确缺口，再继续本节点修订。
-
-## Common Rationalizations
-
-| Rationalization | Reality |
-|---|---|
-| “设计差不多了，先开始实现再补任务” | 任务计划未准备好评审前，不进入实现。 |
-| “先列几个大任务，后面再细化” | 任务必须小到可以明确执行和验证。 |
-| “依赖关系实现时自然会处理” | 依赖和顺序必须提前写清。 |
-| “完成条件先不写，做完就知道了” | 每个任务都要有明确完成定义和验证方式。 |
-| “把整块功能放成一个任务更省事” | 大到无法独立验证的任务不能进入计划。 |
-| “验证放到功能全部做完再一起测” | 验证预期必须体现在任务级，而不是拖到最后。 |
-| “测试设计后面让实现阶段自己想” | 任务计划至少要给出测试设计种子，减少实现阶段补脑。 |
+注意：只有 review 通过且 approval step 完成后，才进入 `ahe-test-driven-dev`。
 
 ## Red Flags
 
 - 把任务计划写成设计文档副本
 - 使用大到无法验证的任务
-- 漏掉依赖关系
-- 漏掉完成条件
-- 漏掉触碰工件或验证证据
+- 漏掉依赖关系或完成条件
 - 写了任务却无法追溯到规格或设计
 - 把验证拖到整个功能结束时才做
-- handoff 缺失却声称“任务计划已经可以直接进入实现”
+- handoff 缺失却声称"可以直接进入实现"
+
+## Reference Guide
+
+| 文件 | 用途 |
+|------|------|
+| `references/task-plan-template.md` | 默认计划模板结构与保存路径 |
+| `references/task-board-guide.md` | Task Board 示例、队列投影、活跃任务选择规则 |
+| `references/reviewer-handoff.md` | reviewer 派发协议与结果处理 |
 
 ## Verification
 
-只有在存在一份可评审任务计划，并且已准备好交给 `ahe-tasks-review` 时，这个 skill 才算完成。
-
-交接前确认：
-
 - [ ] 任务计划已保存到约定路径
-- [ ] 关键任务、依赖、完成条件、验证方式和预期证据已写清
-- [ ] 需求 / 设计追溯与工件影响图已给出
-- [ ] 已提供测试设计种子、唯一 `Current Active Task` 选择规则，以及供 router 重选下一任务的 queue projection
-- [ ] `task-progress.md` 或等价状态工件已写回 canonical stage 与 `Next Action Or Recommended Skill`
-- [ ] 下一步明确为 `ahe-tasks-review`
+- [ ] 关键任务、依赖、完成条件、验证方式已写清
+- [ ] 需求/设计追溯与工件影响图已给出
+- [ ] 测试设计种子、Current Active Task 规则、queue projection 已提供
+- [ ] task-progress.md 已同步，下一步为 `ahe-tasks-review`

@@ -1,402 +1,145 @@
 ---
 name: ahe-workflow-router
-description: 作为 AHE workflow 的 canonical runtime router，根据最新证据决定当前阶段、Workflow Profile、Execution Mode、branch 切换、review dispatch 与恢复编排。适用于 continue/推进、review 或 gate 刚完成、route 或 profile 不清、工件证据冲突、需要判断是否切到 `ahe-hotfix` 或 `ahe-increment`，或用户明确要求 `auto` 连续执行等必须做 authoritative workflow routing 的场景。
+description: AHE workflow 的 canonical runtime router。根据最新证据决定阶段、Profile、Execution Mode、branch 切换、review dispatch 与恢复编排。
 ---
 
 # AHE Workflow Router
 
-## Overview
+AHE workflow family 的 **runtime authority**。负责根据最新证据决定：Workflow Profile、Execution Mode、Workspace Isolation、canonical 节点、是否切支线、review dispatch、恢复编排。
 
-`ahe-workflow-router` 是 AHE workflow family 的 **runtime authority**。
-
-它不是 public entry，也不是命令入口解释层。它的职责是根据最新证据决定：
-
-- 当前 `Workflow Profile`
-- 当前 `Execution Mode`
-- 当前 `Workspace Isolation`
-- 当前 canonical 节点
-- 是否切到 `ahe-hotfix` 或 `ahe-increment`
-- review 节点是否应派发 reviewer subagent
-- review / gate 结论之后如何恢复后续编排
-
-当前架构中：
-
-- `using-ahe-workflow` 负责 public entry / family discovery
-- `ahe-workflow-router` 负责 runtime routing / recovery
-- runtime handoff 与 reviewer reroute 语义统一使用 `ahe-workflow-router` 与 `reroute_via_router`
+`using-ahe-workflow` 负责 public entry / family discovery；本 skill 负责 runtime routing / recovery。
 
 ## When to Use
 
-在这些场景使用：
+适用：
+- 用户说"继续""推进"，需依据工件判断当前节点
+- review / gate 刚完成，需恢复编排
+- route / stage / profile 不清
+- 工件证据冲突
+- 需判断是否进入 `ahe-hotfix` 或 `ahe-increment`
+- 需派发 reviewer subagent
 
-- 用户说“继续”“推进”“开始做”，且必须依据最新工件判断当前节点
-- 某个 review / gate 刚完成，需要恢复后续编排
-- 当前 route / stage / profile 不清
-- 当前工件证据冲突，必须按保守原则回退
-- 需要判断是否进入 `ahe-hotfix` 或 `ahe-increment`
-- 某个 leaf skill 给出了显式 handoff，但你需要验证它是否仍然合法
-- 当前推荐节点是 review 节点，需要派发 reviewer subagent
-
-不要在这些场景使用：
-
-- 新会话只是想进入 AHE，还处于 family discovery 阶段
-- 命令入口只是在表达 `/ahe-*` 的高频意图
-- 某个 leaf skill 的本地职责已经明确，且不需要重新判断 route
-
-这些场景应先走：
-
-- `ahe-coding-skills/using-ahe-workflow/SKILL.md`
-
-## Core Authority
-
-`ahe-workflow-router` 负责以下 authority：
-
-- 选择或升级 `Workflow Profile`
-- 归一化并约束 `Execution Mode`
-- 决定并维护 `Workspace Isolation` / `Worktree Path` / `Worktree Branch`
-- 识别当前合法推荐节点
-- 约束推荐节点必须位于当前 profile 的合法节点集合中
-- 消费 review / gate / verification 结论
-- 读取并验证 `Next Action Or Recommended Skill`
-- 在当前任务的 `ahe-completion-gate` 通过后，判断是锁定新的 `Current Active Task` 继续实现，还是进入 `ahe-finalize`
-- 决定是否恢复主链、切到支线，或命中暂停点
-- 对 review 节点执行 review-dispatch protocol
-
-不属于它的职责：
-
-- 面向新会话解释 AHE family 的用途
-- 把 `/ahe-*` 命令直接映射成 runtime authority
-- 让 leaf skill 自己决定完整主链下一步
-- 在父会话里内联执行 review 判断
+不适用 → 先走 `using-ahe-workflow`：
+- 新会话还在 family discovery 阶段
+- 命令入口只表达 `/ahe-*` 意图
 
 ## Workflow
 
-按以下顺序工作。
+### 1. 确认是否属于 runtime routing
 
-### 1. 先确认当前是否属于 runtime routing
-
-先问自己：
-
-- 当前是在做 public entry discovery，还是在做 authoritative runtime recovery？
-
-如果只是“用户刚进入 AHE，不知道该从哪开始”，先回到：
-
-- `using-ahe-workflow`
-
-如果当前已经是下列任一场景，继续留在本 skill：
-
-- 需要恢复编排
-- 需要做 profile 判断
-- 需要消费 review / gate 结论
-- 需要处理 evidence conflict
-- 需要判断是否切支线
+若是 public entry discovery → 回到 `using-ahe-workflow`。否则（恢复编排、profile 判断、消费 review/gate 结论、evidence conflict、切支线）继续。
 
 ### 2. 读取最少必要证据
 
-只读取完成路由所需的最少内容：
+只读路由所需的最少内容：`AGENTS.md` 路径映射、用户请求、工件状态、`task-progress.md`、review/verification artifacts。不先做大范围代码探索。证据冲突时按未批准处理、选择更上游节点、必要时升级 profile。
 
-1. `AGENTS.md` 中与 `ahe-workflow` 相关的路径映射、批准状态别名、profile 规则和 auto mode policy
-2. 用户当前请求
-3. 已批准或未批准的规格 / 设计 / 任务工件状态，以及任务计划中的依赖 / ready 规则或独立 task board
-4. `task-progress.md`（包括 `Workflow Profile`、`Execution Mode`、`Current Active Task`、显式 handoff，以及 `Workspace Isolation` / `Worktree Path` / `Worktree Branch` 若存在）
-5. review / verification / release artifacts
+### 3. 检查支线信号
 
-路由阶段不要先做大范围代码探索。
+优先于普通主链推进：紧急缺陷修复 → `ahe-hotfix`；需求变更/范围调整 → `ahe-increment`。
 
-若当前需要判断是否启用 worktree，只读取最小环境信号，例如：
+### 4. 决定 Workflow Profile
 
-- 当前是否已有可复用 worktree 指派
-- 当前工作区是否存在会污染实现 / 评审判断的脏状态
-
-不要为了判断工作目录策略而扩大成代码级探索。
-
-如果证据冲突：
-
-- 按未批准处理
-- 选择更上游节点
-- 必要时升级到更重 profile
-
-### 3. 先判断是否命中支线
-
-优先检查是否存在以下信号：
-
-- 紧急缺陷修复 -> `ahe-hotfix`
-- 需求变更、范围调整、验收标准变化 -> `ahe-increment`
-
-支线信号优先于普通主链推进。
-
-### 4. 决定 `Workflow Profile`
-
-`Workflow Profile` 由 router 决定，不允许由用户或下游 skill 自行声称。
+由 router 决定，不允许下游自行声称。
 
 | Profile | 适用场景 |
-| --- | --- |
-| `full` | 无已批准规格或设计、架构/接口/数据模型变化、高风险模块、从头开始 |
-| `standard` | 已有已批准规格+设计，需要新增任务；中等复杂度扩展或 bugfix |
-| `lightweight` | 纯文档/配置/样式变化，或低风险单文件 bugfix，且无功能行为变化 |
+|---------|---------|
+| `full` | 无已批准规格/设计、架构/接口/数据模型变化、高风险模块 |
+| `standard` | 已批准规格+设计，中等复杂度扩展或 bugfix |
+| `lightweight` | 纯文档/配置/样式变化，或低风险单文件 bugfix |
 
-判定规则：
+判定：先执行 `AGENTS.md` 强制规则 → 沿用已有 profile → 按证据选择 → 冲突选更重。只允许升级，不允许降级。
 
-1. 先执行 `AGENTS.md` 中的强制 profile 规则
-2. 若 `task-progress.md` 中已有仍有效的 profile，沿用
-3. 否则按当前证据选择最匹配的 profile
-4. 若信号冲突，选择更重的 profile
+详细规则：`references/profile-selection-guide.md`
 
-升级规则：
+### 5. 决定 Execution Mode
 
-- `lightweight` 可升级到 `standard` 或 `full`
-- `standard` 可升级到 `full`
-- 不允许降级
+与 Profile 正交，不混写成复合值。归一化顺序：用户显式要求 → `AGENTS.md` 默认 → 已有值 → 默认 `interactive`。
 
-### 5. 决定 `Execution Mode`
+- `interactive`：approval step 等待用户
+- `auto`：按 policy 写 approval record 后自动继续
+- `auto` 不删除 review、gate 或 approval 节点
 
-`Execution Mode` 与 `Workflow Profile` 正交，不允许混写成复合 profile 值。
+详细规则：`references/execution-semantics.md`
 
-归一化顺序：
+### 5A. 决定 Workspace Isolation
 
-1. 用户当前请求中的显式模式要求（如“auto mode”“自动执行”“不用等我确认”）
-2. `AGENTS.md` 中声明的默认模式与禁止 auto 的范围
-3. `task-progress.md` 中已有且仍有效的 `Execution Mode`
-4. 若以上都没有，默认 `interactive`
+可选 coordination state。读取 `task-progress.md` 已有值 + `AGENTS.md` 约定 + 当前请求类型。
 
-约束：
+决策：已有 worktree-active 且路径一致 → 沿用；进入 `ahe-test-driven-dev` 且命中 full/standard/代码修改/脏状态 → `worktree-required`；仅 lightweight+干净 → `in-place`。不静默降级。
 
-- `interactive`：approval step 需要等待用户输入
-- `auto`：approval step 可由父会话按 policy 写 approval record 后自动继续
-- 若当前范围、profile、模块或风险类型命中 `AGENTS.md` 中的 auto 禁止条件，不得继续假装 `auto` 仍然有效
-- `auto` 只改变 pause / approval step 的处理方式，不删除 review、gate 或 approval 节点
-
-### 5A. 决定 `Workspace Isolation`
-
-`Workspace Isolation` 是可选 coordination state，不是新的 profile，也不是 branch 类型。
-
-默认读取：
-
-- `task-progress.md` 中已有的 `Workspace Isolation`、`Worktree Path`、`Worktree Branch`
-- `AGENTS.md` 中的 worktree / 分支 / 工作目录约定
-- 当前请求是否会进入代码修改或高风险验证
-
-决策规则：
-
-1. 若当前已存在 `Workspace Isolation=worktree-active`，且 `Worktree Path` 仍与当前 `Current Active Task` / 当前分支一致，优先沿用
-2. 若下一步会进入 `ahe-test-driven-dev`，且命中以下任一信号，优先设为 `worktree-required`
-   - 当前 `Workflow Profile` 为 `full` 或 `standard`
-   - 当前实现会修改代码、脚本、依赖或多文件资产，而不是纯文档修订
-   - 当前工作区已有未提交用户改动、并行任务或其它会污染证据判断的脏状态
-   - `AGENTS.md` 已要求使用隔离工作目录
-   - 当前 workflow 会派发 reviewer subagent，且 reviewer 需要检视候选实现所在的同一工作目录
-3. 仅当当前修改属于低风险 `lightweight` 场景、工作区干净且项目允许时，才保留 `in-place`
-4. 不要把 `worktree-required` 静默降级成 `in-place`
-
-细节与目录 / ignore / 基线校验规则参考：
-
-- `ahe-coding-skills/docs/ahe-worktree-isolation.md`
+参考：当前 skill pack 共享的 worktree isolation guide（默认 `docs/ahe-worktree-isolation.md`；若 `AGENTS.md` 声明项目等价路径，优先遵循）
 
 ### 6. 归一化显式 handoff
 
-把 `Next Action Or Recommended Skill` 视为受控字段，而不是自由文本。
+`Next Action Or Recommended Skill` 是受控字段。若已有显式 handoff：检查能否归一化 → 是否与最新 evidence 一致 → 是否在当前 profile 合法集合内。全部满足才采用；否则忽略，回退到迁移表。
 
-若当前工件已经写回显式下一步：
+### 7. 决定 canonical 节点
 
-- 先检查它能否唯一归一化为合法 canonical 节点
-- 再检查它是否仍与最新 evidence 一致
-- 再检查它是否位于当前 profile 的合法节点集合内
+路由原则：支线优先于主链 → review/gate 恢复优先于实现 → 缺失上游优先于下游 → 冲突选更保守 → task reselection 优先于 finalize。
 
-只有全部满足时，才优先采用这个显式 handoff。
+迁移表：`references/profile-node-and-transition-map.md`
 
-否则：
+若结论无法映射到唯一节点，重新路由，不自行补脑。
 
-- 忽略无效 handoff
-- 回退到迁移表和工件证据重新判断
+### 8. 处理 review / gate 恢复
 
-### 7. 在当前 profile 下决定 canonical 节点
+读取最新结论 → 确认 Profile/Mode → 检查 handoff → 按 router authority 判定。
 
-路由顺序始终遵守以下原则：
+关键分支：
+- `conclusion=通过` + `needs_human_confirmation=true`：interactive 等待/auto 写 record 再继续
+- completion gate 通过后：有唯一 next-ready task → 更新 Current Active Task 进 `ahe-test-driven-dev`；无剩余 task → `ahe-finalize`；候选不唯一 → hard stop
+- 用户提出新范围/缺陷 → 重新判断支线
 
-1. 支线信号优先于普通主链推进
-2. review / gate 恢复优先于“继续做点实现”
-3. 缺失上游已批准工件优先于进入下游能力
-4. 若 evidence 冲突，选择更保守的上游节点或更重 profile
-5. 当前任务完成后的 task reselection 优先于 finalize；只有在无剩余 ready / pending task 时才进入 `ahe-finalize`
+参考：`references/review-dispatch-protocol.md`、`references/reviewer-return-contract.md`
 
-然后：
+### 9. review 节点派发 reviewer subagent
 
-- 若存在合法且仍有效的显式下一节点，优先采用
-- 否则按当前 profile 的合法节点集合与默认迁移表决定唯一下一节点
-- 若结论无法映射到唯一节点，重新路由，不要自行补脑推进
+不在父会话内联 review。构造最小 review request，带入 Workspace Isolation 上下文，派发独立 subagent，消费结构化 summary。
 
-profile 合法节点集合与迁移表参考：
+### 10. 连续执行与暂停点
 
-- `ahe-coding-skills/ahe-workflow-router/references/profile-node-and-transition-map.md`
+路由结论不是独立用户交互：非暂停点 → 同一轮进入目标 skill；review 节点 → 立刻派发；approval step → 按 Mode 处理；task reselection → 同一轮继续。只有 hard stop 才等待。
 
-### 8. 处理 review / gate 恢复编排
-
-当某个 review / gate 刚完成时：
-
-1. 先读取最新结论
-2. 再确认当前 `Workflow Profile`
-3. 再确认当前 `Execution Mode`
-4. 再检查显式 handoff 是否存在且仍有效
-5. 若 `reroute_via_router=true` 或 handoff 明确要求重新编排，直接按 router authority 重判
-6. 若 `conclusion=通过` 且 reviewer 摘要返回 `needs_human_confirmation=true`：
-   - `interactive`：进入对应 approval 节点并等待用户确认
-   - `auto`：先写 approval record，再继续进入该 approval 节点解锁后的下游节点
-7. 若刚完成的是 `ahe-completion-gate`，先判断当前任务完成后是否仍有剩余任务：
-   - 存在唯一 `next-ready task`：更新 `Current Active Task` 并进入 `ahe-test-driven-dev`
-   - 不存在剩余 ready / pending task：进入 `ahe-finalize`
-   - 候选不唯一、依赖状态冲突或 ready 判定不稳定：把它视为 hard stop，并按 router authority 报告需重判
-8. 否则按当前 profile 的结果驱动迁移表恢复下一节点
-
-补充规则：
-
-- 若当前 `Workspace Isolation=worktree-active` 且 `Worktree Path` 仍有效，review / gate 恢复后默认继续沿用，不要因为节点切换就丢失该上下文
-- 若恢复结果重新进入 `ahe-test-driven-dev`，且当前仍是 `worktree-required` / `worktree-active`，下游实现节点应在同一轮继续完成 worktree 准备或复用
-
-若用户在恢复过程中提出了新的范围变化或紧急缺陷线索，优先重新判断是否切到：
-
-- `ahe-increment`
-- `ahe-hotfix`
-
-### 9. review 节点必须派发 reviewer subagent
-
-当当前推荐节点是 review 节点时：
-
-- 不要在父会话里直接展开 review 判断
-- 构造最小 review request
-- 若当前 `Workspace Isolation=worktree-active`，把 `Worktree Path` / `Worktree Branch` 一并带入 review request
-- 派发独立 reviewer subagent
-- 消费结构化 reviewer summary
-- 再由父会话决定下一步或 approval step
-
-review dispatch 与 return contract 参考：
-
-- `ahe-coding-skills/ahe-workflow-router/references/review-dispatch-protocol.md`
-- `ahe-coding-skills/ahe-workflow-router/references/reviewer-return-contract.md`
-
-### 10. 遵守连续执行、approval step 与暂停点规则
-
-路由结论是内部编排步骤，不是独立用户交互。
-
-因此：
-
-- 若结果不是暂停点，立刻在同一轮进入目标 skill
-- 若目标 skill 需要先准备 `worktree-required` 的隔离工作目录，也应在同一轮继续，不把“准备 worktree”误当成用户交互暂停点
-- 若结果是 review 节点，立刻派发 reviewer subagent
-- 若结果只是因为当前任务完成而回到 router 做 next-task reselection，且新的 `Current Active Task` 已唯一锁定，也要在同一轮继续进入 `ahe-test-driven-dev`
-- 若结果是 approval step：
-  - `interactive`：等待用户输入
-  - `auto`：先写 approval record，再继续进入下游节点
-- 只有命中明确 hard stop 时才等待用户输入或报告阻塞
-
-暂停点、非暂停点与恢复失败模式参考：
-
-- `ahe-coding-skills/ahe-workflow-router/references/execution-semantics.md`
+参考：`references/execution-semantics.md`
 
 ## Output Contract
 
-最小输出必须包含：
+最小输出：Current Stage、Workflow Profile、Execution Mode、Workspace Isolation、Target Skill。Evidence 足够时用紧凑格式（加 1-2 条决定性 Why）。不回放未命中分支、不复述 authority 说明。
 
-1. 当前识别阶段
-2. 选定的 `Workflow Profile`
-3. 选定的 `Execution Mode`
-4. 选定的 `Workspace Isolation`
-5. 推荐的下一步 canonical skill
-
-若当前路由结果是“completion gate 通过后重新锁定下一任务并继续实现”，还应显式写出新的 `Current Active Task`。
-
-若 `Workspace Isolation=worktree-active`，还应显式写出 `Worktree Path`（必要时附带 `Worktree Branch`）。
-
-然后按以下规则处理：
-
-- 若下一步是普通 leaf skill，立即进入它
-- 若下一步是 review 节点，按 review-dispatch protocol 派发 reviewer subagent
-- 若下一步是 approval step，则按 `Execution Mode` 决定等待确认还是先写 approval record 再继续
-- 若下一步是 hard stop，才等待用户输入或报告阻塞
-
-若当前 evidence 已经足以唯一决定下一步，优先使用紧凑输出：
-
-1. `Current Stage`
-2. `Workflow Profile`
-3. `Execution Mode`
-4. `Workspace Isolation`
-5. `Target Skill`
-6. `Why`：只保留 1-2 条决定性证据
-
-这里的标签只是当前回复的展示格式；若写回 handoff 或状态工件，仍使用现有 canonical schema。
-
-在 clear case 中，不要再：
-
-- 逐项回放所有未命中的 branch
-- 复述整份 router authority 说明
-- 为了看起来更谨慎，展开一长串其实无关的备选节点
-
-router 的价值在于 authoritative decision，不在于每次都把整台 machine 重新讲一遍。
-
-runtime canonical 写法统一为：
-
-- `ahe-workflow-router`
-- `reroute_via_router`
-
-## Runtime Canonical Surface
-
-runtime 参考资料 canonical 位置：
-
-- `ahe-coding-skills/ahe-workflow-router/references/`
-
-因此当前阶段遵守：
-
-- runtime handoff: `ahe-workflow-router`
-- reviewer reroute field: `reroute_via_router`
-- reference home: `ahe-coding-skills/ahe-workflow-router/references/`
-
-## Common Rationalizations
-
-| Rationalization | Reality |
-|---|---|
-| “用户已经点名某个 `ahe-*` skill 了，就不用再路由” | 点名 skill 不等于当前时机正确，router 仍要验证阶段和前置条件。 |
-| “只是简单继续一下，不用重新判断 profile” | “继续”不等于实现阶段，必须绑定当前 evidence 重新判断。 |
-| “用户说 auto，就等于可以跳过 approval step” | `auto` 只改变 approval step 的解决方式，不会删除 approval 节点，也不会放松 review / gate。 |
-| “我先看看代码再决定更稳妥” | 路由阶段只读取最少必要证据，不先做大范围代码探索。 |
-| “review / gate 已经做完了，下一步应该显而易见” | 结论必须通过迁移表、显式 handoff 与当前 profile 一起判定。 |
-| “lightweight 看起来够了，先别升级” | 一旦缺上游依据或复杂度超出假设，就必须升级 profile。 |
-| “我可以在父会话里顺手 review 一下” | review 节点的 canonical 执行方式是 reviewer subagent，不是父会话内联判断。 |
+runtime canonical 写法统一：`ahe-workflow-router`、`reroute_via_router`。
 
 ## Red Flags
 
-- 在没有重新经过 router 的情况下，直接把会话从一个节点切到另一个节点
-- 因为命令名或用户点名，就跳过 route / profile 判断
+- 没重新经过 router 就跨节点切换
+- 因命令名/用户点名跳过 route/profile 判断
 - 把 `using-ahe-workflow` 写进 runtime handoff
-- 把 `ahe-workflow-router` 当成 public entry shell
-- 在 route 阶段先做大范围代码探索
-- 忽略 evidence conflict，继续沿用上一轮印象推进
-- 把 `auto` 理解成“可以不写 approval record”
-- 在父会话内联执行 review 判断
-- 发现 profile 不再成立却不升级
+- 在 route 阶段做大范围代码探索
+- 忽略 evidence conflict 沿用旧印象推进
+- 把 `auto` 理解成"不写 approval record"
+- 父会话内联执行 review
+- profile 不再成立却不升级
 
-## Supporting References
+## Reference Guide
 
-按需读取：
-
-- `ahe-coding-skills/using-ahe-workflow/SKILL.md`
-- `ahe-coding-skills/docs/ahe-workflow-entrypoints.md`
-- `ahe-coding-skills/docs/ahe-worktree-isolation.md`
-- `ahe-coding-skills/ahe-workflow-router/references/profile-node-and-transition-map.md`
-- `ahe-coding-skills/ahe-workflow-router/references/execution-semantics.md`
-- `ahe-coding-skills/ahe-workflow-router/references/review-dispatch-protocol.md`
-- `ahe-coding-skills/ahe-workflow-router/references/reviewer-return-contract.md`
+| 文件 | 用途 |
+|------|------|
+| `references/profile-selection-guide.md` | Profile 判定详细规则 |
+| `references/profile-node-and-transition-map.md` | 各 profile 合法节点与迁移表 |
+| `references/execution-semantics.md` | Execution Mode、暂停点、连续执行 |
+| `references/review-dispatch-protocol.md` | reviewer subagent 派发协议 |
+| `references/reviewer-return-contract.md` | reviewer 返回结果契约 |
+| `references/routing-evidence-guide.md` | 路由证据收集指南 |
+| `references/routing-evidence-examples.md` | 路由判定示例 |
 
 ## Verification
 
-只有在以下条件全部满足时，这个 skill 才算完成：
-
-- [ ] 你已经确认当前是在做 runtime routing，而不是 public entry discovery
-- [ ] 你已经基于最新 evidence 决定 `Workflow Profile`
-- [ ] 你已经归一化当前 `Execution Mode`，并确认它没有违反当前 policy
-- [ ] 你已经决定当前 `Workspace Isolation`，并在需要时保留 / 传递 `Worktree Path` / `Worktree Branch`
-- [ ] 你已经验证显式 handoff 是否合法、可归一化且仍有效
-- [ ] 你已经把推荐节点约束在当前 profile 的合法节点集合内
-- [ ] 若当前任务刚通过 `ahe-completion-gate`，你已经根据任务计划 / task board 决定是重选下一任务还是进入 `ahe-finalize`
-- [ ] 若当前是 review 节点，你会派发 reviewer subagent，而不是在父会话里内联评审
-- [ ] 若当前不是 hard stop，你会在同一轮继续执行；若命中 approval step，则按 `Execution Mode` 处理
-- [ ] 你没有把 `using-ahe-workflow` 当成 runtime handoff
-- [ ] 你已经统一使用 `ahe-workflow-router` 与 `reroute_via_router` 表达 runtime canonical 语义
+- [ ] 已确认在做 runtime routing（非 public entry）
+- [ ] 已基于最新 evidence 决定 Workflow Profile
+- [ ] 已归一化 Execution Mode 且未违反 policy
+- [ ] 已决定 Workspace Isolation
+- [ ] 已验证显式 handoff 合法性
+- [ ] 推荐节点在当前 profile 合法集合内
+- [ ] completion gate 后已做 task reselection 或进入 finalize
+- [ ] review 节点已派发 reviewer subagent
+- [ ] 非 hard stop 时在同一轮继续执行
+- [ ] 统一使用 `ahe-workflow-router` 与 `reroute_via_router`

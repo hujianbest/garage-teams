@@ -182,6 +182,39 @@
         "不把 workflow blocker 伪装成 USER-INPUT 的规格问题",
         "下一步明确指向 ahe-workflow-router"
       ]
+    },
+    {
+      "id": 16,
+      "prompt": "现在是 interactive 模式。请读取附件中的真实工件，作为 `ahe-spec-review` 判断当前是否能合法进入正式 review，以及下一步应该是什么。",
+      "expected_output": "应从附件中识别出当前既没有稳定 spec draft，又存在 route / stage / evidence 冲突，因此不进入正式 rubric；应直接返回最小 blocked 结论，并把下一步指向 `ahe-workflow-router`。",
+      "files": [
+        "fixtures/precheck-router-conflict/task-progress.md",
+        "fixtures/precheck-router-conflict/workflow-note.md",
+        "fixtures/precheck-router-conflict/spec-notes.md"
+      ],
+      "expectations": [
+        "会读取附件中的 stage 与 spec 状态，而不是只复述 prompt",
+        "识别当前没有稳定 spec draft",
+        "识别 route / stage / evidence 冲突优先回 router",
+        "不会继续输出规格正文层面的 rubric finding"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "现在是 interactive 模式。请读取附件中的真实工件，作为 `ahe-spec-review` 判断当前是否能合法进入正式 review，以及应该如何把结果带回给用户。",
+      "expected_output": "应从附件中识别出虽然存在稳定 spec draft，但当前 stage 已推进到设计且缺少规格 approval evidence，因此 precheck 直接阻塞；下一步应回到 `ahe-workflow-router`，并且用户侧只看到 workflow / evidence blocker，不继续展开 spec 内容问题。",
+      "files": [
+        "fixtures/precheck-stable-draft-stage-conflict/task-progress.md",
+        "fixtures/precheck-stable-draft-stage-conflict/spec-draft.md",
+        "fixtures/precheck-stable-draft-stage-conflict/design-draft.md",
+        "fixtures/precheck-stable-draft-stage-conflict/evidence-note.md"
+      ],
+      "expectations": [
+        "会读取附件中的 stable draft 与 stage/evidence 冲突",
+        "识别这是 precheck blocked，而不是正式 rubric review",
+        "把下一步明确指向 ahe-workflow-router",
+        "interactive 场景下只向用户说明 workflow / evidence blocker"
+      ]
     }
   ]
 }

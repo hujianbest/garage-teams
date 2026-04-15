@@ -3,7 +3,7 @@
 使用说明：
 
 - 这是通用验证记录模板，用于保存命令、结果摘要和结论。
-- 可与 `ahe-coding-skills/ahe-regression-gate/` 或 `ahe-coding-skills/ahe-completion-gate/` 这类验证与完成门禁 skill 配合使用。
+- 可与当前 skill pack 中的 `ahe-regression-gate` 或 `ahe-completion-gate` 这类验证与完成门禁 skill 配合使用。
 - 建议保存在 `docs/` 或与任务相关的目录中。
 
 ## Metadata

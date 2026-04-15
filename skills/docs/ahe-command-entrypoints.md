@@ -172,7 +172,7 @@
 - 若用户已经明确 review 对象，且工件存在，可由 `using-ahe-workflow` direct invoke 对应 review / gate 节点
 - 若参数使用 `trace`，默认映射到 `ahe-traceability-review`
 - 若 review 对象仍模糊，例如只说“帮我 review 一下”，由 `using-ahe-workflow` 把 authoritative 判断交给 `ahe-workflow-router`
-- 若是 review 节点，无论通过 `/ahe-review` 还是其它入口进入，实际执行仍遵循 `ahe-coding-skills/ahe-workflow-router/references/review-dispatch-protocol.md`（旧引用若仍指向 legacy 路径前缀，按读时归一化等价理解）
+- 若是 review 节点，无论通过 `/ahe-review` 还是其它入口进入，实际执行仍遵循当前 skill pack 中 `ahe-workflow-router/references/review-dispatch-protocol.md`（旧引用若仍指向 legacy 安装路径，按读时归一化等价理解）
 - 若是 gate 节点，则由当前父工作流直接执行，不走 reviewer subagent
 - 若 review / gate 请求暴露出 route / stage / profile 冲突，立即由 `using-ahe-workflow` 交给 `ahe-workflow-router`，不在命令层硬判
 
@@ -219,7 +219,7 @@
 - 实现交接块
 - regression / completion 记录（视当前子阶段而定）
 - `task-progress.md`
-- `RELEASE_NOTES.md`
+- 项目 release notes / changelog（若无项目覆写，默认 `RELEASE_NOTES.md`）
 
 ### Expected Output Shape
 
@@ -262,8 +262,8 @@
 
 ## References
 
-- `ahe-coding-skills/docs/ahe-workflow-entrypoints.md`
-- `ahe-coding-skills/docs/ahe-workflow-shared-conventions.md`
-- `ahe-coding-skills/using-ahe-workflow/SKILL.md`
-- `ahe-coding-skills/ahe-workflow-router/SKILL.md`
-- `ahe-coding-skills/ahe-workflow-router/references/review-dispatch-protocol.md`
+- `docs/ahe-workflow-entrypoints.md`
+- `docs/ahe-workflow-shared-conventions.md`
+- `using-ahe-workflow/SKILL.md`
+- `ahe-workflow-router/SKILL.md`
+- `ahe-workflow-router/references/review-dispatch-protocol.md`

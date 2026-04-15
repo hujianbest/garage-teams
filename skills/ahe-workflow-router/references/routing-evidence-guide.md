@@ -18,7 +18,7 @@
 | 设计文档 | `docs/designs/YYYY-MM-DD-<topic>-design.md` | 定义怎么做 |
 | 任务计划 | `docs/tasks/YYYY-MM-DD-<topic>-tasks.md` | 定义执行顺序 |
 | 进度记录 | `task-progress.md` | 支撑跨会话连续推进 |
-| 发布说明 | `RELEASE_NOTES.md` | 面向用户的变更说明 |
+| 发布说明 | 项目 release notes / changelog（默认 `RELEASE_NOTES.md`） | 面向用户的变更说明 |
 | 评审记录 | `docs/reviews/` | 可选但建议提供 |
 | approval 记录 | `docs/approvals/` | `interactive` / `auto` 下的 approval 证据 |
 | 验证记录 | `docs/verification/` | 可选但建议提供 |
@@ -46,7 +46,7 @@
 4. `docs/reviews/`
 5. `docs/approvals/`
 6. `docs/verification/`
-7. `RELEASE_NOTES.md`
+7. 项目 release notes / changelog（默认 `RELEASE_NOTES.md`）
 8. 用户当前请求
 
 若较高优先级工件与较低优先级工件冲突，应优先相信更基础、更上游的工件状态。
@@ -71,7 +71,7 @@
 - 只存在草稿文档，没有状态字段或批准记录
 - review 结论是 `通过`，但没有 approval step 完成证据
 - `task-progress.md` 写着“继续实现”，但规格 / 设计 / 任务工件没有批准证据
-- 只凭 `RELEASE_NOTES.md` 或零散提交信息推断阶段已经结束
+- 只凭项目 release notes / changelog（例如默认 `RELEASE_NOTES.md`）或零散提交信息推断阶段已经结束
 
 ## 批准信号
 
