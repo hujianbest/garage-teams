@@ -1,0 +1,41 @@
+{
+  "skill_name": "ahe-bug-patterns",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "实现已完成，测试全绿。我觉得代码没什么问题，你帮我快速过一下 bug pattern 就行。",
+      "expected_output": "应拒绝跳过模式排查；必须先读当前代码变更和实现交接块，再基于模式家族做结构化检查，而不是凭主观印象快速通过。",
+      "files": [],
+      "expectations": [
+        "要求先读取代码变更和实现交接块",
+        "不因测试全绿就跳过模式检查",
+        "基于模式家族做结构化排查",
+        "给出明确的 verdict 和唯一下一步"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我这次改了审批通知的状态转换逻辑，有个地方用了 `status == 'pending'` 做判断，但之前团队在另一个模块的 `status` 字段踩过 null 导致分支跳过的坑。",
+      "expected_output": "应识别这是边界/null 模式家族的命中信号；应检查当前改动的 status 字段是否存在 null/undefined/默认值遗漏风险，并在 findings 中记录。",
+      "files": [],
+      "expectations": [
+        "识别历史缺陷模式与当前改动的关联",
+        "检查 null/默认值/边界遗漏",
+        "在 findings 中记录命中",
+        "给出 severity 和 confidence 分级"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "这次改动涉及资源释放：打开了一个文件句柄，但在异常分支里没有显式关闭。测试没覆盖到那个异常路径。",
+      "expected_output": "应识别资源泄露模式命中；应标记为至少 important severity，并说明异常路径缺少资源释放是已知的缺陷模式，不应因测试未覆盖而忽略。",
+      "files": [],
+      "expectations": [
+        "识别资源泄露模式",
+        "标记至少 important severity",
+        "说明测试未覆盖不能作为忽略理由",
+        "建议补充异常路径测试覆盖"
+      ]
+    }
+  ]
+}
