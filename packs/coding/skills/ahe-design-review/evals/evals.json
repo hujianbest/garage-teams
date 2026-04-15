@@ -5,7 +5,7 @@
       "id": 1,
       "prompt": "这是一个设计评审场景：\n- `Execution Mode`: auto\n- 父会话希望一路自动推进\n- 已批准规格存在，设计内容与规格完全追溯一致\n- 设计已经明确模块职责、接口输入输出、错误处理、权限边界、回滚策略与测试准备度\n- 不存在 route / stage / 证据链冲突\n\n请作为 `ahe-design-review` 给出结论和下一步。",
       "expected_output": "即使 `Execution Mode=auto`，当设计质量达标时，reviewer 也应返回 `通过`，并把下一步保持为 `设计真人确认`，同时保留 `needs_human_confirmation=true`，让父会话去完成 approval step，而不是 reviewer 自己直接跳到 `ahe-tasks` 或自行写 approval record。",
-      "files": [],
+      "files": ["fixtures/minimal-session.json"],
       "expectations": [
         "在设计质量达标时给出 `通过` 结论",
         "下一步仍然是 `设计真人确认`，而不是 `ahe-tasks`",
