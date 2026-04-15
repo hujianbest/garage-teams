@@ -8,7 +8,7 @@
 - 关联文档:
   - `README.md`
   - `AGENTS.md`
-  - `docs/design/D020-ahe-workflow-skill-anatomy.md`
+  - `docs/principles/skill-anatomy.md`
   - `docs/wiki/W120-ahe-workflow-externalization-guide.md`
   - `docs/wiki/W130-ahe-path-mapping-guide.md`
   - `docs/wiki/W010-clowder-ai-harness-engineering-analysis.md`

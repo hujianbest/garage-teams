@@ -6,7 +6,7 @@
 - 定位: 记录对公开 `skill authoring` 资料的交叉阅读结果，提炼“高质量 skill”在触发、结构、验证与演化上的共识，供 `Garage` 后续设计、编写和评审 skill 时参考；默认作为参考资料，不作为当前主线真相源。
 - 关联文档:
   - `docs/wiki/W110-skills-refer.md`
-  - `packs/coding/ahe-workflow-skill-anatomy.md`
+  - `docs/principles/skill-anatomy.md`
 
 这篇文章不试图回答“一个 `SKILL.md` 该有哪些段落”这么窄的问题，而是回答更关键的问题：
 

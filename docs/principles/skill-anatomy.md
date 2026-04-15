@@ -1,20 +1,16 @@
-# D020: AHE Workflow Skill Anatomy
+# Skill Anatomy — Garage Skill 写作原则
 
-- Design ID: `D020`
-- 状态: 草稿
-- 日期: 2026-04-15
-- 定位: 描述 `packs/coding/skills/ahe-*/SKILL.md` 的目标态 anatomy，为 AHE workflow skills 的新增、重写和统一提供稳定基线。
-- 关联文档:
-  - `packs/coding/skills/docs/ahe-workflow-entrypoints.md`
-  - `packs/coding/skills/docs/ahe-workflow-shared-conventions.md`
-  - `packs/coding/skills/docs/ahe-worktree-isolation.md`
-  - `docs/design/D120-garage-coding-pack-design.md`
+- 定位: 项目级原则文档，定义 Garage 所有 skill（包括 AHE workflow skills 及未来其他 family）的目标态写法。
+- 来源: 由 D020 设计文档提炼，经评审后上收为项目原则。
+- 关联:
+  - AHE family 共享文档: `packs/coding/skills/docs/`
+  - Coding pack 设计: `docs/design/D120-garage-coding-pack-design.md`
 
 ## 定位
 
-本文定义 AHE workflow skill 的目标态写法。
+本文定义 Garage skill 的目标态写法。
 
-它不是现状说明，也不是单个 skill 的写作模板大全；它的任务是给出一套稳定、可执行、可搜索、可维护的 anatomy，让不同节点既能被单独正确调用，也能在链路中稳定编排。
+它不是现状说明，也不是单个 skill 的写作模板大全；它的任务是给出一套稳定、可执行、可搜索、可维护的 anatomy，让不同 skill 既能被单独正确调用，也能在链路中稳定编排。
 
 ## 核心原则
 
