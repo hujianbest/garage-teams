@@ -1,6 +1,6 @@
 ---
 name: ahe-specify
-description: 澄清需求并起草可评审规格。适用于尚无已批准规格、现有规格仍是草稿或被 ahe-spec-review 退回的场景。若阶段不清，先回到 ahe-workflow-router。
+description: 适用于尚无已批准规格、现有规格仍是草稿、或规格被 ahe-spec-review 退回需修订的场景。不适用于已有批准规格（→ ahe-design）、需要任务计划（→ ahe-tasks）或阶段不清（→ ahe-workflow-router）。
 ---
 
 # AHE 需求澄清
