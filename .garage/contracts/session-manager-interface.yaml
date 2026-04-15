@@ -1,0 +1,68 @@
+interface: session-manager-interface
+version: '1'
+methods:
+  - name: create_session
+    params:
+      - name: session_id
+        type: string
+        required: false
+      - name: metadata
+        type: object
+        required: false
+    returns:
+      type: object
+      description: Session object with id, created_at, status
+    description: Create a new Garage session
+
+  - name: restore_session
+    params:
+      - name: session_id
+        type: string
+        required: true
+    returns:
+      type: object
+      description: Restored session object with state
+    description: Restore an existing session from storage
+
+  - name: update_session
+    params:
+      - name: session_id
+        type: string
+        required: true
+      - name: updates
+        type: object
+        required: true
+    returns:
+      type: boolean
+      description: Success status
+    description: Update session metadata or state
+
+  - name: archive_session
+    params:
+      - name: session_id
+        type: string
+        required: true
+    returns:
+      type: boolean
+      description: Success status
+    description: Move session from active to archived storage
+
+  - name: list_active_sessions
+    params: []
+    returns:
+      type: array
+      description: List of active session objects
+    description: List all currently active sessions
+
+  - name: create_checkpoint
+    params:
+      - name: session_id
+        type: string
+        required: true
+      - name: checkpoint_name
+        type: string
+        required: false
+    returns:
+      type: object
+      description: Checkpoint object with id, created_at
+    description: Create a checkpoint snapshot of current session state

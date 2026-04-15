@@ -1,0 +1,55 @@
+interface: tool-registry-interface
+version: '1'
+methods:
+  - name: register_tool
+    params:
+      - name: tool_name
+        type: string
+        required: true
+      - name: tool_spec
+        type: object
+        required: true
+    returns:
+      type: boolean
+      description: Success status
+    description: Register a new tool with its specification
+
+  - name: unregister_tool
+    params:
+      - name: tool_name
+        type: string
+        required: true
+    returns:
+      type: boolean
+      description: Success status
+    description: Unregister a tool from the registry
+
+  - name: call_tool
+    params:
+      - name: tool_name
+        type: string
+        required: true
+      - name: arguments
+        type: object
+        required: true
+    returns:
+      type: object
+      description: Tool execution result
+    description: Execute a tool with arguments
+
+  - name: list_tools
+    params: []
+    returns:
+      type: array
+      description: List of registered tool metadata
+    description: List all registered tools
+
+  - name: get_tool_info
+    params:
+      - name: tool_name
+        type: string
+        required: true
+    returns:
+      type: object
+      description: Tool specification and metadata
+    description: Get detailed information about a specific tool

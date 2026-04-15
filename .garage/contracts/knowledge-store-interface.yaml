@@ -1,0 +1,71 @@
+interface: knowledge-store-interface
+version: '1'
+methods:
+  - name: store
+    params:
+      - name: entry_type
+        type: string
+        required: true
+      - name: content
+        type: object
+        required: true
+      - name: metadata
+        type: object
+        required: false
+    returns:
+      type: object
+      description: Stored entry with id, timestamp, location
+    description: Store a knowledge entry by type
+
+  - name: retrieve
+    params:
+      - name: entry_id
+        type: string
+        required: true
+    returns:
+      type: object
+      description: Retrieved knowledge entry with content
+    description: Retrieve a knowledge entry by ID
+
+  - name: search
+    params:
+      - name: query
+        type: object
+        required: true
+    returns:
+      type: array
+      description: List of matching knowledge entries
+    description: Search knowledge entries by query
+
+  - name: update
+    params:
+      - name: entry_id
+        type: string
+        required: true
+      - name: updates
+        type: object
+        required: true
+    returns:
+      type: boolean
+      description: Success status
+    description: Update an existing knowledge entry
+
+  - name: delete
+    params:
+      - name: entry_id
+        type: string
+        required: true
+    returns:
+      type: boolean
+      description: Success status
+    description: Delete a knowledge entry by ID
+
+  - name: list
+    params:
+      - name: entry_type
+        type: string
+        required: false
+    returns:
+      type: array
+      description: List of knowledge entry metadata
+    description: List knowledge entries, optionally filtered by type

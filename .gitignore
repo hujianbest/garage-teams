@@ -1,2 +1,12 @@
 /.idea/
 /references/
+
+# Garage OS runtime data
+.garage/sessions/active/*/
+.garage/sessions/archived/*/
+!.garage/sessions/active/.gitkeep
+!.garage/sessions/archived/.gitkeep
+*.key
+*.pem
+.env
+.env.*

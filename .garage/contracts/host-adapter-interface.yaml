@@ -1,0 +1,45 @@
+interface: host-adapter-interface
+version: '1'
+methods:
+  - name: read_file
+    params:
+      - name: file_path
+        type: string
+        required: true
+    returns:
+      type: string
+      description: File contents
+    description: Read file contents from the workspace
+
+  - name: write_file
+    params:
+      - name: file_path
+        type: string
+        required: true
+      - name: content
+        type: string
+        required: true
+    returns:
+      type: boolean
+      description: Success status
+    description: Write content to a file in the workspace
+
+  - name: execute_command
+    params:
+      - name: command
+        type: string
+        required: true
+      - name: timeout
+        type: integer
+        required: false
+    returns:
+      type: object
+      description: Command execution result with stdout, stderr, exit_code
+    description: Execute a shell command in the workspace
+
+  - name: get_workspace_path
+    params: []
+    returns:
+      type: string
+      description: Absolute path to the workspace root
+    description: Get the current workspace root directory path

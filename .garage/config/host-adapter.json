@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "host_type": "claude-code",
+  "interaction_mode": "file-system",
+  "capabilities": {
+    "session_state_api": false,
+    "file_read_write": true,
+    "memory_auto_load": true,
+    "subprocess": true
+  }
+}

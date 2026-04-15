@@ -1,0 +1,48 @@
+interface: state-machine-interface
+version: '1'
+methods:
+  - name: get_state
+    params:
+      - name: session_id
+        type: string
+        required: true
+    returns:
+      type: object
+      description: Current state with name, context, timestamp
+    description: Get the current state of a session
+
+  - name: transition
+    params:
+      - name: session_id
+        type: string
+        required: true
+      - name: event
+        type: string
+        required: true
+      - name: context
+        type: object
+        required: false
+    returns:
+      type: object
+      description: New state with transition metadata
+    description: Execute a state transition for a session
+
+  - name: get_valid_transitions
+    params:
+      - name: session_id
+        type: string
+        required: true
+    returns:
+      type: array
+      description: List of valid transition events from current state
+    description: Get all valid transitions from the current state
+
+  - name: reset
+    params:
+      - name: session_id
+        type: string
+        required: true
+    returns:
+      type: boolean
+      description: Success status
+    description: Reset session state to initial state

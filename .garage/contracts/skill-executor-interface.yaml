@@ -1,0 +1,32 @@
+interface: skill-executor-interface
+version: '1'
+methods:
+  - name: execute_skill
+    params:
+      - name: skill_name
+        type: string
+        required: true
+      - name: arguments
+        type: object
+        required: false
+    returns:
+      type: object
+      description: Execution result with status, output, artifacts
+    description: Execute a skill by name with optional arguments
+
+  - name: list_skills
+    params: []
+    returns:
+      type: array
+      description: List of available skill metadata
+    description: List all registered and available skills
+
+  - name: get_skill_status
+    params:
+      - name: skill_name
+        type: string
+        required: true
+    returns:
+      type: object
+      description: Skill status with availability, version, dependencies
+    description: Get status and metadata for a specific skill

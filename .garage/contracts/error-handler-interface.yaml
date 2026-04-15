@@ -1,0 +1,48 @@
+interface: error-handler-interface
+version: '1'
+methods:
+  - name: handle_error
+    params:
+      - name: error
+        type: object
+        required: true
+      - name: context
+        type: object
+        required: true
+    returns:
+      type: object
+      description: Error handling result with action taken
+    description: Handle an error with appropriate recovery strategy
+
+  - name: classify_error
+    params:
+      - name: error
+        type: object
+        required: true
+    returns:
+      type: object
+      description: Error classification with category, severity, retryable
+    description: Classify an error into category and severity
+
+  - name: get_retry_strategy
+    params:
+      - name: error_classification
+        type: object
+        required: true
+    returns:
+      type: object
+      description: Retry strategy with max_attempts, backoff, action
+    description: Get the retry strategy for a classified error
+
+  - name: log_error
+    params:
+      - name: error
+        type: object
+        required: true
+      - name: context
+        type: object
+        required: true
+    returns:
+      type: boolean
+      description: Success status
+    description: Log error with context for later analysis

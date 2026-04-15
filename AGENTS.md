@@ -26,3 +26,11 @@
 - `growth-strategy.md` — 成长策略：系统怎么从简单变复杂
 
 当设计决策出现价值冲突时，回溯到这里做判断。
+
+## Garage OS
+
+- 运行时数据存储: .garage/
+- 平台配置: .garage/config/platform.json
+- 宿主适配器配置: .garage/config/host-adapter.json
+- 平台契约: .garage/contracts/
+- 技术栈: Python 3.11+ (Poetry)

@@ -1,0 +1,51 @@
+interface: version-manager-interface
+version: '1'
+methods:
+  - name: get_current_version
+    params:
+      - name: component
+        type: string
+        required: true
+    returns:
+      type: object
+      description: Version info with major, minor, patch, label
+    description: Get the current version of a component
+
+  - name: check_compatibility
+    params:
+      - name: version_a
+        type: object
+        required: true
+      - name: version_b
+        type: object
+        required: true
+    returns:
+      type: object
+      description: Compatibility result with is_compatible, issues
+    description: Check compatibility between two component versions
+
+  - name: migrate_schema
+    params:
+      - name: schema_path
+        type: string
+        required: true
+      - name: from_version
+        type: string
+        required: true
+      - name: to_version
+        type: string
+        required: true
+    returns:
+      type: boolean
+      description: Success status
+    description: Migrate a schema from one version to another
+
+  - name: get_supported_versions
+    params:
+      - name: component
+        type: string
+        required: true
+    returns:
+      type: array
+      description: List of supported version strings
+    description: Get all supported versions for a component
