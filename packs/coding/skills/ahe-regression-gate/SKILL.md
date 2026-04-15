@@ -1,6 +1,6 @@
 ---
 name: ahe-regression-gate
-description: 执行正式回归门禁。防止"本地修好了但旁边模块坏了"。运行在 traceability review 之后，判断回归面健康度。
+description: 适用于 traceability review 通过后需回归验证、用户要求 regression check 的场景。不适用于判断任务完成（→ ahe-completion-gate）、状态收尾（→ ahe-finalize）、阶段不清（→ ahe-workflow-router）。
 ---
 
 # AHE Regression Gate
@@ -66,6 +66,14 @@ Profile-aware 回归范围：
 ## Output Contract
 
 记录保存到 `AGENTS.md` 声明的 verification 路径；若无项目覆写，默认使用 `docs/verification/regression-<task>.md`。结构包含：结论、上游证据、回归面、证据表、覆盖缺口、回归风险、下一步。
+
+## 和其他 Skill 的区别
+
+| Skill | 区别 |
+|-------|------|
+| `ahe-completion-gate` | 判断当前任务可否宣告完成（证据束齐不齐）；本 skill 判断回归面健康度（旁边模块坏了没） |
+| `ahe-finalize` | 关闭工作周期、产出 handoff pack；本 skill 只做回归门禁 |
+| `ahe-workflow-router` | 编排/路由/阶段判断；本 skill 只做回归验证 |
 
 ## Red Flags
 
