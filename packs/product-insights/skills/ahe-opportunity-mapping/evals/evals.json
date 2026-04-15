@@ -1,0 +1,39 @@
+{
+  "evals": [
+    {
+      "name": "extracts-jtbd-three-layers",
+      "prompt": "我们有 insight pack，是关于远程团队协作效率低的问题。请帮我做机会排序。",
+      "expected_behavior": "应提炼 JTBD 三层，生成至少 3 个机会分支并排序",
+      "assertions": [
+        "输出包含 functional jobs",
+        "输出包含 social jobs 或 emotional jobs",
+        "输出包含至少 3 个机会分支",
+        "机会用 problem 语言而非 solution 语言描述",
+        "有 PK / Debate Verdict 结论"
+      ],
+      "input_files": ["fixtures/insight-pack-remote-collaboration.md"]
+    },
+    {
+      "name": "rejects-no-insight-pack",
+      "prompt": "我想做一个读书笔记 App，请帮我做机会排序。",
+      "expected_behavior": "应提示缺少 insight-pack，建议先回到 ahe-insight-mining",
+      "assertions": [
+        "输出包含 reroute 建议",
+        "输出提到 ahe-insight-mining 或 insight-pack",
+        "输出不直接开始排机会"
+      ],
+      "input_files": []
+    },
+    {
+      "name": "rejects-solution-as-opportunity",
+      "prompt": "我们的 insight pack 关于个人理财。请做机会排序。",
+      "expected_behavior": "应拒绝把 solution 写法当作 opportunity",
+      "assertions": [
+        "输出中没有将'做 AI 推荐算法'等 solution 作为机会",
+        "机会描述使用 progress/痛点语言",
+        "至少 1 个机会有 >= 2 种可能实现方式"
+      ],
+      "input_files": ["fixtures/insight-pack-personal-finance.md"]
+    }
+  ]
+}
