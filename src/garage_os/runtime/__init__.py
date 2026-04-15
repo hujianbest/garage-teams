@@ -7,9 +7,16 @@ and skill execution capabilities.
 
 from garage_os.runtime.session_manager import SessionManager
 from garage_os.runtime.state_machine import StateMachine, InvalidStateTransitionError
+from garage_os.runtime.error_handler import ErrorHandler, RetryStrategy, ErrorLogEntry
 
-# Import will be implemented in T7-T9
-# from garage_os.runtime.error_handler import ErrorHandler
+# Import will be implemented in T9
 # from garage_os.runtime.skill_executor import SkillExecutor
 
-__all__ = ["SessionManager", "StateMachine", "InvalidStateTransitionError"]
+__all__ = [
+    "SessionManager",
+    "StateMachine",
+    "InvalidStateTransitionError",
+    "ErrorHandler",
+    "RetryStrategy",
+    "ErrorLogEntry",
+]
