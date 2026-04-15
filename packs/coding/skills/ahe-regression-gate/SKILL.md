@@ -57,7 +57,7 @@ Profile-aware 回归范围：
 
 ## Output Contract
 
-记录保存到 `docs/verification/regression-<task>.md`。结构包含：结论、上游证据、回归面、证据表、覆盖缺口、回归风险、下一步。
+记录保存到 `AGENTS.md` 声明的 verification 路径；若无项目覆写，默认使用 `docs/verification/regression-<task>.md`。结构包含：结论、上游证据、回归面、证据表、覆盖缺口、回归风险、下一步。
 
 ## Red Flags
 

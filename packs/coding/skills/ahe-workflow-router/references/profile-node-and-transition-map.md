@@ -2,7 +2,7 @@
 
 这份参考文档集中保存 `ahe-workflow-router` 的 profile 合法节点集合、canonical route map、结果驱动迁移表与恢复编排协议。
 
-当你已经在 router 主文件（`ahe-coding-skills/ahe-workflow-router/SKILL.md`）中确认：
+当你已经在 router 主文件（`../SKILL.md`）中确认：
 
 - 当前请求属于 workflow 场景
 - 当前 profile 已确定

@@ -6,7 +6,7 @@
 
 若 `AGENTS.md` 声明了等价路径，按映射保存。
 
-若项目无固定格式，默认使用 `ahe-coding-skills/templates/review-record-template.md`。
+若项目无固定格式，默认使用当前 skill pack 的共享模板 `templates/review-record-template.md`。
 
 ## 结论字段映射
 

@@ -91,7 +91,7 @@ Direct invoke 信号："把设计拆成任务"、"先别写代码，先梳理任
 ## Output Contract
 
 完成时产出：
-- 可评审任务计划（保存到 `docs/tasks/YYYY-MM-DD-<topic>-tasks.md`）
+- 可评审任务计划（保存到 `AGENTS.md` 声明的 task-plan 路径；若无项目覆写，使用默认任务计划路径，如 `docs/tasks/YYYY-MM-DD-<topic>-tasks.md`）
 - 里程碑、追溯、工件影响图、测试设计种子、任务队列投影
 - canonical handoff：`ahe-tasks-review`
 

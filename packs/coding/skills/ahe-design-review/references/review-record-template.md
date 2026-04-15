@@ -7,7 +7,7 @@
 - `docs/reviews/design-review-<topic>.md`
 - 如 `AGENTS.md` 声明了等价路径，按映射路径保存
 
-若项目尚未形成固定 review 记录格式，默认使用 `ahe-coding-skills/templates/review-record-template.md`。
+若项目尚未形成固定 review 记录格式，默认使用当前 skill pack 的共享模板 `templates/review-record-template.md`。
 
 ## 评审记录结构
 

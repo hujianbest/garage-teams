@@ -45,7 +45,7 @@ description: 评审规格→设计→任务→实现→测试/验证的证据链
 
 ### 5. 写 review 记录
 
-保存到 `docs/reviews/traceability-review-<task>.md`。参考 `references/traceability-review-record-template.md`。
+保存到 `AGENTS.md` 声明的 review record 路径；若无项目覆写，默认使用 `docs/reviews/traceability-review-<task>.md`。参考 `references/traceability-review-record-template.md`。
 
 ## Red Flags
 

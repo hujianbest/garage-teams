@@ -2,7 +2,7 @@
 
 仅在当前项目是 C++ / GoogleTest / CMake 栈，且确实需要语言级实现细节时，再读取本参考。
 
-主契约仍以 `ahe-coding-skills/ahe-test-driven-dev/SKILL.md` 为准；本文件只补充语言级示例、模式和反模式。
+主契约仍以当前 skill 的主文件 `../SKILL.md` 为准；本文件只补充语言级示例、模式和反模式。
 
 ## Overview
 

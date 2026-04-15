@@ -21,11 +21,11 @@ AHE workflow family 的 **public shell**。帮助你决定：
 - 需判断 direct invoke 还是 route-first
 - 用户要求 `auto mode` 但还没确定交给哪个节点
 
-不适用：已在 leaf skill 内部 → 继续当前 skill；需要 authoritative routing → 直接交给 `ahe-workflow-router`；还在判断产品 thesis → `ahe-product-skills/using-ahe-product-workflow`。
+不适用：已在 leaf skill 内部 → 继续当前 skill；需要 authoritative routing → 直接交给 `ahe-workflow-router`；还在判断产品 thesis → `using-ahe-product-workflow`。
 
 ## Boundary With Product Skills
 
-若问题仍在产品 thesis/wedge/probe 层面 → 先去 `ahe-product-skills/using-ahe-product-workflow`。
+若问题仍在产品 thesis/wedge/probe 层面 → 先去 `using-ahe-product-workflow`。
 若已产出 `docs/insights/*-spec-bridge.md` 且目标是 formal spec/design/tasks → 可进入 coding family。
 
 ## Workflow
