@@ -1,0 +1,39 @@
+{
+  "evals": [
+    {
+      "name": "extracts-and-classifies-signals",
+      "prompt": "我们正在做一个面向知识工作者的个人知识管理工具。目标用户是每天阅读大量文章但找不到有用内容的研究人员。请帮我做 insight 挖掘。",
+      "expected_behavior": "应从多源提取信号，分类为 Observed/Inferred 等，并形成 thesis",
+      "assertions": [
+        "输出包含信号分类（Observed/Inferred 等标签）",
+        "输出包含至少 1 个 no-go signal",
+        "输出包含白空间方向",
+        "有 contrarian 挑战过程"
+      ],
+      "input_files": ["fixtures/framing-pkm-researchers.md"]
+    },
+    {
+      "name": "rejects-no-framing",
+      "prompt": "帮我查查市场，我想做一个 App。",
+      "expected_behavior": "应提示缺少 framing，建议先回到 ahe-outcome-framing",
+      "assertions": [
+        "输出包含 reroute 建议",
+        "输出提到 ahe-outcome-framing",
+        "输出不直接开始做外部信号收集"
+      ],
+      "input_files": []
+    },
+    {
+      "name": "forms-insight-pack-with-debate",
+      "prompt": "我们的 framing 是：独立开发者需要一个更好的方式来了解竞品的用户反馈。请做 insight 挖掘。",
+      "expected_behavior": "应形成完整的 insight pack，包含 thesis PK 和 debate verdict",
+      "assertions": [
+        "输出包含 Debate Verdict",
+        "输出包含 Commodity Risks",
+        "有 survive/park/drop 分类",
+        "输出为 insight-pack 格式"
+      ],
+      "input_files": ["fixtures/framing-competitor-feedback.md"]
+    }
+  ]
+}
