@@ -30,6 +30,8 @@
    每个 skill 都要说明何时使用、何时不用、和相邻 skill 的区别、冲突时回哪里。
 6. **主文件要短。**
    能折叠进 `When to Use`、`Workflow`、`Output Contract`、`Red Flags` 的内容，不要额外长一层。
+7. **路径写法要可迁移。**
+   不要把 skill 绑定到某个仓库安装根、某个 pack 名或某个项目私有目录。项目工件路径优先遵循 `AGENTS.md` / 项目权威约定；skill pack 内共享资料用当前 pack 语义或稳定相对路径表达。
 
 ## Skill 类型
 
@@ -199,6 +201,13 @@ description: Use when route/stage/profile is unclear, review or gate just finish
 - 状态怎么同步
 - 下一步 skill 怎么写
 
+这里的“写到哪里”不是把 repo-local 路径硬编码回去，而是要区分两类路径：
+
+- **项目工件路径**：如 spec / design / tasks / reviews / verification / release notes，优先遵循 `AGENTS.md` 或项目权威约定；若要给 fallback，只能写成默认路径或示例路径，不能把当前仓库特有目录伪装成通用事实。
+- **skill pack 共享资料**：如模板、protocol、map、shared docs，不要写死历史安装前缀、repo-root 私有路径或 pack 私有命名；优先使用当前 skill pack 语义下稳定可解析的路径表达。
+
+一个简单判断标准是：把当前 skill 移到另一个仓库、改 pack 名或改变安装位置后，这个路径引用是否仍然成立；如果不会，说明它被写死了。
+
 ### `Red Flags` 与 `Common Mistakes`
 
 两者不是一回事：
@@ -258,6 +267,8 @@ description: Use when route/stage/profile is unclear, review or gate just finish
 - 核心 workflow 步骤
 - 最关键的 output / verification 规则
 
+引用其他 skill、模板或共享 docs 时，也要优先使用随 pack 一起迁移后仍然成立的写法；不要把历史安装目录、repo-local 根路径或某个项目专有目录直接抄进 `references/`。
+
 ### `evals/`
 
 推荐结构：
@@ -287,6 +298,7 @@ evals/
 | 不写与相邻 skill 的区别 | 容易误触发 | 在 `When to Use` 或专节中补边界 |
 | 共享约定在每个 skill 里重复展开 | 主文件臃肿、漂移 | 上收至 family-level `docs/` |
 | 核心规则被藏进 `references/` | 主文件失去 runtime contract | 把关键规则搬回主文件 |
+| 在 skill 里写死 repo-local 路径 / 安装前缀 | 换仓库、换 pack 名、换项目约定后失效，或与 `AGENTS.md` 冲突 | 项目工件路径先读 `AGENTS.md`；共享资料改用当前 pack 语义或稳定相对路径 |
 | 写工件却没有 `Output Contract` | 调用方不知道怎么交接 | 明确记录、状态、next action |
 | `Common Mistakes` 与 `Red Flags` 重复 | 浪费 token | 一个写 stop sign，一个写 mistake -> fix |
 | 高风险 skill 没有 `evals/` | 容易回归 | 为边界判断和 reviewer 行为补评测 |
@@ -338,6 +350,7 @@ description: Use when <triggering conditions>. Not for <clear exclusions>.
 - 是否明确说明了与相邻 skill 的区别
 - `Workflow` 是否先读最少必要证据
 - 需要落盘工件时，是否写了 `Output Contract`
+- 路径引用是否避免写死 repo-local 安装前缀，且项目工件路径是否 `AGENTS.md` 优先
 - 是否区分了 `Red Flags` 与 `Common Mistakes`
 - 共享语义是否已上收至 `docs/`
 - 长 reference 是否已下沉到 `references/`
