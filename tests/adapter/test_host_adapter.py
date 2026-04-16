@@ -61,20 +61,31 @@ def adapter(workspace: Path) -> ClaudeCodeAdapter:
 
 class TestInvokeSkill:
     def test_invoke_skill_returns_success(self, adapter: ClaudeCodeAdapter) -> None:
-        result = adapter.invoke_skill(
-            "demo-skill",
-            params={"key": "value", "count": 42},
-        )
-        assert result["status"] == "success"
-        assert result["skill_name"] == "demo-skill"
-        assert result["params"] == {"key": "value", "count": 42}
-        assert "manifest_content" in result
-        assert "# Demo Skill" in result["manifest_content"]
+        with patch("garage_os.adapter.claude_code_adapter.subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=["claude", "-p", "prompt"],
+                returncode=0,
+                stdout="skill output",
+                stderr="",
+            )
+            result = adapter.invoke_skill(
+                "demo-skill",
+                params={"key": "value", "count": 42},
+            )
+        assert result["success"] is True
+        assert result["output"] == "skill output"
+        assert result["exit_code"] == 0
 
     def test_invoke_skill_default_params(self, adapter: ClaudeCodeAdapter) -> None:
-        result = adapter.invoke_skill("demo-skill")
-        assert result["status"] == "success"
-        assert result["params"] == {}
+        with patch("garage_os.adapter.claude_code_adapter.subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=["claude", "-p", "prompt"],
+                returncode=0,
+                stdout="ok",
+                stderr="",
+            )
+            result = adapter.invoke_skill("demo-skill")
+        assert result["success"] is True
 
     def test_invoke_skill_not_found(self, adapter: ClaudeCodeAdapter) -> None:
         with pytest.raises(SkillNotFoundError, match="nonexistent-skill"):
@@ -287,3 +298,83 @@ class TestErrorPropagation:
             mock_run.side_effect = subprocess.CalledProcessError(128, "git")
             with pytest.raises(RuntimeError, match="Failed to query repository state"):
                 adapter.get_repository_state()
+
+
+# ---------------------------------------------------------------------------
+# 7) Subprocess-based invoke_skill tests
+# ---------------------------------------------------------------------------
+
+
+class TestInvokeSkillSubprocess:
+    """Tests for the real subprocess-based invoke_skill implementation."""
+
+    def test_invoke_skill_calls_subprocess(self, adapter: ClaudeCodeAdapter) -> None:
+        """Verify subprocess.run is called with correct arguments."""
+        with patch("garage_os.adapter.claude_code_adapter.subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=["claude", "-p", "prompt"],
+                returncode=0,
+                stdout="result",
+                stderr="",
+            )
+            adapter.invoke_skill("demo-skill", params={"x": 1})
+
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args
+        assert call_args[0][0][0] == "claude"
+        assert call_args[0][0][1] == "-p"
+        # The prompt should contain skill content and params
+        prompt = call_args[0][0][2]
+        assert "# Demo Skill" in prompt
+        assert '"x": 1' in prompt
+        assert call_args[1]["capture_output"] is True
+        assert call_args[1]["text"] is True
+        assert call_args[1]["timeout"] == 300
+
+    def test_invoke_skill_success(self, adapter: ClaudeCodeAdapter) -> None:
+        """Successful execution returns correct dict."""
+        with patch("garage_os.adapter.claude_code_adapter.subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=["claude", "-p", "prompt"],
+                returncode=0,
+                stdout="hello from claude",
+                stderr="",
+            )
+            result = adapter.invoke_skill("demo-skill")
+
+        assert result == {
+            "output": "hello from claude",
+            "exit_code": 0,
+            "success": True,
+        }
+
+    def test_invoke_skill_failure(self, adapter: ClaudeCodeAdapter) -> None:
+        """Non-zero exit code raises SkillExecutionError."""
+        with patch("garage_os.adapter.claude_code_adapter.subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=["claude", "-p", "prompt"],
+                returncode=1,
+                stdout="",
+                stderr="something went wrong",
+            )
+            with pytest.raises(SkillExecutionError, match="failed with exit code 1"):
+                adapter.invoke_skill("demo-skill")
+
+    def test_invoke_skill_timeout(self, adapter: ClaudeCodeAdapter) -> None:
+        """TimeoutExpired raises SkillExecutionError."""
+        with patch("garage_os.adapter.claude_code_adapter.subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.TimeoutExpired(
+                cmd=["claude", "-p", "prompt"], timeout=300
+            )
+            with pytest.raises(SkillExecutionError, match="timed out"):
+                adapter.invoke_skill("demo-skill")
+
+    def test_invoke_skill_not_found(
+        self, adapter: ClaudeCodeAdapter
+    ) -> None:
+        """Missing skill file raises SkillNotFoundError (no subprocess call)."""
+        with patch("garage_os.adapter.claude_code_adapter.subprocess.run") as mock_run:
+            with pytest.raises(SkillNotFoundError, match="missing-skill"):
+                adapter.invoke_skill("missing-skill")
+        # subprocess.run should never be called
+        mock_run.assert_not_called()

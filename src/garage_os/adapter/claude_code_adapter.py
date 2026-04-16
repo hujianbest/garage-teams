@@ -37,8 +37,9 @@ class ClaudeCodeAdapter:
         workspace_root: Absolute path to the project workspace directory.
     """
 
-    def __init__(self, workspace_root: str | Path) -> None:
+    def __init__(self, workspace_root: str | Path, timeout: int = 300) -> None:
         self._workspace_root = Path(workspace_root).resolve()
+        self._timeout = timeout
 
     # -- Public API ----------------------------------------------------------
 
@@ -52,22 +53,22 @@ class ClaudeCodeAdapter:
         skill_name: str,
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Invoke a skill by reading its SKILL.md and returning a descriptor.
+        """Invoke a skill by reading its SKILL.md and calling the claude CLI.
 
-        In Phase 1, skills are file-based (``.agents/skills/<name>/SKILL.md``).
-        This method locates the skill file, reads it, and returns a manifest
-        describing the skill along with the caller-supplied parameters.
+        Locates the skill manifest (``.agents/skills/<name>/SKILL.md``), reads
+        it, builds a prompt that includes the skill content and workspace
+        information, then executes the ``claude`` CLI via subprocess.
 
         Args:
             skill_name: Name of the skill directory under ``.agents/skills/``.
             params: Optional parameters forwarded to the skill.
 
         Returns:
-            Dict with keys ``"status"``, ``"skill_name"``, ``"params"``,
-            ``"manifest_path"``, and ``"manifest_content"``.
+            Dict with keys ``"output"``, ``"exit_code"``, and ``"success"``.
 
         Raises:
             SkillNotFoundError: If the skill directory or SKILL.md is missing.
+            SkillExecutionError: If the subprocess fails or times out.
         """
         params = params or {}
         skill_dir = self._workspace_root / ".agents" / "skills" / skill_name
@@ -86,12 +87,41 @@ class ClaudeCodeAdapter:
                 f"Failed to read skill manifest for '{skill_name}': {exc}"
             ) from exc
 
+        # Build prompt from skill content, params and workspace info
+        prompt = (
+            f"Working directory: {self._workspace_root}\n"
+            f"Skill: {skill_name}\n\n"
+            f"{content}"
+        )
+        if params:
+            prompt += f"\n\nParameters: {json.dumps(params)}"
+
+        try:
+            result = subprocess.run(
+                ["claude", "-p", prompt],
+                capture_output=True,
+                text=True,
+                timeout=self._timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise SkillExecutionError(
+                f"Skill '{skill_name}' timed out after {self._timeout}s"
+            ) from exc
+        except FileNotFoundError as exc:
+            raise SkillExecutionError(
+                f"claude CLI not found: {exc}"
+            ) from exc
+
+        if result.returncode != 0:
+            raise SkillExecutionError(
+                f"Skill '{skill_name}' failed with exit code "
+                f"{result.returncode}: {result.stderr.strip()}"
+            )
+
         return {
-            "status": "success",
-            "skill_name": skill_name,
-            "params": params,
-            "manifest_path": str(skill_md),
-            "manifest_content": content,
+            "output": result.stdout,
+            "exit_code": result.returncode,
+            "success": result.returncode == 0,
         }
 
     def read_file(self, path: str | Path) -> str:

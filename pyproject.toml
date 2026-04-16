@@ -21,6 +21,9 @@ mypy = "^1.7"
 ruff = "^0.1"
 pre-commit = "^3.5"
 
+[tool.poetry.scripts]
+garage = "garage_os.cli:main"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
