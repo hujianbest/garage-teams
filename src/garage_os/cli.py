@@ -3,10 +3,18 @@
 import argparse
 import json
 import sys
+import time
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, Sequence
 
 from garage_os.storage import FileStorage
+from garage_os.storage.file_storage import FileStorage
+from garage_os.adapter.claude_code_adapter import ClaudeCodeAdapter
+from garage_os.runtime.session_manager import SessionManager
+from garage_os.knowledge.experience_index import ExperienceIndex
+from garage_os.knowledge.knowledge_store import KnowledgeStore
+from garage_os.types import SessionState
 
 
 # Sub-directories to create under .garage/
@@ -118,8 +126,174 @@ def _status(garage_root: Path) -> None:
         print(f"Most recent experience: {recent_experience}")
 
 
+def _run(garage_root: Path, skill_name: str) -> None:
+    """Run a Garage skill and record the experience.
+
+    Args:
+        garage_root: Path to the project root
+        skill_name: Name of the skill to invoke
+    """
+    garage_dir = garage_root / ".garage"
+
+    if not garage_dir.is_dir():
+        print("No .garage/ directory found. Run 'garage init' first.")
+        return
+
+    storage = FileStorage(garage_dir)
+
+    # Create session manager and start a new session
+    session_manager = SessionManager(storage)
+    session = session_manager.create_session(
+        pack_id=skill_name,
+        topic=f"Run skill: {skill_name}",
+        user_goals=[],
+        constraints=[],
+    )
+
+    # Create adapter and invoke the skill
+    adapter = ClaudeCodeAdapter(garage_root)
+
+    start_time = time.time()
+    outcome = "success"
+    exit_code = 0
+    output = ""
+
+    try:
+        result = adapter.invoke_skill(skill_name)
+        output = result.get("output", "")
+        exit_code = result.get("exit_code", 0)
+
+        if not result.get("success", False):
+            outcome = "failure"
+            session_manager.update_session(
+                session.session_id, state=SessionState.FAILED
+            )
+            print(f"Skill '{skill_name}' failed with exit code {exit_code}")
+            if output:
+                print(output)
+        else:
+            session_manager.update_session(
+                session.session_id, state=SessionState.COMPLETED
+            )
+            print(f"Skill '{skill_name}' completed successfully")
+            if output:
+                print(output)
+
+    except Exception as e:
+        outcome = "failure"
+        session_manager.update_session(
+            session.session_id, state=SessionState.FAILED
+        )
+        print(f"Error running skill '{skill_name}': {e}")
+
+    duration_seconds = int(time.time() - start_time)
+
+    # Record experience
+    experience_index = ExperienceIndex(storage)
+    from garage_os.types import ExperienceRecord
+
+    experience_record = ExperienceRecord(
+        record_id=f"exp-{session.session_id}",
+        task_type="skill_execution",
+        skill_ids=[skill_name],
+        tech_stack=[],
+        domain="general",
+        problem_domain=skill_name,
+        outcome=outcome,
+        duration_seconds=duration_seconds,
+        complexity="medium",
+        session_id=session.session_id,
+        artifacts=[],
+        key_patterns=[],
+        lessons_learned=[],
+        pitfalls=[],
+        recommendations=[],
+    )
+
+    try:
+        experience_index.store(experience_record)
+        print(f"Experience recorded: {experience_record.record_id}")
+    except Exception as e:
+        print(f"Warning: Failed to record experience: {e}")
+
+
+def _knowledge_search(garage_root: Path, query: Optional[str]) -> None:
+    """Search knowledge entries.
+
+    Args:
+        garage_root: Path to the project root
+        query: Optional search query
+    """
+    garage_dir = garage_root / ".garage"
+
+    if not garage_dir.is_dir():
+        print("No .garage/ directory found. Run 'garage init' first.")
+        return
+
+    storage = FileStorage(garage_dir)
+    knowledge_store = KnowledgeStore(storage)
+
+    entries = knowledge_store.search(query=query)
+
+    if not entries:
+        if query:
+            print(f"No knowledge entries matching '{query}'")
+        else:
+            print("No knowledge entries")
+        return
+
+    print(f"Found {len(entries)} knowledge entry(ies):\n")
+    for entry in entries:
+        print(f"  [{entry.type.value.upper()}] {entry.topic}")
+        print(f"    ID: {entry.id}")
+        print(f"    Date: {entry.date.strftime('%Y-%m-%d')}")
+        if entry.tags:
+            print(f"    Tags: {', '.join(entry.tags)}")
+        print()
+
+
+def _knowledge_list(garage_root: Path) -> None:
+    """List all knowledge entries.
+
+    Args:
+        garage_root: Path to the project root
+    """
+    garage_dir = garage_root / ".garage"
+
+    if not garage_dir.is_dir():
+        print("No .garage/ directory found. Run 'garage init' first.")
+        return
+
+    storage = FileStorage(garage_dir)
+    knowledge_store = KnowledgeStore(storage)
+
+    entries = knowledge_store.list_entries()
+
+    if not entries:
+        print("No knowledge entries")
+        return
+
+    print(f"Total {len(entries)} knowledge entry(ies):\n")
+    for entry in entries:
+        print(f"  [{entry.type.value.upper()}] {entry.topic}")
+        print(f"    ID: {entry.id}")
+        print(f"    Date: {entry.date.strftime('%Y-%m-%d')}")
+        if entry.tags:
+            print(f"    Tags: {', '.join(entry.tags)}")
+        print()
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build and return the argument parser."""
+    # Create parent parser for common arguments
+    path_parser = argparse.ArgumentParser(add_help=False)
+    path_parser.add_argument(
+        "--path",
+        type=Path,
+        default=None,
+        help="Project root path (default: auto-detect)",
+    )
+
     parser = argparse.ArgumentParser(
         prog="garage",
         description="Garage OS — Agent Operating System CLI",
@@ -127,28 +301,42 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command")
 
     # init
-    init_parser = subparsers.add_parser("init", help="Initialize .garage/ directory structure")
-    init_parser.add_argument(
-        "--path",
-        type=Path,
-        default=None,
-        help="Project root path (default: auto-detect)",
+    init_parser = subparsers.add_parser(
+        "init", help="Initialize .garage/ directory structure", parents=[path_parser]
     )
 
     # status
-    status_parser = subparsers.add_parser("status", help="Show Garage OS status")
-    status_parser.add_argument(
-        "--path",
-        type=Path,
-        default=None,
-        help="Project root path (default: auto-detect)",
+    status_parser = subparsers.add_parser(
+        "status", help="Show Garage OS status", parents=[path_parser]
     )
 
-    # run — placeholder
-    subparsers.add_parser("run", help="Run a Garage skill (not yet implemented)")
+    # run
+    run_parser = subparsers.add_parser("run", help="Run a Garage skill", parents=[path_parser])
+    run_parser.add_argument(
+        "skill_name",
+        help="Name of the skill to run"
+    )
 
-    # knowledge — placeholder
-    subparsers.add_parser("knowledge", help="Manage knowledge entries (not yet implemented)")
+    # knowledge
+    knowledge_parser = subparsers.add_parser(
+        "knowledge", help="Manage knowledge entries", parents=[path_parser]
+    )
+    knowledge_subparsers = knowledge_parser.add_subparsers(dest="knowledge_command")
+
+    # knowledge search
+    search_parser = knowledge_subparsers.add_parser(
+        "search", help="Search knowledge entries", parents=[path_parser]
+    )
+    search_parser.add_argument(
+        "query",
+        nargs="?",
+        help="Search query text"
+    )
+
+    # knowledge list
+    list_parser = knowledge_subparsers.add_parser(
+        "list", help="List all knowledge entries", parents=[path_parser]
+    )
 
     return parser
 
@@ -173,11 +361,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
 
     if args.command == "run":
-        print("Run command is not yet implemented.")
+        root = args.path if args.path else _find_garage_root()
+        _run(root, args.skill_name)
         return 0
 
     if args.command == "knowledge":
-        print("Knowledge command is not yet implemented.")
+        root = args.path if args.path else _find_garage_root()
+        if args.knowledge_command == "search":
+            _knowledge_search(root, args.query)
+        elif args.knowledge_command == "list":
+            _knowledge_list(root)
+        else:
+            print("Knowledge command requires 'search' or 'list' subcommand")
+            return 1
         return 0
 
     parser.print_help()
