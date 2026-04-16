@@ -1,0 +1,50 @@
+{
+  "timestamp": "2026-04-16T11:14:15.006897",
+  "benchmark": "T18-performance-baseline",
+  "session_create_restore": {
+    "create": {
+      "mean": 0.005103,
+      "p50": 0.004925,
+      "p90": 0.005451,
+      "max": 0.008423,
+      "iterations": 100
+    },
+    "restore": {
+      "mean": 2e-05,
+      "p50": 1.7e-05,
+      "p90": 2.4e-05,
+      "max": 9.6e-05,
+      "iterations": 100
+    }
+  },
+  "knowledge_queries": {
+    "entries_100": {
+      "mean": 0.045358,
+      "p50": 0.045035,
+      "p90": 0.047429,
+      "max": 0.049916,
+      "iterations": 100
+    },
+    "entries_500": {
+      "mean": 0.22611,
+      "p50": 0.225681,
+      "p90": 0.230316,
+      "max": 0.233906,
+      "iterations": 100
+    },
+    "entries_1000": {
+      "mean": 0.451458,
+      "p50": 0.447939,
+      "p90": 0.471966,
+      "max": 0.495179,
+      "iterations": 100
+    }
+  },
+  "degradation_check": {
+    "p90_at_100": 0.047429,
+    "p90_at_1000": 0.471966,
+    "growth_percent": 895.1,
+    "threshold_percent": 50.0,
+    "passed": false
+  }
+}
