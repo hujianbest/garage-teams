@@ -1,20 +1,16 @@
-# D020: AHE Workflow Skill Anatomy
+# Skill Anatomy — Garage Skill 写作原则
 
-- Design ID: `D020`
-- 状态: 草稿
-- 日期: 2026-04-15
-- 定位: 描述 `packs/coding/skills/ahe-*/SKILL.md` 的目标态 anatomy，为 AHE workflow skills 的新增、重写和统一提供稳定基线。
-- 关联文档:
-  - `packs/coding/skills/docs/ahe-workflow-entrypoints.md`
-  - `packs/coding/skills/docs/ahe-workflow-shared-conventions.md`
-  - `packs/coding/skills/docs/ahe-worktree-isolation.md`
-  - `docs/design/D120-garage-coding-pack-design.md`
+- 定位: 项目级原则文档，定义 Garage 所有 skill（包括 AHE workflow skills 及未来其他 family）的目标态写法。
+- 来源: 由 D020 设计文档提炼，经评审后上收为项目原则。
+- 关联:
+  - AHE family 共享文档: `packs/coding/skills/docs/`
+  - Coding pack 设计: `docs/design/D120-garage-coding-pack-design.md`
 
 ## 定位
 
-本文定义 AHE workflow skill 的目标态写法。
+本文定义 Garage skill 的目标态写法。
 
-它不是现状说明，也不是单个 skill 的写作模板大全；它的任务是给出一套稳定、可执行、可搜索、可维护的 anatomy，让不同节点既能被单独正确调用，也能在链路中稳定编排。
+它不是现状说明，也不是单个 skill 的写作模板大全；它的任务是给出一套稳定、可执行、可搜索、可维护的 anatomy，让不同 skill 既能被单独正确调用，也能在链路中稳定编排。
 
 ## 核心原则
 
@@ -28,8 +24,8 @@
    会改变运行时行为的内容留在主文件；不会改变行为的长说明下沉。
 5. **边界必须显式。**
    每个 skill 都要说明何时使用、何时不用、和相邻 skill 的区别、冲突时回哪里。
-6. **主文件要短。**
-   能折叠进 `When to Use`、`Workflow`、`Output Contract`、`Red Flags` 的内容，不要额外长一层。
+6. **主文件要短，且有量化预算。**
+   `SKILL.md` 正文建议 < 500 行 / < 5000 tokens。超过此预算的内容应下沉到 `references/`。运行时 compaction 后仅保留前 5000 tokens，多个 skill 共享约 25000 tokens 总预算——每个多余 token 都在和对话历史、系统提示竞争注意力。
 7. **路径写法要可迁移。**
    不要把 skill 绑定到某个仓库安装根、某个 pack 名或某个项目私有目录。项目工件路径优先遵循 `AGENTS.md` / 项目权威约定；skill pack 内共享资料用当前 pack 语义或稳定相对路径表达。
 
@@ -85,6 +81,7 @@ packs/coding/skills/
 - `references/` 放深度 reference，不放当前节点最核心的进入条件和 workflow。
 - `evals/` 是高风险 skill 的常规配置，用来保护行为 contract。
 - `scripts/` 和 `assets/` 只有真的需要复用工具或模板时才引入。
+- `scripts/` 的使用原则：**可执行而非加载**。脚本是让 agent 调用的工具，不是让 agent 阅读的文档。agent 可以直接执行脚本获取结果，而不需要先读取脚本内容再理解逻辑——这节省 token 并降低误读风险。脚本应自描述（`--help` 输出清楚说明用途和参数），文件名具备语义（`validate-schema.py` 而非 `helper.py`）。
 
 ## Frontmatter 与 CSO
 
@@ -102,8 +99,10 @@ description: Use when ...
 要求：
 
 - `name` 与目录名一致。
-- `name` 只用字母、数字、连字符。
+- `name` 只用字母、数字、连字符，1-64 字符，推荐动名词形式（如 `specifying-features`）或动作式（如 `process-pdfs`）。避免模糊名称（helper、utils、tools）。
 - `description` 的主职责是分类，不是摘要。
+- `description` 建议使用祈使句（`Use when...`），前置最关键触发场景（截断时优先丢失尾部）。
+- `description` + 正文首段合计不超过约 1500 字符预算（Anthropic 平台 description 截断约 1536 字符）。
 
 ### Description 是分类器，不是摘要
 
@@ -289,6 +288,40 @@ evals/
 
 `evals/` 测的是行为 contract，不是措辞复读。
 
+### `evals/` 评测方法论
+
+最小评测要求：
+
+1. **每个高风险 skill 至少 2-3 个 test case**，覆盖正常路径、边界条件和典型失败模式。
+2. **evals.json 结构**：
+
+```json
+{
+  "evals": [
+    {
+      "name": "correctly-rejects-missing-spec",
+      "prompt": "<模拟用户请求>",
+      "expected_behavior": "应拒绝并 reroute 到 ahe-specify",
+      "assertions": [
+        "输出包含 reroute 指令",
+        "输出不包含设计内容"
+      ],
+      "input_files": ["fixtures/minimal-session.json"]
+    }
+  ]
+}
+```
+
+3. **Assertion 写法原则**：
+   - 好：可编程验证、具体可观察、可计数（"输出包含 3 个发现项"）
+   - 差：模糊（"输出质量好"）、脆弱（精确措辞匹配）
+
+4. **对比基线**：对同一 prompt 分别运行 with_skill 和 without_skill，计算 delta。如果 skill 加载前后结果无显著差异，说明 skill 的增量价值不足。
+
+5. **触发评测**（可选但推荐）：编写 `eval_queries.json`，约 20 条查询（8-10 正例 + 8-10 反例），测试系统是否在正确场景触发该 skill。多次运行计算触发率，建议 > 50%。
+
+6. **快照迭代**：每次重大改进前，将当前 evals 快照保存到 `iteration-N/` 目录，用于回退和对比分析。移除 with/without 两端都通过的断言（无区分度）。
+
 ## Common Mistakes
 
 | 错误 | 问题 | 修复 |
@@ -302,6 +335,37 @@ evals/
 | 写工件却没有 `Output Contract` | 调用方不知道怎么交接 | 明确记录、状态、next action |
 | `Common Mistakes` 与 `Red Flags` 重复 | 浪费 token | 一个写 stop sign，一个写 mistake -> fix |
 | 高风险 skill 没有 `evals/` | 容易回归 | 为边界判断和 reviewer 行为补评测 |
+
+## 演化与版本管理
+
+Skill 不是写完封存的静态文档，而是需要像代码一样持续迭代的运行时资产。
+
+### 版本快照机制
+
+当 skill 重大改进（重写 workflow、修改 frontmatter、调整 output contract）时：
+
+1. **改进前保存快照**：`cp -r evals/ evals/iteration-N/`（N 为迭代编号）。
+2. **改进后对比**：对同一批 prompt 分别运行旧版和新版，计算 delta。
+3. **断言清理**：移除 with/without 两端都通过的断言（无区分度的断言浪费评测资源）。
+4. **回归检查**：确保新版本没有破坏之前已通过的用例。
+
+### 质量退化信号
+
+定期检查以下信号，出现时需要修补 skill：
+
+| 信号 | 含义 | 行动 |
+|------|------|------|
+| 触发率下降 | description 可能被系统忽略 | 优化 description 触发词 |
+| 误触发增加 | 触发条件过宽 | 收窄 description、补 `Not for` |
+| agent 总跳过正文直接读 references | 主文件失去价值 | 重新分配内容层次 |
+| 某条规则被反复忽略 | 措辞或位置不够强 | 加粗、提前、或转为 checklist |
+| evals 断言通过率不变 | skill 增量价值不足 | 收窄 skill 范围或删除低价值部分 |
+
+### 迭代原则
+
+- 先在真实任务中观察失败，再针对性修补——不要凭想象预写"防御性规则"。
+- 每次修补只改一个维度（触发、结构、内容、验证），改完立刻评测确认效果。
+- 沉淀真实项目中的 gotchas 和常见误判，而不是复述模型已知的公开常识。
 
 ## Canonical skeleton
 
@@ -345,6 +409,7 @@ description: Use when <triggering conditions>. Not for <clear exclusions>.
 在新增或重写 `ahe-*` skill 时，至少检查：
 
 - `description` 是否是分类器，而不是摘要
+- `description` 是否使用祈使句，是否前置关键触发场景
 - H1 下的开场是否足够短
 - `When to Use` 是否写清触发条件和边界
 - 是否明确说明了与相邻 skill 的区别
@@ -355,6 +420,9 @@ description: Use when <triggering conditions>. Not for <clear exclusions>.
 - 共享语义是否已上收至 `docs/`
 - 长 reference 是否已下沉到 `references/`
 - 高风险边界行为是否有 `evals/`
+- `SKILL.md` 正文是否 < 500 行 / < 5000 tokens
+- `scripts/` 文件名是否具备语义，是否可独立执行
+- 是否有版本快照和质量退化信号追踪机制
 
 ## 一句话约束
 
