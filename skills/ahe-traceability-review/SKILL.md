@@ -89,6 +89,24 @@ Direct invoke 信号："追溯评审"、"traceability review"、"帮我检查证
 - `需修改`：findings 可定向补齐追溯 → `ahe-test-driven-dev`
 - `阻塞`：核心链路断裂/工件与代码严重不一致 → `ahe-workflow-router`
 
+### 4A. Verdict 写回闸门
+
+在返回结论前，必须先把 verdict 收敛成**唯一下一步 + 最小结构化字段**。不要只写自然语言结论。
+
+| 场景 | conclusion | next_action_or_recommended_skill | reroute_via_router | 最少必须写出的字段 |
+|---|---|---|---|---|
+| precheck blocked：route / stage / 证据冲突 | `阻塞` | `ahe-workflow-router` | `true` | `record_path`、workflow blocker、关键冲突说明 |
+| precheck blocked：缺关键上游工件或稳定实现交接块 | `阻塞` | `ahe-test-driven-dev` | `false` | `record_path`、缺失工件、为什么当前无法继续 traceability review |
+| 正式审查后 `需修改` | `需修改` | `ahe-test-driven-dev` | `false` | `record_path`、`key_findings`、`finding_breakdown`、需要补齐的 trace anchor / 回写项 |
+| 正式审查后 `通过` | `通过` | `ahe-regression-gate` | `false` | `record_path`、链接矩阵、剩余非阻塞提示（若有） |
+| 正式审查后 `阻塞` | `阻塞` | `ahe-workflow-router` | `true` | `record_path`、核心断链点、为什么不能定向回修 |
+
+约束：
+- `needs_human_confirmation` 固定为 `false`
+- 除 `通过` 且确无问题外，`key_findings` 不得留空
+- 只允许一个 canonical `next_action_or_recommended_skill`
+- 若输出不能映射到上表中的一行，说明 verdict 还没收敛好，不能返回
+
 ### 5. 写 review 记录
 
 保存到 `AGENTS.md` 声明的 review record 路径；若无项目覆写，默认使用 `docs/reviews/traceability-review-<task>.md`。参考 `references/traceability-review-record-template.md`。
