@@ -215,6 +215,18 @@
         "把下一步明确指向 ahe-workflow-router",
         "interactive 场景下只向用户说明 workflow / evidence blocker"
       ]
+    },
+    {
+      "id": 18,
+      "prompt": "这份规格已经列出了范围、功能需求和验收标准，但“目标与成功标准”只写了“提升审批体验”，同时文中默认假设“所有审批人都会在 24 小时内处理”，却没有把这个假设单独写出来，也没有说明失效时怎么办。请按 `ahe-spec-review` 的新契约评审。",
+      "expected_output": "应识别 success criteria 过于抽象、不可判断，以及关键 assumption 被隐含在 prose 中且没有失效影响说明；评审结论至少应为需修改，并给出可回到 `ahe-specify` 的具体 findings。",
+      "files": [],
+      "expectations": [
+        "识别“提升审批体验”不是具体可判断的 success criteria",
+        "识别 24 小时处理假设属于关键 assumption，不能隐藏在 prose 中",
+        "要求把 assumption 及其失效影响显式写入规格",
+        "给出需修改结论并指向 ahe-specify"
+      ]
     }
   ]
 }

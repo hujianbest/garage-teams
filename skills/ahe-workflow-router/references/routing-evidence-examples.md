@@ -33,7 +33,7 @@
 - Current Stage: ahe-test-driven-dev
 - Workflow Profile: standard
 - Current Active Task: TASK-003
-- Pending Reviews And Gates: ahe-bug-patterns, ahe-test-review, ahe-code-review, ahe-traceability-review, ahe-regression-gate, ahe-completion-gate
+- Pending Reviews And Gates: ahe-test-review, ahe-code-review, ahe-traceability-review, ahe-regression-gate, ahe-completion-gate
 - Relevant Files:
 - Constraints:
 
@@ -46,7 +46,7 @@
 
 ## Next Step
 
-- Next Action Or Recommended Skill: ahe-bug-patterns
+- Next Action Or Recommended Skill: ahe-test-review
 - Blockers:
 - Notes:
 

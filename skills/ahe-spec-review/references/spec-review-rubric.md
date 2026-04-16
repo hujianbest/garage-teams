@@ -44,6 +44,8 @@
 | `C3` | Open-question closure | 阻塞性开放问题已关闭；剩余开放问题不会改变设计主干 |
 | `C4` | Template alignment | 文档遵循当前项目模板或 `AGENTS.md` 约定；若没有模板，至少符合 AHE 默认骨架 |
 | `C5` | Deferral handling | 真实 deferred requirements 已进入 backlog，或已明确不存在；不会只埋在 prose 里 |
+| `C6` | Goal and success criteria | 当前轮目标与 success criteria 明确、具体、可判断，不只是抽象愿景或口号 |
+| `C7` | Assumption visibility | 关键 assumptions 已显式写出，且其失效影响可回读；不会把关键假设藏在 prose 里 |
 
 ## Group G: Granularity And Scope-Fit
 

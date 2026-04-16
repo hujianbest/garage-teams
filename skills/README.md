@@ -33,7 +33,8 @@
 - `ahe-specify`、`ahe-design`、`ahe-tasks`：上游主链产出
 - `ahe-spec-review`、`ahe-design-review`、`ahe-tasks-review`：上游评审
 - `ahe-test-driven-dev`、`ahe-hotfix`、`ahe-increment`、`ahe-finalize`：执行与支线闭环
-- `ahe-bug-patterns`、`ahe-test-review`、`ahe-code-review`、`ahe-traceability-review`、`ahe-regression-gate`、`ahe-completion-gate`：质量与门禁
+- `ahe-test-review`、`ahe-code-review`、`ahe-traceability-review`、`ahe-regression-gate`、`ahe-completion-gate`：质量与门禁
+- `ahe-bug-patterns`：独立经验固化与缺陷模式沉淀
 
 ## 相关 supporting surfaces
 
@@ -73,11 +74,11 @@
 | `ahe-design-review` | ATAM (架构权衡分析), Fagan Inspection, Traceability to Spec |
 | `ahe-tasks-review` | INVEST Validation, Dependency Graph Validation, Traceability Matrix |
 
-### 质量链评审
+### 质量评审与经验固化
 
 | Skill | 核心方法论 |
 |-------|-----------|
-| `ahe-bug-patterns` | Defect Pattern Catalog (Beizer/Ostrand), Checklist-Based Review, Severity-Confidence Matrix |
+| `ahe-bug-patterns` | Defect Pattern Catalog (Beizer/Ostrand), Blameless Post-Mortem / Learning Review, Human-In-The-Loop Knowledge Curation |
 | `ahe-test-review` | Fail-First Validation (TDD Quality Gate), Coverage Categories (Crispin/Gregory), Bug-Pattern-Driven Testing |
 | `ahe-code-review` | Fagan Code Inspection, Design Conformance Check, Defense-in-Depth Review |
 | `ahe-traceability-review` | End-to-End Traceability (IEEE 830/ISO 26550), Zigzag Validation, Impact Analysis |

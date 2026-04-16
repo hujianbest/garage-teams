@@ -40,6 +40,14 @@ Profile-aware 回归范围：
 - `standard`：直接相关模块
 - `lightweight`：最小 build/test 入口
 
+### 1.5 Precheck：能否合法进入 gate
+
+检查：上游 review / traceability 记录是否齐全、实现交接块是否稳定、worktree 状态与当前验证位置是否一致。
+
+- 上游结论缺失或 route/stage/profile 冲突 → `阻塞`，下一步 `ahe-workflow-router`
+- worktree-active 但 evidence 无法锚定同一 `Worktree Path` → `阻塞`，下一步 `ahe-regression-gate`
+- precheck 通过 → 继续定义回归面
+
 ### 2. 定义回归面
 
 明确回归覆盖：哪些模块/命令/测试套。不覆盖什么要显式写出。
@@ -65,7 +73,20 @@ Profile-aware 回归范围：
 
 ## Output Contract
 
-记录保存到 `AGENTS.md` 声明的 verification 路径；若无项目覆写，默认使用 `docs/verification/regression-<task>.md`。结构包含：结论、上游证据、回归面、证据表、覆盖缺口、回归风险、下一步。
+记录保存到 `AGENTS.md` 声明的 verification 路径；若无项目覆写，默认使用 `docs/verification/regression-<task>.md`。若项目无专用格式，默认使用共享模板 `templates/verification-record-template.md`。
+
+最少应包含：
+- 已消费的上游证据
+- 回归面定义与未覆盖区域
+- 命令、退出码、结果摘要
+- 新鲜度锚点与 worktree 锚点（若适用）
+- 唯一门禁结论与唯一下一步
+
+## Reference Guide
+
+| 文件 | 用途 |
+|------|------|
+| `templates/verification-record-template.md` | regression/completion 共用 verification record 模板 |
 
 ## 和其他 Skill 的区别
 
@@ -86,5 +107,6 @@ Profile-aware 回归范围：
 
 - [ ] regression record 已落盘
 - [ ] 回归面定义、evidence bundle 已写清
+- [ ] precheck blocker 与 worktree 锚点（若适用）已写清
 - [ ] 基于最新证据给出唯一门禁结论
 - [ ] task-progress.md 已同步

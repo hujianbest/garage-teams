@@ -39,6 +39,18 @@
         "返回 `reroute_via_router=true`",
         "不继续做测试质量判断"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "这是一个测试评审场景：\n- RED/GREEN 证据都存在且看起来新鲜\n- 但新增测试只验证了内部 helper 的返回值，没有明确映射到任务 acceptance\n- bug-patterns 风险中要求覆盖权限拒绝场景，但当前测试没有涉及\n- 这些问题可以通过一轮定向修订补齐\n\n请作为 `ahe-test-review` 给出结论和下一步。",
+      "expected_output": "应识别测试缺少 acceptance 映射，且风险覆盖不完整；结论至少应为 `需修改`，下一步指向 `ahe-test-driven-dev`。",
+      "files": [],
+      "expectations": [
+        "识别测试没有清楚映射到任务 acceptance",
+        "识别 bug-patterns 风险覆盖缺口",
+        "给出 `需修改` 结论",
+        "下一步指向 `ahe-test-driven-dev`"
+      ]
     }
   ]
 }

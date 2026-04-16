@@ -37,6 +37,19 @@
         "下一步指向 `ahe-workflow-router`",
         "返回 `reroute_via_router=true`"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "这是一个追溯评审场景：\n- task-progress.md 显示当前已经到 traceability review\n- 但实现交接块缺失，且 code-review 记录里引用的 task id 与当前任务不一致\n- 规格、设计、任务计划都存在\n\n请作为 `ahe-traceability-review` 给出结论和下一步。",
+      "expected_output": "应先识别这是 precheck blocker：关键实现输入不稳定，当前无法合法进入正式追溯审查。结论应为阻塞，下一步指向 ahe-workflow-router，并返回 reroute_via_router=true。",
+      "files": [],
+      "expectations": [
+        "识别实现交接块缺失和 task id 不一致属于 precheck blocker",
+        "给出阻塞结论",
+        "下一步指向 ahe-workflow-router",
+        "返回 reroute_via_router=true",
+        "不继续展开正式链路评分"
+      ]
     }
   ]
 }

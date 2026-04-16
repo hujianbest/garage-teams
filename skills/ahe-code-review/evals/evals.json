@@ -60,6 +60,19 @@
         "可选地说明非阻塞的优化建议",
         "下一步指向 ahe-traceability-review"
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "这是一个 code review 场景：\n- task-progress.md 标记当前已进入 code review\n- 但实现交接块缺失，且 test-review 记录与当前 task id 不一致\n- 代码本身表面看起来问题不大\n\n请作为 `ahe-code-review` 给出结论和下一步。",
+      "expected_output": "应先识别这是输入证据冲突/范围不可稳定定位的 precheck blocker，而不是继续做正式代码质量判断；结论应为阻塞，下一步指向 ahe-workflow-router，并返回 reroute_via_router=true。",
+      "files": [],
+      "expectations": [
+        "识别实现交接块缺失和上游记录不一致属于 precheck blocker",
+        "给出阻塞结论",
+        "下一步指向 ahe-workflow-router",
+        "返回 reroute_via_router=true",
+        "不继续展开正式代码质量判断"
+      ]
     }
   ]
 }

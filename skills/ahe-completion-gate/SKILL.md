@@ -48,6 +48,14 @@ Profile-aware 上游证据矩阵：
 
 full/standard 记录缺失/过旧 → `阻塞`。
 
+### 2.5 Precheck：能否合法进入 gate
+
+检查：上游 review/gate 记录是否齐全、实现交接块与 regression record 是否针对同一任务、worktree 状态与当前 evidence 是否一致。
+
+- 上游结论缺失或 route/stage/profile/任务范围冲突 → `阻塞`，下一步 `ahe-workflow-router`
+- worktree-active 但 completion evidence 无法锚定同一 `Worktree Path` → `阻塞`，下一步 `ahe-completion-gate`
+- precheck 通过 → 继续执行验证
+
 ### 3-4. 确定、执行验证命令
 
 选择能直接证明结论的命令，立即运行完整验证。不用更弱证据替代。
@@ -70,9 +78,23 @@ full/standard 记录缺失/过旧 → `阻塞`。
 
 ## Output Contract
 
-记录保存到 `AGENTS.md` 声明的 verification 路径；若无项目覆写，默认使用 `docs/verification/completion-<task>.md`。结构包含：结论、已消费上游结论、上游证据矩阵、完成宣告范围、剩余任务判断、已验证结论、证据、覆盖边界、明确不在范围内的项、下一步。
+记录保存到 `AGENTS.md` 声明的 verification 路径；若无项目覆写，默认使用 `docs/verification/completion-<task>.md`。若项目无专用格式，默认使用共享模板 `templates/verification-record-template.md`。
+
+最少应包含：
+- 已消费的上游结论与证据矩阵
+- 完成宣告范围
+- 命令、退出码、结果摘要、新鲜度锚点
+- 剩余任务判断与“唯一 next-ready task / 无剩余任务 / 候选不唯一”结论
+- worktree 锚点（若适用）
+- 唯一门禁结论与唯一下一步
 
 在 task-progress.md 写回 canonical Next Action。
+
+## Reference Guide
+
+| 文件 | 用途 |
+|------|------|
+| `templates/verification-record-template.md` | regression/completion 共用 verification record 模板 |
 
 ## 和其他 Skill 的区别
 
@@ -95,6 +117,7 @@ full/standard 记录缺失/过旧 → `阻塞`。
 
 - [ ] completion verification record 已落盘
 - [ ] 上游证据矩阵、完成范围、剩余任务判断、evidence bundle 已写清
+- [ ] precheck blocker 与 worktree 锚点（若适用）已写清
 - [ ] 基于最新证据给出唯一门禁结论
 - [ ] worktree 状态已写出（若适用）
 - [ ] task-progress.md 已同步 canonical Next Action

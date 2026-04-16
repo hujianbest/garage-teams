@@ -241,7 +241,7 @@ description: Use when route/stage/profile is unclear, review or gate just finish
 | `using-ahe-workflow` | `ahe-workflow-router` |
 | `ahe-specify` | `ahe-design` / `ahe-spec-review` |
 | `ahe-design` | `ahe-tasks` / `ahe-design-review` |
-| `ahe-test-driven-dev` | `ahe-bug-patterns` / `ahe-*-review` / gates |
+| `ahe-test-driven-dev` | `ahe-test-review` / `ahe-*-review` / gates |
 | `ahe-completion-gate` | `ahe-finalize` |
 | `ahe-hotfix` | `ahe-test-driven-dev` / `ahe-workflow-router` |
 

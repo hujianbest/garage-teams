@@ -22,13 +22,14 @@
 
 ### T1. <任务名>
 - 目标:
+- Acceptance:
 - 依赖:
 - Ready When:
 - 初始队列状态:
 - Selection Priority:
-- 触碰工件:
+- Files / 触碰工件:
 - 测试设计种子:
-- 验证方式:
+- Verify:
 - 预期证据:
 - 完成条件:
 
@@ -45,6 +46,8 @@
 - 不把里程碑标题当成真实任务
 - 关键任务具备冷启动可执行性
 - 关键任务能追溯回规格与设计
+- 每个关键任务都要能回答“完成时什么必须为真”
+- 每个关键任务都要能回答“如何验证”与“会触碰哪些文件/工件”
 - 每个任务都能回答"做完的证据是什么"
 
 ## 状态同步
@@ -53,4 +56,5 @@
 - 主题或范围标识
 - 当前活跃任务选择规则
 - 可供评审定位的章节结构
-- `task-progress.md` 中的 `Current Stage` 和 `Next Action Or Recommended Skill`
+- `task-progress.md` 中的 `Current Stage: ahe-tasks`
+- `task-progress.md` 中的 `Next Action Or Recommended Skill: ahe-tasks-review`

@@ -24,7 +24,6 @@
 - `ahe-tasks-review`
 - `任务真人确认`
 - `ahe-test-driven-dev`
-- `ahe-bug-patterns`
 - `ahe-test-review`
 - `ahe-code-review`
 - `ahe-traceability-review`
@@ -38,7 +37,6 @@
 - `ahe-tasks-review`
 - `任务真人确认`
 - `ahe-test-driven-dev`
-- `ahe-bug-patterns`
 - `ahe-test-review`
 - `ahe-code-review`
 - `ahe-traceability-review`
@@ -80,14 +78,14 @@ full:
   ahe-specify -> ahe-spec-review -> 规格真人确认
   -> ahe-design -> ahe-design-review -> 设计真人确认
   -> ahe-tasks -> ahe-tasks-review -> 任务真人确认 -> ahe-test-driven-dev
-  -> ahe-bug-patterns -> ahe-test-review -> ahe-code-review
+  -> ahe-test-review -> ahe-code-review
   -> ahe-traceability-review -> ahe-regression-gate -> ahe-completion-gate
   -> if unique next-ready task exists: ahe-workflow-router -> ahe-test-driven-dev
   -> else: ahe-finalize
 
 standard:
   ahe-tasks -> ahe-tasks-review -> 任务真人确认 -> ahe-test-driven-dev
-  -> ahe-bug-patterns -> ahe-test-review -> ahe-code-review
+  -> ahe-test-review -> ahe-code-review
   -> ahe-traceability-review -> ahe-regression-gate -> ahe-completion-gate
   -> if unique next-ready task exists: ahe-workflow-router -> ahe-test-driven-dev
   -> else: ahe-finalize
@@ -106,6 +104,7 @@ branches:
 说明：
 
 - `ahe-test-driven-dev` 到 `ahe-completion-gate` 描述的是“单个 `Current Active Task` 的实现与质量闭环”
+- `ahe-bug-patterns` 作为独立经验固化 skill 保留，但不属于 canonical 主链节点；只有在 AI 或用户显式想沉淀重复错误模式时，才应 direct invoke
 - `ahe-completion-gate` 返回 `通过` 后，不默认等于“整个 workflow 已完成”；父会话必须先判断是否仍有 approved 且 dependency-ready 的剩余任务
 - 若存在唯一 `next-ready task`，先回到 `ahe-workflow-router` 锁定新的 `Current Active Task`，再重新进入 `ahe-test-driven-dev`
 - 只有在没有剩余任务时，才进入 `ahe-finalize`
@@ -133,9 +132,7 @@ branches:
 | `ahe-tasks-review` | `阻塞`（需重编排） | `ahe-workflow-router` |
 | 任务真人确认 | approval step 完成 | `ahe-test-driven-dev` |
 | 任务真人确认 | 要求修改 / approval step 未完成 | `ahe-tasks` |
-| `ahe-test-driven-dev` | 实现完成 | `ahe-bug-patterns` |
-| `ahe-bug-patterns` | `通过` | `ahe-test-review` |
-| `ahe-bug-patterns` | `需修改` / `阻塞` | `ahe-test-driven-dev` |
+| `ahe-test-driven-dev` | 实现完成 | `ahe-test-review` |
 | `ahe-test-review` | `通过` | `ahe-code-review` |
 | `ahe-test-review` | `需修改` / `阻塞` | `ahe-test-driven-dev` |
 | `ahe-code-review` | `通过` | `ahe-traceability-review` |
@@ -158,9 +155,7 @@ branches:
 | `ahe-tasks-review` | `阻塞`（需重编排） | `ahe-workflow-router` |
 | 任务真人确认 | approval step 完成 | `ahe-test-driven-dev` |
 | 任务真人确认 | 要求修改 / approval step 未完成 | `ahe-tasks` |
-| `ahe-test-driven-dev` | 实现完成 | `ahe-bug-patterns` |
-| `ahe-bug-patterns` | `通过` | `ahe-test-review` |
-| `ahe-bug-patterns` | `需修改` / `阻塞` | `ahe-test-driven-dev` |
+| `ahe-test-driven-dev` | 实现完成 | `ahe-test-review` |
 | `ahe-test-review` | `通过` | `ahe-code-review` |
 | `ahe-test-review` | `需修改` / `阻塞` | `ahe-test-driven-dev` |
 | `ahe-code-review` | `通过` | `ahe-traceability-review` |

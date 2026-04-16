@@ -10,11 +10,13 @@ These evals protect the following behavioral contracts of `ahe-spec-review`:
 4. **Composite requirement detection**: Identifies FRs that pack multiple independent capabilities
 5. **Precheck behavior**: Correctly refuses to enter review when no stable spec draft exists, and reroutes appropriately
 6. **Finding classification**: Correctly distinguishes USER-INPUT from LLM-FIXABLE findings
-7. **Verdict correctness**: Returns correct verdict (pass/revise/blocked) based on finding severity and coverage
+7. **Goal / success criteria review**: Detects specs that have requirements but still lack concrete success criteria
+8. **Assumption visibility review**: Detects hidden critical assumptions that are not explicitly documented with failure impact
+9. **Verdict correctness**: Returns correct verdict (pass/revise/blocked) based on finding severity and coverage
 
 ## Structure
 
-- `evals.json`: 17 test cases covering normal paths, boundary conditions, and typical failure modes
+- `evals.json`: test cases covering normal paths, boundary conditions, and typical failure modes
 
 ## Running
 

@@ -7,7 +7,7 @@
 - `docs/reviews/design-review-<topic>.md`
 - 如 `AGENTS.md` 声明了等价路径，按映射路径保存
 
-若项目尚未形成固定 review 记录格式，默认使用当前 skill pack 的共享模板 `templates/review-record-template.md`。
+若项目尚未形成固定 review 记录格式，默认使用当前模板。
 
 ## 评审记录结构
 
@@ -18,7 +18,7 @@
 
 ## 发现项
 
-- [critical|important|minor] 问题
+- [critical|important|minor][USER-INPUT|LLM-FIXABLE][D1|D3|A2] 问题
 
 ## 薄弱或缺失的设计点
 
@@ -43,16 +43,37 @@
 
 ## 结构化返回（JSON）
 
-reviewer subagent 完成后返回给父会话：
+正常返回示例：
 
 ```json
 {
-  "conclusion": "通过",
-  "next_action_or_recommended_skill": "设计真人确认",
+  "conclusion": "需修改",
+  "next_action_or_recommended_skill": "ahe-design",
   "record_path": "实际写入的 review 记录路径",
-  "key_findings": ["关键发现 1", "关键发现 2"],
-  "needs_human_confirmation": true,
-  "reroute_via_router": false
+  "key_findings": ["[important][LLM-FIXABLE][D3] 候选方案对比不足，trade-off 无法冷读"],
+  "needs_human_confirmation": false,
+  "reroute_via_router": false,
+  "finding_breakdown": [
+    {
+      "severity": "important",
+      "classification": "LLM-FIXABLE",
+      "rule_id": "D3",
+      "summary": "候选方案对比不足，trade-off 无法冷读"
+    }
+  ]
+}
+```
+
+Precheck blocked 示例：
+
+```json
+{
+  "conclusion": "阻塞",
+  "next_action_or_recommended_skill": "ahe-workflow-router",
+  "record_path": "实际写入的 review 记录路径",
+  "key_findings": ["设计评审输入证据冲突：规格 approval evidence 不稳定"],
+  "needs_human_confirmation": false,
+  "reroute_via_router": true
 }
 ```
 
@@ -66,6 +87,8 @@ reviewer subagent 完成后返回给父会话：
 | `需修改` | `ahe-design` | false | false |
 | `阻塞`（设计内容回修） | `ahe-design` | false | false |
 | `阻塞`（需求漂移/规格冲突） | `ahe-workflow-router` | false | true |
+
+Precheck blocked 沿用 `阻塞` 返回规则，区别只是跳过正式 checklist。
 
 ## 状态同步
 
@@ -89,32 +112,15 @@ reviewer subagent 不代替父会话写入批准结论。
 - `important`：应在批准前修复
 - `minor`：不阻塞，但建议改进
 
-## Finding 格式
+## Finding 分类
 
-每条发现应包含完整信息，便于设计者定位和修复：
+- `USER-INPUT`：缺失外部阈值、未确认业务裁决、关键 trade-off 仍需真人拍板、规格未批准却引入关键新增能力
+- `LLM-FIXABLE`：方案对比不足、边界或接口说明不足、task planning readiness 未显式写清、测试策略未整理成文
 
-```markdown
-**发现：** [清楚描述问题]
-**严重度：** Critical | Important | Minor
-**影响：** [具体后果]
-**建议：** [可操作的修复方案]
-**工作量：** [预估修复时间/复杂度]
-**优先级：** 必须修复 | 应修复 | 建议改进
-```
+## Finding 写法对比
 
-### Finding 写法对比
+✅ 具体：`[important][LLM-FIXABLE][D3] 候选方案只有结论没有 trade-off，对为什么不选事件驱动方案不可冷读。`
+❌ 模糊：`需要更好的架构说明`
 
-✅ 具体："`Order→Payment` 调用缺少熔断器（平均 50 calls/sec）。建议添加 Resilience4j，50% 错误阈值触发。"
-❌ 模糊："需要更好的错误处理"
-
-✅ 具体："`UserService` 有 15 个方法涵盖认证、资料、权限三个领域（上帝模块）。建议拆分为 AuthService、ProfileService、RBACService，预估 3 周。"
-❌ 模糊："考虑改善服务边界"
-
-## 评审原则
-
-评审应基于项目上下文，不做脱离实际的评判：
-
-- Startup MVP 和企业系统的评审标准不同
-- 100 用户的系统不需要微服务复杂度
-- 评审适当性：对规模、团队和时间的匹配度
-- 发现应可操作，不只指出问题还要给出建议
+✅ 具体：`[critical][LLM-FIXABLE][D5] 支付回调与订单状态同步边界未闭合，ahe-tasks 无法稳定拆解首批任务。`
+❌ 模糊：`任务规划准备度不足`

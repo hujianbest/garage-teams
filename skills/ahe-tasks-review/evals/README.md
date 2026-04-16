@@ -10,9 +10,12 @@
 - 通过时保留 `needs_human_confirmation=true`
 - `Execution Mode=auto` 不覆盖评审判断
 - 上游冲突时 reroute 到 `ahe-workflow-router`
+- 显式审查 `Acceptance / Files / Verify / test seed`
+- 在 route / stage / evidence 冲突时先做 precheck 阻塞
 
 ## 建议评分关注点
 
 1. 是否给出明确结论和唯一下一步
 2. 是否在 auto 模式下仍保留 approval step
 3. 是否在上游冲突时正确 reroute
+4. 是否能指出任务合同字段缺口，而不是笼统说“计划不够细”

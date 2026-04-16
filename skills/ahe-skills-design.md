@@ -224,7 +224,7 @@ flowchart TD
 - 你原始草案中的 `cod-review` 建议统一更名为 `ahe-code-review`。
 - `ahe-spec-review` 是必须补上的，否则 `ahe-specify` 的输出没有正式冻结门。
 - `ahe-tasks-review` 也是建议补上的，否则任务分解可能直接把坏设计带进实现。
-- `ahe-bug-patterns` 用于把团队历史错误案例和高频编码风险前置到实现评审链中。
+- `ahe-bug-patterns` 更适合作为独立经验固化旁路：当 AI 识别到重复错误值得长期沉淀时触发，先征求真人确认，再写入缺陷模式目录。
 - `ahe-traceability-review` 用于在进入回归前确认规格、设计、任务、实现和验证仍然能对齐。
 
 ## 6. 交付件契约与兼容层
@@ -730,8 +730,8 @@ flowchart TD
 4. 若规格已批准但无已批准设计，进入 `ahe-design`
 5. 若设计已批准但无已批准任务计划，进入 `ahe-tasks`
 6. 若任务计划已批准且仍有未完成任务，进入 `ahe-test-driven-dev`
-7. 若当前任务已完成实现并已写回 fresh evidence，但尚未完成缺陷模式排查，进入 `ahe-bug-patterns`
-8. 若当前任务缺测试、代码或追溯性评审，依次进入 `ahe-test-review`、`ahe-code-review`、`ahe-traceability-review`
+7. 若当前任务缺测试、代码或追溯性评审，依次进入 `ahe-test-review`、`ahe-code-review`、`ahe-traceability-review`
+8. 若 AI 或用户识别到跨会话重复错误值得沉淀经验，可独立触发 `ahe-bug-patterns`
 9. 若实现已完成但缺回归验证证据，进入 `ahe-regression-gate`
 10. 若实现已完成但缺完成验证证据，进入 `ahe-completion-gate`
 11. 若验证已完成但交付记录未整理，进入 `ahe-finalize`
@@ -880,7 +880,7 @@ ahe-coding-skills/
 2. `ahe-specify` + `ahe-spec-review`
 3. `ahe-design` + `ahe-design-review`
 4. `ahe-tasks` + `ahe-tasks-review`
-5. `ahe-test-driven-dev` + `ahe-bug-patterns` + `ahe-test-review`
+5. `ahe-test-driven-dev` + `ahe-test-review`
 6. `ahe-code-review` + `ahe-traceability-review`
 7. `ahe-regression-gate` + `ahe-completion-gate`
 8. `ahe-increment` + `ahe-hotfix` + `ahe-finalize`

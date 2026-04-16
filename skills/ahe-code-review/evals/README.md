@@ -9,3 +9,4 @@
 3. **可读性关注**：魔法数字等问题不得因功能正确而被跳过
 4. **范围守卫**：不允许超规格/超设计的"顺手加功能"
 5. **Verdict 唯一下一步**：通过时指向 `ahe-traceability-review`，需修改时指向 `ahe-test-driven-dev`
+6. **Precheck/reroute**：上游 evidence 冲突时先阻塞并回到 `ahe-workflow-router`

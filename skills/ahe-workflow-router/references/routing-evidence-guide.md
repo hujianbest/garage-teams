@@ -155,7 +155,6 @@ ahe-workflow-router
 -> ahe-tasks-review
 -> 任务真人确认
 -> ahe-test-driven-dev
--> ahe-bug-patterns
 -> ahe-test-review
 -> ahe-code-review
 -> ahe-traceability-review

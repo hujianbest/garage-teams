@@ -67,7 +67,7 @@
 
 ## 下一步
 
-写出唯一下一步动作或 skill，例如：`ahe-test-driven-dev` | `ahe-bug-patterns` | `ahe-regression-gate` | `ahe-completion-gate`
+写出唯一下一步动作或 skill，例如：`ahe-test-driven-dev` | `ahe-regression-gate` | `ahe-completion-gate`
 ```
 
 ## 简化版模板
@@ -109,7 +109,7 @@
 - 修复是否足够小，避免顺手引入无关改动？
 - 修复后的验证是否真的覆盖了原故障路径？
 - 本次修复是否暴露出规格、设计、任务或发布说明已经失真？
-- 修复后是否还需要补缺陷模式排查、追溯性评审或进一步回归？
+- 修复后是否还需要补经验固化、追溯性评审或进一步回归？
 
 ## 常见遗漏
 
@@ -161,9 +161,9 @@
 ## 风险与后续观察
 
 - 剩余风险：其他认证入口可能存在相同空值问题
-- 是否需要后续补强：需要在 `ahe-bug-patterns` 中扩展空值分支检查
+- 是否需要后续补强：需要把“空值分支遗漏”整理成独立 `ahe-bug-patterns` 候选经验
 
 ## 下一步
 
-`ahe-bug-patterns`
+`ahe-regression-gate`
 ```

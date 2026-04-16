@@ -52,9 +52,28 @@ Direct invoke 信号："追溯评审"、"traceability review"、"帮我检查证
 
 读已批准规格、设计、任务计划、实现交接块、test-review/code-review 记录、AGENTS.md、task-progress.md。
 
+### 1.5 Precheck：能否合法进入 review
+
+检查：是否存在稳定可定位的上游工件、实现交接块与上游 review 记录是否一致、route/stage/profile 是否稳定。
+
+- route/stage/证据冲突 → 写最小 blocked precheck record，`reroute_via_router=true`
+- route 明确但缺关键上游工件或稳定实现交接块 → 写最小 blocked record，下一步 `ahe-test-driven-dev`
+- precheck 通过 → 继续正式审查
+
 ### 2. 多维评分与挑战式审查
 
-5 维度 0-10 评分：规格-设计追溯、设计-任务追溯、任务-实现追溯、实现-验证追溯、整体证据链闭合度。任一关键维度 < 6 不得通过。
+6 维度 0-10 评分：规格-设计追溯、设计-任务追溯、任务-实现追溯、实现-验证追溯、漂移与回写义务、整体证据链闭合度。任一关键维度 < 6 不得通过。
+
+按 `references/review-checklist.md` 做正式审查。
+
+每条 finding 必须带：
+- `severity`（`critical` / `important` / `minor`）
+- `classification`（`USER-INPUT` / `LLM-FIXABLE`）
+- `rule_id`（如 `TZ2`、`TZ5`、`ZA3`）
+
+默认分类：
+- `USER-INPUT`：规格 / 设计本身发生冲突、范围变化需走 increment、行为是否正式纳入批准工件仍需真人拍板
+- `LLM-FIXABLE`：trace anchor 缺口、任务/文档未回写、实现交接块与验证记录表述不清、局部证据链可定向补齐
 
 ### 3. 正式 checklist 审查
 
@@ -67,8 +86,8 @@ Direct invoke 信号："追溯评审"、"traceability review"、"帮我检查证
 ### 4. 形成 verdict
 
 - `通过`：证据链完整，可进入 regression gate
-- `需修改`：findings 可定向补齐追溯
-- `阻塞`：核心链路断裂/工件与代码严重不一致
+- `需修改`：findings 可定向补齐追溯 → `ahe-test-driven-dev`
+- `阻塞`：核心链路断裂/工件与代码严重不一致 → `ahe-workflow-router`
 
 ### 5. 写 review 记录
 
@@ -80,12 +99,14 @@ Direct invoke 信号："追溯评审"、"traceability review"、"帮我检查证
 - Review 记录（保存到 `AGENTS.md` 声明的 review record 路径；若无项目覆写，默认使用 `docs/reviews/traceability-review-<task>.md`）
 - 链接矩阵（spec→design→tasks→impl→test 映射）
 - 明确 verdict 和唯一下一步
+- workflow blocker 时显式写明 `reroute_via_router=true`
 
 ## Reference Guide
 
 | 文件 | 用途 |
 |------|------|
-| `references/traceability-review-record-template.md` | 追溯评审记录模板 |
+| `references/review-checklist.md` | traceability review checklist 与 rule IDs |
+| `references/traceability-review-record-template.md` | 追溯评审记录模板与结构化返回契约 |
 
 ## Red Flags
 
@@ -99,4 +120,6 @@ Direct invoke 信号："追溯评审"、"traceability review"、"帮我检查证
 - [ ] review record 已落盘
 - [ ] 链接矩阵已建立
 - [ ] 给出明确结论、findings 和唯一下一步
+- [ ] findings 已标明 severity / classification / rule_id
+- [ ] precheck blocked 时已写明 workflow blocker 和 reroute_via_router
 - [ ] 结论足以让父会话路由

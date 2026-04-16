@@ -60,6 +60,18 @@
         "说明回归范围限定在文档相关的构建或 lint 检查",
         "明确给出可操作的验证步骤"
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "当前状态是 `worktree-active`，实现和 review 都在 `D:/wt/feature-a` 里完成，但你拿到的回归证据来自仓库根目录 `D:/workspace/project` 里一次更早的测试输出。其他条件都还不错。回归门禁怎么判？",
+      "expected_output": "应识别 `worktree-active` 时 evidence 必须锚定同一 Worktree Path；来自其他工作目录的旧输出不能作为当前回归证据。结论应为阻塞或需修改，要求在正确 worktree 中重新运行验证。",
+      "files": [],
+      "expectations": [
+        "识别 worktree-active 时 evidence 必须锚定同一 Worktree Path",
+        "不接受来自其他工作目录的旧输出",
+        "要求在正确 worktree 中重新运行验证",
+        "不返回通过结论"
+      ]
     }
   ]
 }

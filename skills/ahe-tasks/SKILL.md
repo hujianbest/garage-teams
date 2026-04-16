@@ -67,9 +67,9 @@ Direct invoke 信号："把设计拆成任务"、"先别写代码，先梳理任
 
 对每个关键任务，至少明确：
 
-- 任务 ID、目标、前置依赖
+- 任务 ID、目标、Acceptance、前置依赖
 - Ready When、初始队列状态、Selection Priority
-- 触碰工件、验证方式、预期证据、完成条件
+- Files / 触碰工件、Verify、预期证据、完成条件
 - 首个活跃任务或高风险任务的测试设计种子（主要行为 + 关键边界 + 适合 fail-first 的点）
 
 ### 5. 强化依赖与当前活跃任务规则
@@ -90,7 +90,7 @@ Direct invoke 信号："把设计拆成任务"、"先别写代码，先梳理任
 
 交 `ahe-tasks-review` 前确认：
 - 不存在大到无法单任务推进的任务
-- 关键任务有依赖、验证方式、完成条件
+- 关键任务有 Acceptance、Files、Verify、完成条件
 - 关键任务能追溯回规格/设计
 - 风险区域已体现在顺序或验证中
 - 已给出唯一 Current Active Task 选择规则
@@ -106,7 +106,7 @@ Direct invoke 信号："把设计拆成任务"、"先别写代码，先梳理任
 - 里程碑、追溯、工件影响图、测试设计种子、任务队列投影
 - canonical handoff：`ahe-tasks-review`
 
-状态同步：`task-progress.md` Current Stage → "任务计划草稿已完成"，Next Action → `ahe-tasks-review`。
+状态同步：`task-progress.md` `Current Stage` → `ahe-tasks`，`Next Action Or Recommended Skill` → `ahe-tasks-review`。
 
 若计划未达评审门槛，不伪造 handoff；明确写出缺口。
 
@@ -143,7 +143,7 @@ Direct invoke 信号："把设计拆成任务"、"先别写代码，先梳理任
 ## Verification
 
 - [ ] 任务计划已保存到约定路径
-- [ ] 关键任务、依赖、完成条件、验证方式已写清
+- [ ] 关键任务的 Acceptance、Files、Verify、完成条件已写清
 - [ ] 需求/设计追溯与工件影响图已给出
 - [ ] 测试设计种子、Current Active Task 规则、queue projection 已提供
-- [ ] task-progress.md 已同步，下一步为 `ahe-tasks-review`
+- [ ] `task-progress.md` 已按 canonical schema 同步，下一步为 `ahe-tasks-review`

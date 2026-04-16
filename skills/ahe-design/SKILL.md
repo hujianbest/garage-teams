@@ -73,7 +73,7 @@ Handoff：`ahe-design-review`。
 
 读取 `AGENTS.md` 路径映射、`task-progress.md` 当前阶段、已批准规格相关部分。
 
-提取：核心范围、验收标准、约束、非功能需求、集成点、关键需求编号、会影响架构选择的开放问题。
+提取：核心范围、成功标准与验收标准、约束、非功能需求、集成点、关键需求编号、显式 assumptions、会影响架构选择的开放问题。
 
 规格中若有阻塞架构判断的未决问题：
 - 会改变范围/验收标准/约束/接口的 → 回到 `ahe-workflow-router`
@@ -90,6 +90,11 @@ Handoff：`ahe-design-review`。
 ### 3. 提出 2-3 个候选方案并形成结构化决策
 
 对每个候选方案说明：如何工作、适合原因、主要优缺点、对约束和 NFR 的影响、关键风险。
+
+默认应形成一个紧凑的 compare view，而不是只写 prose。至少让 reviewer 能冷读出：
+- 候选方案之间最关键的 trade-offs
+- 选定方案为什么比另外方案更匹配当前轮边界
+- 哪些决策已经稳定，哪些仍待后续澄清
 
 推荐方案时使用 ADR 格式记录关键决策（按 `references/adr-template.md`）。
 
@@ -115,6 +120,12 @@ Handoff：`ahe-design-review`。
 
 对非 trivial 设计，提供 2-3 类最少必要视图（逻辑架构、组件/接口关系、关键交互、数据视图），优先 Mermaid。
 
+默认要显式落下以下文档级语义：
+- 候选方案对比与选定理由
+- 测试与验证策略，尤其是后续 `ahe-test-driven-dev` 的最薄验证路径
+- task planning readiness：哪些边界、接口、风险已经足够支撑 `ahe-tasks`
+- 开放问题的阻塞 / 非阻塞分类
+
 ### 6. 评审前自检与 handoff
 
 交 `ahe-design-review` 前确认：
@@ -124,9 +135,11 @@ Handoff：`ahe-design-review`。
 - [ ] 关键决策用 ADR 格式记录（含可逆性评估）
 - [ ] NFR 逐项落实到具体模块/机制（按 `references/nfr-checklist.md`）
 - [ ] 失败模式覆盖关键路径
+- [ ] task planning readiness 已明确，不把未定设计硬推给 `ahe-tasks`
+- [ ] 开放问题已区分阻塞 / 非阻塞，阻塞项不会污染后续任务拆解
 - [ ] 明确列出排除项和延后项
 - [ ] 设计草稿已保存到约定路径
-- [ ] `task-progress.md` 已更新 Current Stage 和 Next Action
+- [ ] `task-progress.md` 已按 canonical schema 更新 Current Stage 和 Next Action
 
 准备好后，启动独立 reviewer subagent 执行 `ahe-design-review`，不在父会话内联评审。
 
@@ -170,7 +183,7 @@ Handoff：`ahe-design-review`。
 
 - 可评审设计草稿（保存到约定路径）
 - 设计驱动因素、关键决策、边界与最少必要视图
-- `task-progress.md` 更新：Current Stage → 设计草稿已完成、等待评审；Next Action → `ahe-design-review`
+- `task-progress.md` 更新：`Current Stage` → `ahe-design`；`Next Action Or Recommended Skill` → `ahe-design-review`
 
 推荐输出：
 
@@ -188,6 +201,8 @@ Handoff：`ahe-design-review`。
 - [ ] 至少两个候选方案已比较，选定理由已用 ADR 格式记录
 - [ ] NFR 逐项落实到具体模块/机制（不是只在概述中出现）
 - [ ] 关键路径失败模式已分析，缓解策略已给出
-- [ ] `task-progress.md` 已更新 Current Stage 和 Next Action
+- [ ] task planning readiness 已明确，足以进入 `ahe-tasks`
+- [ ] 开放问题已区分阻塞 / 非阻塞，阻塞项已关闭或回上游
+- [ ] `task-progress.md` 已按 canonical schema 更新 Current Stage 和 Next Action
 - [ ] handoff 目标唯一指向 `ahe-design-review`
 - [ ] 设计草稿不含任务拆解或实现伪代码

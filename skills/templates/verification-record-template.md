@@ -12,33 +12,48 @@
 - Scope:
 - Date:
 - Record Path:
+- Worktree Path / Worktree Branch（若适用）:
+
+## Upstream Evidence Consumed
+
+- Implementation Handoff:
+- Review / Gate Records:
+- Task / Progress Anchors:
 
 ## Claim Being Verified
 
 - Claim:
 
-## Command
+## Verification Scope
+
+- Included Coverage:
+- Uncovered Areas:
+
+## Commands And Results
 
 ```text
 <command>
 ```
 
-## Result Summary
-
 - Exit Code:
 - Summary:
 - Notable Output:
 
+## Freshness Anchor
+
+- Why this evidence is for the latest relevant code state:
+- Output Log / Terminal / Artifact:
+
 ## Conclusion
 
-- Conclusion: `pass` | `revise` | `blocked`
-- Recommended Next Step:
+- Conclusion: `通过` | `需修改` | `阻塞`
+- Next Action Or Recommended Skill:
 
-## Evidence Location
+## Scope / Remaining Work Notes
 
-- Output Log:
+- Remaining Task Decision（若适用）:
+- Notes:
+
+## Related Artifacts
+
 - Related Artifacts:
-
-## Notes
-
-- Additional Notes:

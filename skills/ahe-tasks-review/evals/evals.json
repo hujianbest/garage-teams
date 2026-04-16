@@ -39,6 +39,18 @@
         "不会进入 `任务真人确认` 或 `ahe-test-driven-dev`",
         "不会把 `Execution Mode=auto` 解释成可以忽略上游冲突"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "这是一个任务计划评审场景：\n- 已批准规格和设计存在，主题一致\n- 任务已经拆成多个小项，但首个关键任务只有“目标”和“依赖”\n- 该任务没有 `Acceptance`、没有 `Files`、没有 `Verify`\n- 测试设计种子只写了“后续补测试”\n- 不存在 route / stage / 证据链冲突\n\n请作为 `ahe-tasks-review` 给出结论和下一步。",
+      "expected_output": "应识别关键任务合同不完整，尤其缺少 `Acceptance / Files / Verify`，且 test seed 不足以支撑后续 fail-first 实现。结论至少应为 `需修改`，下一步指向 `ahe-tasks`。",
+      "files": [],
+      "expectations": [
+        "识别关键任务缺少 Acceptance",
+        "识别关键任务缺少 Files 与 Verify",
+        "识别“后续补测试”不是足够的测试设计种子",
+        "给出 `需修改` 结论并指向 `ahe-tasks`"
+      ]
     }
   ]
 }

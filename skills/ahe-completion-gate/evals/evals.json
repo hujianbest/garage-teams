@@ -72,6 +72,18 @@
         "说明在 DoD 或 AGENTS.md 要求集成测试时，必须补齐",
         "返回阻塞或需修改，不允许通过"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "这轮验证证据是充分的，当前任务也可以判定为完成；但任务计划里同时存在两个同优先级、都满足 ready 条件的后续任务。你按 completion gate 判断下一步。",
+      "expected_output": "应识别剩余任务候选不唯一，completion gate 不能代替 router 选任务。结论应为阻塞并指向 ahe-workflow-router，而不是擅自挑一个任务或直接 finalize。",
+      "files": [],
+      "expectations": [
+        "识别 next-ready task 候选不唯一",
+        "不擅自替 router 选择下一个任务",
+        "不错误进入 ahe-finalize",
+        "给出阻塞结论并指向 ahe-workflow-router"
+      ]
     }
   ]
 }

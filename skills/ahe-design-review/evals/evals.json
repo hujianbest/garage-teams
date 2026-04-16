@@ -39,6 +39,18 @@
         "不会进入 `设计真人确认` 或 `ahe-tasks`",
         "不会把 `Execution Mode=auto` 解释成可以忽略上游冲突"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "这是一个设计评审场景：\n- 已批准规格存在，主要功能都被覆盖\n- 设计正文直接宣布采用方案 A，但没有列候选方案对比\n- 关键接口只写了高层描述，没有说明哪些边界已经稳定到足以进入任务规划\n- 测试策略只写了“后续补测试”\n- 不存在 route / stage / 证据链冲突\n\n请作为 `ahe-design-review` 给出结论和下一步。",
+      "expected_output": "应识别这不是可直接通过的设计：缺少候选方案 trade-off、task planning readiness 不足、测试策略过弱。结论至少应为 `需修改`，下一步指向 `ahe-design`。",
+      "files": [],
+      "expectations": [
+        "识别缺少候选方案对比或 trade-off 说明",
+        "识别 task planning readiness 不足，不能安全进入 ahe-tasks",
+        "识别测试策略过弱，不应只写“后续补测试”",
+        "给出 `需修改` 结论并指向 `ahe-design`"
+      ]
     }
   ]
 }

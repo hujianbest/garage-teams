@@ -29,25 +29,27 @@ Deferred backlog（若存在）：`docs/specs/YYYY-MM-DD-<topic>-deferred.md`
 ## 1. 背景与问题陈述
 ## 2. 目标与成功标准
 ## 3. 用户角色与关键场景
-## 4. 范围
+## 4. 当前轮范围与关键边界
 ## 5. 范围外内容
-## 6. 术语与定义（按需）
-## 7. 功能需求
-## 8. 非功能需求
-## 9. 外部接口与依赖（按需）
-## 10. 约束
-## 11. 假设（按需）
-## 12. 开放问题
+## 6. 功能需求
+## 7. 非功能需求
+## 8. 外部接口与依赖（按需）
+## 9. 约束与兼容性要求
+## 10. 假设与失效影响（按需）
+## 11. 开放问题（区分阻塞 / 非阻塞）
+## 12. 术语与定义（按需）
 ```
 
 ## 编写要求
 
 - 背景描述为什么要做，不写成方案介绍
+- 目标与成功标准要具体、可判断，避免只写抽象愿景
+- 范围章节应显式区分当前轮边界与后续增量边界
 - 功能需求描述可观察行为，而不是实现手段
 - 非功能需求描述可判断条件，而不是空泛形容词
 - 约束描述硬性限制
 - 假设要写明失效风险或影响
-- 开放问题只能保留不会阻塞评审的问题
+- 开放问题要标出阻塞 / 非阻塞；阻塞项在送评审前应关闭
 - 若存在 deferred backlog，应在范围外内容中明确指向
 - 不要为追求形式统一而破坏项目已声明的模板结构
 
@@ -55,5 +57,5 @@ Deferred backlog（若存在）：`docs/specs/YYYY-MM-DD-<topic>-deferred.md`
 
 规格草稿交评审后，应同步：
 - 规格文档状态（`状态: 草稿`）
-- `task-progress.md` 中的 `Current Stage`
-- `task-progress.md` 中的 `Next Action Or Recommended Skill`
+- `task-progress.md` 中的 `Current Stage: ahe-specify`
+- `task-progress.md` 中的 `Next Action Or Recommended Skill: ahe-spec-review`

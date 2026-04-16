@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "User request:\nauto mode，completion gate 已经通过，继续把当前任务收尾，不用等我确认。\n\nProject snapshot:\n- `Workflow Profile`: full.\n- `Execution Mode`: auto.\n- `Current Active Task`: T24.\n- The current task already has fresh `ahe-bug-patterns`, `ahe-test-review`, `ahe-code-review`, `ahe-traceability-review`, `ahe-regression-gate`, and `ahe-completion-gate` records that allow finalize.\n- The task plan still contains approved unfinished tasks after T24, so this is task closeout, not end-of-workflow.\n- The next active task has not yet been reselected.\n\nAs `ahe-finalize`, decide how the closeout state and next action should be written.",
+      "prompt": "User request:\nauto mode，completion gate 已经通过，继续把当前任务收尾，不用等我确认。\n\nProject snapshot:\n- `Workflow Profile`: full.\n- `Execution Mode`: auto.\n- `Current Active Task`: T24.\n- The current task already has fresh `ahe-test-review`, `ahe-code-review`, `ahe-traceability-review`, `ahe-regression-gate`, and `ahe-completion-gate` records that allow finalize.\n- The task plan still contains approved unfinished tasks after T24, so this is task closeout, not end-of-workflow.\n- The next active task has not yet been reselected.\n\nAs `ahe-finalize`, decide how the closeout state and next action should be written.",
       "expected_output": "Finalize should close out the current task but write `Next Action Or Recommended Skill: ahe-workflow-router`, because remaining approved tasks still exist and the next active task must be reselected by router rather than guessed inside finalize. It should also sync `Current Stage` to `ahe-workflow-router`, avoid claiming the workflow is complete, and avoid keeping the finished task as the active task.",
       "files": [],
       "expectations": [
@@ -17,7 +17,7 @@
     },
     {
       "id": 2,
-      "prompt": "User request:\nauto mode，completion gate 已经通过，继续正式收尾当前工作周期。\n\nProject snapshot:\n- `Workflow Profile`: full.\n- `Execution Mode`: auto.\n- `Current Active Task`: T32.\n- The current task already has fresh `ahe-bug-patterns`, `ahe-test-review`, `ahe-code-review`, `ahe-traceability-review`, `ahe-regression-gate`, and `ahe-completion-gate` records that allow finalize.\n- The task plan has no remaining approved unfinished tasks after T32.\n- This closeout should mark the end of the current workflow cycle.\n\nAs `ahe-finalize`, decide how the closeout state and next action should be written.",
+      "prompt": "User request:\nauto mode，completion gate 已经通过，继续正式收尾当前工作周期。\n\nProject snapshot:\n- `Workflow Profile`: full.\n- `Execution Mode`: auto.\n- `Current Active Task`: T32.\n- The current task already has fresh `ahe-test-review`, `ahe-code-review`, `ahe-traceability-review`, `ahe-regression-gate`, and `ahe-completion-gate` records that allow finalize.\n- The task plan has no remaining approved unfinished tasks after T32.\n- This closeout should mark the end of the current workflow cycle.\n\nAs `ahe-finalize`, decide how the closeout state and next action should be written.",
       "expected_output": "Finalize should mark the workflow as complete and leave `Next Action Or Recommended Skill` empty or at the project's null convention, because no approved tasks remain. It should not bounce back to `ahe-workflow-router` when there is no remaining work to reselect.",
       "files": [],
       "expectations": [

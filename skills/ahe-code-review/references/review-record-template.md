@@ -1,0 +1,65 @@
+# Code Review Record Template
+
+## 保存路径
+
+默认：`docs/reviews/code-review-<task>.md`
+
+若 `AGENTS.md` 声明了等价路径，按映射保存。
+
+## 记录结构
+
+```markdown
+## 结论
+
+通过 | 需修改 | 阻塞
+
+## 发现项
+
+- [critical|important|minor][USER-INPUT|LLM-FIXABLE][CR2|CR5|CA3] 问题
+
+## 代码风险与薄弱项
+
+- 条目
+
+## 下一步
+
+- `通过`：`ahe-traceability-review`
+- `需修改`：`ahe-test-driven-dev`
+- `阻塞`：`ahe-test-driven-dev` 或 `ahe-workflow-router`
+```
+
+## 结构化返回 JSON
+
+正常返回示例：
+
+```json
+{
+  "conclusion": "需修改",
+  "next_action_or_recommended_skill": "ahe-test-driven-dev",
+  "record_path": "实际写入的 review 记录路径",
+  "key_findings": ["[important][LLM-FIXABLE][CR2] 通知逻辑耦合在 handler 层，偏离已批准边界"],
+  "needs_human_confirmation": false,
+  "reroute_via_router": false,
+  "finding_breakdown": [
+    {
+      "severity": "important",
+      "classification": "LLM-FIXABLE",
+      "rule_id": "CR2",
+      "summary": "通知逻辑耦合在 handler 层，偏离已批准边界"
+    }
+  ]
+}
+```
+
+Precheck blocked 示例：
+
+```json
+{
+  "conclusion": "阻塞",
+  "next_action_or_recommended_skill": "ahe-workflow-router",
+  "record_path": "实际写入的 review 记录路径",
+  "key_findings": ["code review 输入证据冲突：实现交接块与上游状态不一致"],
+  "needs_human_confirmation": false,
+  "reroute_via_router": true
+}
+```

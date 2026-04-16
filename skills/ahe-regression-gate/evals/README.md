@@ -9,3 +9,4 @@
 3. **Fresh evidence**：不接受历史运行结果或口头声称
 4. **Profile-aware 范围**：根据 profile 调整回归范围
 5. **Coverage 守卫**：覆盖率低于 AGENTS.md 门槛是回归问题
+6. **Worktree anchoring**：`worktree-active` 时 evidence 必须锚定同一 Worktree Path
