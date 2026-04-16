@@ -5,7 +5,7 @@
       "id": 1,
       "prompt": "需求规格已经批准。请给这个审批系统做实现设计，但先比较下两种方案，不要直接开写任务。",
       "expected_output": "基于已批准规格提出至少两个可行方案，说明取舍，并形成设计草稿交给 ahe-design-review。",
-      "files": [],
+      "files": ["fixtures/minimal-approved-spec.json"],
       "expectations": [
         "基于已批准规格而不是重新澄清需求",
         "至少给出两个候选方案",

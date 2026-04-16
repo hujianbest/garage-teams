@@ -1,11 +1,19 @@
 ---
 name: ahe-completion-gate
-description: 执行正式完成门禁。用 fresh completion evidence 判断当前任务是否可宣告完成，给出 canonical 下一步。若上游证据链缺失，先回到 ahe-workflow-router。
+description: 适用于 regression gate 之后需判断任务完成走向、确认任务可宣告完成、用户要求\"能不能算完成\"的场景。不适用于缺回归记录/实现交接块需补齐（→ ahe-regression-gate）、需状态收尾（→ ahe-finalize）、阶段不清（→ ahe-workflow-router）。
 ---
 
 # AHE 完成门禁
 
 在宣告任务完成前，确认有足够、最新且与当前任务同范围的证据。不是 regression gate（广义回归），也不是 finalize（文档/状态收尾）。判断"当前 task 完成是否成立"，不自动等同于"整个 workflow 已完成"。
+
+## Methodology
+
+本 skill 融合以下已验证方法：
+
+- **Definition of Done (Scrum)**: 任务完成不是主观感受，而是所有验收条件满足、所有证据产生、所有状态同步后的客观判断。
+- **Evidence Bundle Pattern**: 完成判断要求完整证据束（reviews + gates + 实现交接块），缺一不可。
+- **Profile-Aware Rigor**: full/standard/lightweight 三级对应的证据要求不同，lightweight 不降低质量标准，只是缩小验证范围。
 
 ## When to Use
 
@@ -65,6 +73,14 @@ full/standard 记录缺失/过旧 → `阻塞`。
 记录保存到 `AGENTS.md` 声明的 verification 路径；若无项目覆写，默认使用 `docs/verification/completion-<task>.md`。结构包含：结论、已消费上游结论、上游证据矩阵、完成宣告范围、剩余任务判断、已验证结论、证据、覆盖边界、明确不在范围内的项、下一步。
 
 在 task-progress.md 写回 canonical Next Action。
+
+## 和其他 Skill 的区别
+
+| Skill | 区别 |
+|-------|------|
+| `ahe-regression-gate` | 判断回归面健康度（修好了本地但旁边没坏）；本 skill 判断当前任务可否宣告完成 |
+| `ahe-finalize` | 关闭工作周期、更新 release notes、产出 handoff pack；本 skill 只做任务完成判断 |
+| `ahe-workflow-router` | 编排/路由/阶段判断；本 skill 只做完成门禁 |
 
 ## Red Flags
 

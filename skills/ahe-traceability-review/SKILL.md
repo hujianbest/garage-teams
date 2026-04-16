@@ -1,17 +1,44 @@
 ---
 name: ahe-traceability-review
-description: 评审规格→设计→任务→实现→测试/验证的证据链追溯完整性。防止"代码能跑但不再匹配已批准工件"。运行在 ahe-code-review 之后。
+description: 适用于 code review 通过后判断追溯完整性、用户显式要求追溯评审的场景。不适用于评审代码质量（→ ahe-code-review）、评审测试质量（→ ahe-test-review）、阶段不清（→ ahe-workflow-router）。
 ---
 
 # AHE Traceability Review
 
 评审证据链追溯完整性：spec→design→tasks→impl→test/verification→status。防止"代码能跑但不再匹配已批准工件"。运行在 `ahe-code-review` 之后，决定是否可进入 `ahe-regression-gate`。
 
+## Methodology
+
+本 skill 融合以下已验证方法。每个方法在 Workflow 中有对应的落地步骤。
+
+| 方法 | 核心原则 | 来源 | 落地步骤 |
+|------|----------|------|----------|
+| **End-to-End Traceability** | 检查从需求到实现的完整追溯链，确保每条需求可通过设计、任务、实现、验证四层逐级追溯 | IEEE 830-1993 / ISO 26550 需求追溯实践 | 步骤 2 — 多维评分；步骤 3 — checklist 审查 |
+| **Zigzag Validation** | 每条 FR 前向追溯到设计决策，设计决策后向追溯到需求——双向验证防止断链 | 项目化实践（需求追溯通用方法） | 步骤 3.1/3.2 — 规格-设计/设计-任务双向验证 |
+| **Impact Analysis** | 发现不一致时判断影响范围是局部还是需要回流到上游节点 | 项目化实践（变更影响分析通用方法） | 步骤 4 — verdict；步骤 5 — review 记录 |
+
 ## When to Use
 
-适用：code review 通过后判断追溯完整性、用户要求追溯评审。
+适用：
+- code review 通过后判断追溯完整性
+- 用户显式要求追溯评审
 
-不适用：评审代码质量 → `ahe-code-review`；评审测试质量 → `ahe-test-review`；阶段不清 → `ahe-workflow-router`。
+不适用 → 改用：
+- 评审代码质量 → `ahe-code-review`
+- 评审测试质量 → `ahe-test-review`
+- 阶段不清 → `ahe-workflow-router`
+
+Direct invoke 信号："追溯评审"、"traceability review"、"帮我检查证据链完整性"。
+
+## 和其他 Skill 的区别
+
+| 场景 | 用 ahe-traceability-review | 不用 |
+|------|---------------------------|------|
+| 评审规格→设计→任务→实现的追溯链 | ✅ | |
+| 评审代码质量 | | → `ahe-code-review` |
+| 评审测试质量 | | → `ahe-test-review` |
+| 评审任务计划质量 | | → `ahe-tasks-review` |
+| 阶段不清/证据冲突 | | → `ahe-workflow-router` |
 
 ## Hard Gates
 
@@ -46,6 +73,19 @@ description: 评审规格→设计→任务→实现→测试/验证的证据链
 ### 5. 写 review 记录
 
 保存到 `AGENTS.md` 声明的 review record 路径；若无项目覆写，默认使用 `docs/reviews/traceability-review-<task>.md`。参考 `references/traceability-review-record-template.md`。
+
+## Output Contract
+
+完成时产出：
+- Review 记录（保存到 `AGENTS.md` 声明的 review record 路径；若无项目覆写，默认使用 `docs/reviews/traceability-review-<task>.md`）
+- 链接矩阵（spec→design→tasks→impl→test 映射）
+- 明确 verdict 和唯一下一步
+
+## Reference Guide
+
+| 文件 | 用途 |
+|------|------|
+| `references/traceability-review-record-template.md` | 追溯评审记录模板 |
 
 ## Red Flags
 

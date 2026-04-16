@@ -13,7 +13,9 @@
 - 当前轮范围和“以后再做”的能力混在同一条需求里
 - 用户同时提到了 MVP、后续版本、增量补做、第二期能力
 
-## G1-G6 Oversized Requirement Heuristics
+## G1-G6 Oversized Requirement Heuristics (INVEST 对应)
+
+以下启发式规则对应 INVEST 质量标准中的 **Small**（足够小）和 **Independent**（独立）维度。当需求违反这两个维度时，触发拆分。
 
 | ID | Heuristic | Detection Signal | Typical Action |
 |---|---|---|---|
@@ -64,7 +66,9 @@
 - **只改表达，不改范围** -> 可直接修
 - **一旦改范围、优先级或延后归属** -> 先问用户
 
-## Scope-Fit Criteria
+## Scope-Fit Criteria (INVEST Valuable + Negotiable 对应)
+
+以下判断标准对应 INVEST 中的 **Valuable**（对当前轮有价值）和 **Negotiable**（可协商是否纳入本轮）维度。
 
 | Criterion | Keep In Current Round | Defer To Later |
 |---|---|---|

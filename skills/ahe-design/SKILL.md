@@ -1,11 +1,21 @@
 ---
 name: ahe-design
-description: 产出可评审实现设计。适用于需求规格已批准、设计尚未批准，且当前需要在任务规划或编码前明确架构、模块边界、关键接口、数据流、技术决策和测试策略的场景；若规格仍未稳定、当前阶段不清或仍需 authoritative workflow routing，先回到 `ahe-workflow-router`。
+description: 适用于需求规格已批准但设计尚未批准、或设计评审返回需修改/阻塞需修订的场景。不适用于规格仍是草稿/待批准（→ ahe-specify）、设计已批准需拆任务（→ ahe-tasks）、仅需执行设计评审（→ ahe-design-review）、阶段不清或证据冲突（→ ahe-workflow-router）。
 ---
 
 # AHE 设计
 
 把已批准规格转化为可评审的设计文档，说明"如何"实现，让后续任务规划与实现不再靠猜测推进。
+
+## Methodology
+
+本 skill 融合以下已验证方法：
+
+- **ADR (Architecture Decision Records, Nygard format)**: 所有影响后续任务的关键决策用 ADR 格式记录，包含上下文、决策、后果与可逆性评估。详见 `references/adr-template.md`。
+- **C4 Model (Context-Container-Component-Code)**: 架构视图按 Context → Container → Component 层次递进，提供最少必要视图（逻辑架构、组件关系、关键交互），优先 Mermaid。
+- **Risk-Driven Architecture (Fairbanks)**: 架构投入按风险驱动——先识别哪些设计决策风险最高，对高风险决策投入更多分析和备选方案比较，而非均匀铺开。
+- **YAGNI + Complexity Matching**: 决策必须由当前已确认需求驱动；架构复杂度匹配团队规模和系统规模（solo + 本地运行不引入微服务/消息队列）。
+- **ARC42 (partial)**: 设计文档结构覆盖 ARC42 核心维度：约束、决策、视图、风险/技术债务、 Glossary（通过 spec-template 衔接）。
 
 ## When to Use
 
@@ -57,7 +67,7 @@ Handoff：`ahe-design-review`。
 - 在没理解需求前就开始画架构图
 - 跳过安全性和隐私考量
 
-## Core Workflow
+## Workflow
 
 ### 1. 阅读已批准规格并提取设计驱动因素
 
@@ -145,6 +155,15 @@ Handoff：`ahe-design-review`。
 - 没分析关键路径失败模式
 - handoff 缺失却声称"设计可以直接往下走"
 
+## 和其他 Skill 的区别
+
+| 易混淆 skill | 区别 |
+|-------------|------|
+| `ahe-tasks` | 设计阶段回答"如何实现"；任务阶段回答"分几步做"。设计未批准前不拆任务。 |
+| `ahe-design-review` | 本 skill 负责起草设计；design-review 负责独立评审。不能自审自交。 |
+| `ahe-specify` | specify 回答"做什么"；design 回答"如何做"。规格未稳定时不进入设计。 |
+| `ahe-workflow-router` | router 负责阶段判断和路由；本 skill 假设阶段已确定为"设计"。 |
+
 ## Output Contract
 
 完成时产出：
@@ -162,3 +181,13 @@ Handoff：`ahe-design-review`。
 ```
 
 如果设计稿仍未达评审门槛，不伪造 handoff；明确还缺什么，继续修订。
+
+## Verification
+
+- [ ] 设计草稿已保存到约定路径（非规格文件、非任务文件）
+- [ ] 至少两个候选方案已比较，选定理由已用 ADR 格式记录
+- [ ] NFR 逐项落实到具体模块/机制（不是只在概述中出现）
+- [ ] 关键路径失败模式已分析，缓解策略已给出
+- [ ] `task-progress.md` 已更新 Current Stage 和 Next Action
+- [ ] handoff 目标唯一指向 `ahe-design-review`
+- [ ] 设计草稿不含任务拆解或实现伪代码

@@ -1,11 +1,22 @@
 ---
 name: ahe-tasks
-description: 产出可评审任务计划。适用于规格与设计都已批准，需要在编码前明确里程碑、任务顺序、依赖、完成条件的场景。若上游未稳定，先回到 ahe-workflow-router。
+description: 适用于规格与设计都已批准、需要在编码前产出可评审任务计划的场景。不适用于规格/设计未稳定（→ ahe-specify / ahe-design）、任务计划已批准需进入实现（→ ahe-test-driven-dev）、或阶段不清（→ ahe-workflow-router）。
 ---
 
 # AHE 任务拆解
 
 创建任务计划，把已批准设计转化为可执行、可追溯、可验证的工作单元，准备到可交给 `ahe-tasks-review` 的状态。
+
+## Methodology
+
+本 skill 融合以下已验证方法。每个方法在 Workflow 中有对应的落地步骤。
+
+| 方法 | 核心原则 | 来源 | 落地步骤 |
+|------|----------|------|----------|
+| **WBS (Work Breakdown Structure)** | 自顶向下将设计拆解为可管理的任务层级，每个任务有明确范围、不重叠、可分配 | PMBOK, PMI | 步骤 3 — 定义里程碑；步骤 4 — 拆解任务单元 |
+| **INVEST Criteria** | 任务粒度检查遵循 Independent/Negotiable/Valuable/Estimable/Small/Testable 六维度 | Bill Wake, 2003；敏捷用户故事实践 | 步骤 4 — 拆解粒度；步骤 7 — 自检 |
+| **Dependency Graph + Critical Path** | 显式建模任务间依赖关系，识别关键路径，确保执行顺序可验证 | 项目化实践（项目计划通用方法） | 步骤 5 — 依赖与活跃任务规则 |
+| **Definition of Done (Scrum)** | 每个任务具备可判断的完成条件 | Scrum Guide, Schwaber & Sutherland | 步骤 4 — 完成条件；步骤 7 — 自检 |
 
 ## When to Use
 
@@ -100,6 +111,17 @@ Direct invoke 信号："把设计拆成任务"、"先别写代码，先梳理任
 若计划未达评审门槛，不伪造 handoff；明确写出缺口。
 
 注意：只有 review 通过且 approval step 完成后，才进入 `ahe-test-driven-dev`。
+
+## 和其他 Skill 的区别
+
+| 场景 | 用 ahe-tasks | 不用 |
+|------|-------------|------|
+| 规格与设计已批准，需任务拆解 | ✅ | |
+| 规格未稳定/未批准 | | → `ahe-specify` / `ahe-spec-review` |
+| 设计未稳定/未批准 | | → `ahe-design` / `ahe-design-review` |
+| 任务计划已批准，需进入实现 | | → `ahe-test-driven-dev` |
+| 评审任务计划质量 | | → `ahe-tasks-review` |
+| 阶段不清/证据冲突 | | → `ahe-workflow-router` |
 
 ## Red Flags
 

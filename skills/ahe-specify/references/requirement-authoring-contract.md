@@ -21,9 +21,9 @@
 | `Priority` | `FR` / `NFR` / `EXC` | 当前轮优先级 | 若项目未声明其它体系，默认使用 `Must` / `Should` / `Could` / `Won't` |
 | `Source / Trace Anchor` | `FR` / `NFR` / `CON` / `IFR` | 这条需求来自哪里 | 必须能回指到用户请求、上游工件、评审 findings 或外部约束 |
 
-## Statement Patterns
+## Statement Patterns (EARS — Mavin et al., REFSQ 2009)
 
-如果项目未声明固定需求句式，默认使用与 EARS 等价的中文模式：
+如果项目未声明固定需求句式，默认使用 EARS (Easy Approach to Requirements Syntax) 的中文等价模式：
 
 - 常驻行为：`系统必须 <持续成立的能力或约束>`
 - 事件触发：`当 <触发条件> 时，系统必须 <可观察结果>`
@@ -33,14 +33,18 @@
 
 这些句式的目标是把行为、触发条件、状态和异常拆清楚，而不是强迫统一语感。若项目已有更自然的中文写法，只要语义同样清晰，也可保留。
 
-## Acceptance Criteria Rules
+## Acceptance Criteria Rules (BDD — Dan North, 2006)
+
+验收标准默认采用 BDD (Behavior-Driven Development) 的 Given/When/Then 格式，建立需求到测试的可追溯桥梁。
 
 - 每条核心 `FR` 至少有一个正向验收标准。
 - 对关键失败路径、权限差异、边界输入、并发冲突、超时或延迟结果，至少补一条对应验收口径。
 - 验收标准要能形成明确的通过 / 不通过判断，不写“用户体验良好”“处理足够快”这类无阈值表达。
 - 一个验收标准只验证一个主要行为；若同一条标准同时覆盖多个独立行为，优先回到粒度检查。
 
-## Priority Rules
+## Priority Rules (MoSCoW — DSDM Consortium, 1994)
+
+优先级默认使用 MoSCoW 方法（Must/Should/Could/Won't）驱动范围收敛。
 
 - 若 `AGENTS.md` 或项目模板声明了固定优先级体系，优先使用该体系。
 - 若没有显式体系，默认使用 `Must` / `Should` / `Could` / `Won't`。

@@ -1,6 +1,6 @@
 ---
 name: ahe-test-driven-dev
-description: AHE 唯一实现入口。适用于任务计划获批后的单任务实现、受控 hotfix 修复实现、review/gate 回流修订。负责锁定活跃任务、完成测试设计 approval step、执行有效 TDD、写回 fresh evidence 与实现交接块。
+description: 适用于任务计划获批后的单任务实现、受控 hotfix 修复实现、review/gate 回流修订。不适用于任务计划未批准（→ 上游）、hotfix 无复现路径（→ ahe-hotfix）、需并行多任务（→ ahe-workflow-router）。
 ---
 
 # AHE 测试驱动开发与实现入口
@@ -8,6 +8,17 @@ description: AHE 唯一实现入口。适用于任务计划获批后的单任务
 AHE workflow family 唯一实现入口。把单个活跃任务从"准备实现"推进到"已写回新鲜证据与 canonical 下一步"。不是任务循环控制器——跨 task 切换由 `ahe-workflow-router` 决定。
 
 三层职责：1) 唯一实现入口 2) TDD 执行入口 3) 向 review/gate 输出证据与 handoff 的交接入口。
+
+## Methodology
+
+本 skill 融合以下已验证方法。每个方法在 Workflow 中有对应的落地步骤。
+
+| 方法 | 核心原则 | 来源 | 落地步骤 |
+|------|----------|------|----------|
+| **TDD (Test-Driven Development)** | 严格遵循 Red → Green → Refactor 循环 | Kent Beck, 2002 "Test-Driven Development: By Example" | 步骤 4 — 执行有效 TDD |
+| **Walking Skeleton** | 优先建立最薄端到端可运行路径 | Alistair Cockburn, "Software Development as a Cooperative Game" | 步骤 4 — TDD 中优先走通关键路径 |
+| **Test Design Before Implementation** | 在 Red-Green-Refactor 前完成测试设计 approval step | 项目化实践（AHE 质量链约定） | 步骤 2 — 产出测试设计；步骤 3 — approval step |
+| **Fresh Evidence Principle** | 所有验证证据必须在当前会话内产生 | 项目化实践（AHE 证据链约定） | 步骤 4 — 有效 RED/GREEN；步骤 5 — 交接块 |
 
 ## When to Use
 
@@ -90,6 +101,19 @@ Next Action 用 canonical skill ID：full/standard 通常 → `ahe-bug-patterns`
 
 明确回流来源 → 只修当前活跃任务的相关 findings → 若改行为预期需重做测试设计确认 → 修订后写新 fresh evidence → 不从头重走质量链。
 
+## 和其他 Skill 的区别
+
+| 场景 | 用 ahe-test-driven-dev | 不用 |
+|------|----------------------|------|
+| 任务计划获批后的单任务 TDD 实现 | ✅ | |
+| review/gate 回流修订 | ✅ | |
+| 任务计划未批准 | | → 上游（`ahe-tasks` / `ahe-workflow-router`） |
+| 热修复但无复现路径 | | → `ahe-hotfix` |
+| 需并行多任务 | | → `ahe-workflow-router` |
+| 评审测试质量 | | → `ahe-test-review` |
+| 评审代码质量 | | → `ahe-code-review` |
+| 评审追溯完整性 | | → `ahe-traceability-review` |
+
 ## Red Flags
 
 - 并行处理多个任务
@@ -105,6 +129,7 @@ Next Action 用 canonical skill ID：full/standard 通常 → `ahe-bug-patterns`
 | 文件 | 用途 |
 |------|------|
 | `references/cpp-gtest-deep-guide.md` | C++/GoogleTest/CMake 栈深度参考 |
+| `references/testing-anti-patterns.md` | C++ 测试反模式（mock 误用、测试专用方法等） |
 | `docs/ahe-worktree-isolation.md` | 当前 skill pack 共享的 Worktree 隔离操作指南；若 `AGENTS.md` 声明项目等价路径，优先遵循 |
 
 C++/GoogleTest 项目且需要语言级细节时才加载深度参考。非 C++ 也必须遵守同一实现契约。

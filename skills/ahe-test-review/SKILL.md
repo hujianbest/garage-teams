@@ -1,17 +1,46 @@
 ---
 name: ahe-test-review
-description: 评审当前任务的测试资产。判断 fail-first 有效性、行为覆盖、风险覆盖是否足以支持进入 ahe-code-review。防止浅层"绿测"冒充可信验证。
+description: 适用于 bug-patterns 完成后判断测试质量、code review 前的测试评审、用户显式要求评审测试的场景。不适用于写/修测试（→ ahe-test-driven-dev）、评审代码（→ ahe-code-review）、阶段不清（→ ahe-workflow-router）。
 ---
 
 # AHE Test Review
 
 评审测试资产，判断 fail-first、行为覆盖和风险覆盖是否足以支持 `ahe-code-review`。运行在 `ahe-bug-patterns` 之后。
 
+## Methodology
+
+本 skill 融合以下已验证方法。每个方法在 Workflow 中有对应的落地步骤。
+
+| 方法 | 核心原则 | 来源 | 落地步骤 |
+|------|----------|------|----------|
+| **Fail-First Validation (TDD Quality Gate)** | 验证测试确实先失败再通过，防止"天生绿色"的无效测试 | 项目化实践（TDD 质量门禁） | 步骤 2 — 评分；步骤 3.1 — fail-first 审查 |
+| **Coverage Categories (Crispin/Gregory)** | 从行为覆盖、风险覆盖、边界覆盖等多维度评估测试质量 | Crispin & Gregory, "Agile Testing", 2009 | 步骤 2 — 评分；步骤 3.2/3.3 — 行为/风险覆盖 |
+| **Bug-Pattern-Driven Testing** | 测试覆盖必须回应 bug-patterns 识别的风险 | 项目化实践（AHE 质量链约定） | 步骤 3.3 — 风险覆盖 |
+| **Structured Walkthrough** | 多维度评分量化判断，防止印象式评审 | 项目化实践（评审通用方法） | 步骤 2 — 多维评分；步骤 4 — verdict |
+
 ## When to Use
 
-适用：bug-patterns 完成后判断测试质量、code review 前的测试评审、用户要求 test review。
+适用：
+- bug-patterns 完成后判断测试质量
+- code review 前的测试评审
+- 用户显式要求 test review
 
-不适用：写/修测试 → `ahe-test-driven-dev`；评审代码 → `ahe-code-review`；阶段不清 → `ahe-workflow-router`。
+不适用 → 改用：
+- 写/修测试 → `ahe-test-driven-dev`
+- 评审代码 → `ahe-code-review`
+- 阶段不清 → `ahe-workflow-router`
+
+Direct invoke 信号："review 测试"、"test review"、"帮我审一下测试质量"。
+
+## 和其他 Skill 的区别
+
+| 场景 | 用 ahe-test-review | 不用 |
+|------|-------------------|------|
+| 评审测试质量和 fail-first 有效性 | ✅ | |
+| 写/修测试 | | → `ahe-test-driven-dev` |
+| 评审代码质量 | | → `ahe-code-review` |
+| 评审追溯完整性 | | → `ahe-traceability-review` |
+| 阶段不清/证据冲突 | | → `ahe-workflow-router` |
 
 ## Hard Gates
 
@@ -50,6 +79,13 @@ Findings 带 severity（critical/important/minor）和分类（USER-INPUT/LLM-FI
 保存到 `AGENTS.md` 声明的 review record 路径；若无项目覆写，默认使用 `docs/reviews/test-review-<task>.md`。若项目无专用格式，可使用当前 skill pack 的共享模板 `templates/review-record-template.md`。
 
 回传结构化摘要给父会话时，遵循当前 skill pack 中 `ahe-workflow-router/references/reviewer-return-contract.md`：`next_action_or_recommended_skill` 只写一个 canonical 值；workflow blocker 必须显式写 `reroute_via_router=true`。
+
+## Output Contract
+
+完成时产出：
+- Review 记录（保存到 `AGENTS.md` 声明的 review record 路径；若无项目覆写，默认使用 `docs/reviews/test-review-<task>.md`）
+- 结构化摘要含 `record_path`、`next_action_or_recommended_skill`
+- workflow blocker 时显式写明 `reroute_via_router=true`
 
 ## Reference Guide
 

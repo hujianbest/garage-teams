@@ -1,6 +1,6 @@
 ---
 name: using-ahe-workflow
-description: AHE workflow family 的公开入口层。用于新会话发现、/ahe-* 命令解释、判断 direct invoke vs route-first。若需要 authoritative routing，交给 ahe-workflow-router。
+description: 适用于新会话不确定从哪进入 AHE workflow、用户用 /ahe-* 命令表达意图、需判断 direct invoke 还是 route-first 的场景。不适用于 runtime 恢复编排（→ ahe-workflow-router）、已在 leaf skill 内部（→ 继续当前 skill）。
 ---
 
 # Using AHE Workflow
@@ -11,6 +11,16 @@ AHE workflow family 的 **public shell**。帮助你决定：
 - `route-first`：阶段/profile/证据不稳定，交给 `ahe-workflow-router`
 
 本 skill 是 public entry，不是 runtime handoff。不替代 router 的 authoritative routing。
+
+## Methodology
+
+本 skill 融合以下已验证方法。每个方法在 Workflow 中有对应的落地步骤。
+
+| 方法 | 核心原则 | 来源 | 落地步骤 |
+|------|----------|------|----------|
+| **Front Controller Pattern** | 作为统一入口点，解析用户意图后分发到对应处理节点 | GoF 设计模式 / Martin Fowler, "Patterns of Enterprise Application Architecture" | 步骤 1 — 判断 entry vs recovery；步骤 7 — 正确结束 |
+| **Evidence-Based Dispatch** | 通过读取 task-progress.md 和工件状态判断 entry vs recovery | 项目化实践（AHE 核心约定） | 步骤 1 — entry vs runtime recovery；步骤 4 — direct invoke 判断 |
+| **Separation of Concerns** | 入口层只负责意图识别和分发，不做 authoritative routing 或状态修改 | 项目化实践（分层架构原则） | 步骤 7 — 只输出两类结果 |
 
 ## When to Use
 
@@ -74,6 +84,15 @@ runtime recovery（交给 router）：review/gate 刚完成、evidence 冲突、
 3. `Why`：1-2 条最关键证据
 
 不回放 entry matrix、不重讲分层历史、不展开不相关的备选。route-first 时只说明"为什么不能 direct invoke"然后立即转交。
+
+## 和其他 Skill 的区别
+
+| 场景 | 用 using-ahe-workflow | 不用 |
+|------|----------------------|------|
+| 新会话入口、意图识别、direct vs route | ✅ | |
+| runtime 恢复编排、profile/mode 判断 | | → `ahe-workflow-router` |
+| 已在 leaf skill 内部 | | → 继续当前 skill |
+| 产品 thesis 层面 | | → `using-ahe-product-workflow` |
 
 ## Red Flags
 
