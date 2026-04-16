@@ -126,12 +126,13 @@ def _status(garage_root: Path) -> None:
         print(f"Most recent experience: {recent_experience}")
 
 
-def _run(garage_root: Path, skill_name: str) -> None:
+def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> None:
     """Run a Garage skill and record the experience.
 
     Args:
         garage_root: Path to the project root
         skill_name: Name of the skill to invoke
+        timeout: Timeout in seconds for Claude Code execution
     """
     garage_dir = garage_root / ".garage"
 
@@ -151,7 +152,7 @@ def _run(garage_root: Path, skill_name: str) -> None:
     )
 
     # Create adapter and invoke the skill
-    adapter = ClaudeCodeAdapter(garage_root)
+    adapter = ClaudeCodeAdapter(garage_root, timeout=timeout)
 
     start_time = time.time()
     outcome = "success"
@@ -314,7 +315,11 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="Run a Garage skill", parents=[path_parser])
     run_parser.add_argument(
         "skill_name",
-        help="Name of the skill to run"
+        help="Name of the skill to run",
+    )
+    run_parser.add_argument(
+        "--timeout", type=int, default=300,
+        help="Timeout in seconds (default: 300)",
     )
 
     # knowledge
@@ -362,7 +367,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.command == "run":
         root = args.path if args.path else _find_garage_root()
-        _run(root, args.skill_name)
+        _run(root, args.skill_name, timeout=args.timeout)
         return 0
 
     if args.command == "knowledge":
