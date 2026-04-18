@@ -2,55 +2,41 @@
 
 ## Goal
 
-- Goal: F002 — Garage Live（CLI + 真实 Claude Code 集成）
+- Goal: F003 — Garage Memory（自动知识提取与经验推荐）
 - Owner: hujianbest
-- Status: ✅ F002 全部完成
-- Last Updated: 2026-04-16
+- Status: 🟡 F003 规格评审已通过，等待规格真人确认
+- Last Updated: 2026-04-18
 
-## Previous: F001 Phase 1
+## Previous Milestones
 
-- Status: ✅ 完成（T1-T22，416 测试通过）
-- 5 个里程碑全部关闭
+- F001 Phase 1: ✅ 完成（T1-T22，416 测试通过）
+- F002 Garage Live: ✅ 完成（CLI + 真实 Claude Code 集成，436 测试通过）
 
 ## Current Workflow State
 
-- Current Stage: F002 完成
-- Current Active Task: 无
-- Pending Reviews And Gates: 无
+- Current Stage: 规格真人确认
+- Workflow Profile: full
+- Execution Mode: interactive
+- Workspace Isolation: in-place
+- Current Active Task: F003 规格确认
+- Pending Reviews And Gates: 规格真人确认
+- Next Action Or Recommended Skill: 规格真人确认
 - Relevant Files:
-  - `docs/guides/garage-os-user-guide.md`（用户指南，已更新至 v0.2.0）
-  - `docs/guides/garage-os-developer-guide.md`（开发者指南）
+  - `docs/features/F003-garage-memory-auto-extraction.md`（F003 规格草稿）
   - `docs/soul/manifesto.md`（项目宣言）
+  - `docs/soul/user-pact.md`（用户契约）
   - `docs/soul/design-principles.md`（设计原则）
+  - `docs/soul/growth-strategy.md`（成长策略）
+  - `docs/designs/2026-04-15-garage-agent-os-design.md`（Phase 2 Auto Extractor 设计线索）
 - Constraints:
-  - Phase 1 不引入数据库、常驻服务、Web UI
+  - Stage 2 仍保持 workspace-first，不引入外部数据库、常驻服务、Web UI
   - 优先使用 markdown、JSON、文件系统存储
   - 所有数据存储在 Garage 仓库内部
-  - 保持现有 AHE Skills 的兼容
-
-## F002 交付物
-
-### CLI 命令（garage CLI）
-
-| 命令 | 说明 |
-|------|------|
-| `garage init` | 初始化 .garage/ 目录结构（幂等） |
-| `garage status` | 显示 sessions、知识、经验统计 |
-| `garage run` | 运行一次 Agent 任务 |
-| `garage knowledge` | 知识库管理（list/query/store） |
-
-### 真实 Claude Code 集成
-
-- `ClaudeCodeAdapter` — 通过 subprocess 调用 `claude -p`（print mode）
-- 自动 Experience 记录 — 每次任务执行后自动生成经验记录
-- 完整的 CLI 入口点（pyproject.toml console_scripts）
-
-### 测试
-
-- 436 测试全部通过（F001 的 416 + F002 新增 20）
+  - 自动知识提取只能生成候选草稿，不得绕过用户自动发布
+  - 保持现有 knowledge / experience / CLI 链路兼容
 
 ## Next Step
 
-1. **性能优化** — 知识查询退化 895% 问题待解决
-2. **Phase 2 F003** — 自动知识提取 Spec 规划
-3. Push 到远程仓库
+1. 执行 `规格真人确认`
+2. 规格批准后进入 `hf-design`
+3. 若规格确认要求修改，则回到 `hf-specify`
