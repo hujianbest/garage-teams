@@ -284,6 +284,52 @@ class TestRunCommand:
         assert result == 0
         MockAdapter.assert_called_once_with(tmp_path, timeout=17)
 
+    def test_run_skips_recommendation_when_disabled(
+        self,
+        tmp_path: Path,
+        capsys,
+    ) -> None:
+        """run must NOT print recommendations when the feature flag is off (T4 acceptance)."""
+        main(["init", "--path", str(tmp_path)])
+        garage_dir = tmp_path / ".garage"
+        platform_json = garage_dir / "config" / "platform.json"
+        config = json.loads(platform_json.read_text(encoding="utf-8"))
+        assert config["memory"]["recommendation_enabled"] is False
+
+        decision_path = garage_dir / "knowledge" / "decisions" / "decision-disabled.md"
+        decision_path.write_text(
+            """---
+id: decision-disabled
+type: decision
+topic: Recommendation for disabled-skill
+date: 2026-04-18T10:00:00
+tags: [disabled-skill, workspace-first]
+status: active
+version: 1
+---
+
+Should not be surfaced when recommendation is disabled.
+""",
+            encoding="utf-8",
+        )
+
+        with patch("garage_os.cli.ClaudeCodeAdapter") as MockAdapter, \
+            patch("garage_os.cli.RecommendationService") as MockRecommendationService:
+            mock_adapter = MagicMock()
+            mock_adapter.invoke_skill.return_value = {
+                "output": "",
+                "exit_code": 0,
+                "success": True,
+            }
+            MockAdapter.return_value = mock_adapter
+
+            result = main(["run", "disabled-skill", "--path", str(tmp_path)])
+
+        captured = capsys.readouterr()
+        assert result == 0
+        assert "Recommendations:" not in captured.out
+        MockRecommendationService.assert_not_called()
+
     def test_run_shows_recommendation_summary_when_enabled(
         self,
         tmp_path: Path,

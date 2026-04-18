@@ -34,7 +34,7 @@ class KnowledgePublisher:
         edited_fields: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         """Publish a reviewed candidate when the action allows publication."""
-        if action in {"reject", "defer", "batch_reject"}:
+        if action in {"reject", "defer", "batch_reject", "abandon"}:
             return {"published_id": None, "knowledge_type": None, "action": action}
 
         candidate = self._candidate_store.retrieve_candidate(candidate_id)
@@ -55,10 +55,24 @@ class KnowledgePublisher:
                 "action": action,
             }
 
-        if action == "abandon":
-            return {"published_id": None, "knowledge_type": None, "action": action}
+        conflict = self._conflict_detector.detect(
+            title=str(payload.get("title", "")),
+            tags=list(payload.get("tags", [])),
+        )
+        supersede_targets: list[str] = []
+        if conflict.get("strategy") == "supersede":
+            supersede_targets = [str(item) for item in conflict.get("similar_entries", [])]
 
         entry = self._to_knowledge_entry(payload, confirmation_ref)
+        if supersede_targets:
+            existing = list(entry.related_decisions)
+            for target in supersede_targets:
+                if target == entry.id or target in existing:
+                    continue
+                existing.append(target)
+            entry.related_decisions = existing
+            entry.front_matter["related_decisions"] = list(existing)
+            entry.front_matter["supersedes"] = list(supersede_targets)
         self._knowledge_store.store(entry)
         return {
             "published_id": entry.id,

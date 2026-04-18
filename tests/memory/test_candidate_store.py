@@ -121,6 +121,22 @@ class TestCandidateStore:
         with pytest.raises(ValueError, match="at most 5"):
             candidate_store.store_batch(oversized_batch)
 
+    def test_reject_candidate_missing_required_metadata(
+        self,
+        candidate_store,
+        sample_candidate,
+    ) -> None:
+        """Candidates missing FR-302b mandatory metadata must be rejected before storage."""
+        missing_session = {k: v for k, v in sample_candidate.items() if k != "session_id"}
+        with pytest.raises(ValueError, match="session_id"):
+            candidate_store.store_candidate(missing_session)
+
+        missing_artifacts = dict(sample_candidate)
+        missing_artifacts["candidate_id"] = "candidate-002"
+        missing_artifacts["source_artifacts"] = []
+        with pytest.raises(ValueError, match="source_artifacts"):
+            candidate_store.store_candidate(missing_artifacts)
+
     def test_store_and_retrieve_confirmation_record(
         self,
         candidate_store,

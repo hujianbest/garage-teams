@@ -42,6 +42,18 @@ class CandidateStore:
         if candidate_type not in ALLOWED_CANDIDATE_TYPES:
             raise ValueError("candidate_type must be one of the supported values")
 
+        # FR-302b: candidates missing required metadata must not enter the queue.
+        for required_field in ("candidate_id", "session_id", "title"):
+            if not candidate.get(required_field):
+                raise ValueError(
+                    f"Candidate is missing required field '{required_field}'"
+                )
+        if not candidate.get("source_artifacts"):
+            raise ValueError(
+                "Candidate is missing required field 'source_artifacts' "
+                "(self-describing traceability anchor required by FR-302b)"
+            )
+
         candidate_id = candidate["candidate_id"]
         content = candidate.get("content", "")
         front_matter = {k: v for k, v in candidate.items() if k != "content"}

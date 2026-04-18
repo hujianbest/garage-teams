@@ -222,6 +222,74 @@ class TestKnowledgePublisher:
         assert knowledge.tags == ["memory", "edited"]
         assert knowledge.front_matter["confirmation_ref"] == ".garage/memory/confirmations/batch-001.json"
 
+    def test_publish_supersede_records_relation_to_existing_entries(
+        self,
+        publisher,
+        candidate_store,
+        decision_candidate,
+        confirmation_record,
+        knowledge_store,
+    ) -> None:
+        """Accepting a candidate that supersedes existing knowledge should record the relation (T6 acceptance)."""
+        candidate_store.store_candidate(decision_candidate)
+        candidate_store.store_confirmation(confirmation_record)
+
+        existing_entry = publisher._to_knowledge_entry(  # noqa: SLF001 - test helper use
+            {**decision_candidate, "candidate_id": "existing-001"},
+            confirmation_ref="prior",
+        )
+        existing_entry.id = "existing-001"
+        knowledge_store.store(existing_entry)
+
+        result = publisher.publish_candidate(
+            candidate_id="candidate-001",
+            action="accept",
+            confirmation_ref=".garage/memory/confirmations/batch-001.json",
+        )
+
+        assert result["published_id"] is not None
+        published = knowledge_store.retrieve(result["knowledge_type"], result["published_id"])
+        assert published is not None
+        assert "existing-001" in published.related_decisions
+
+    def test_publish_abandon_skips_publication(
+        self,
+        publisher,
+        candidate_store,
+        decision_candidate,
+        knowledge_store,
+    ) -> None:
+        """abandon must skip publication regardless of candidate type (T6 acceptance)."""
+        candidate_store.store_candidate(decision_candidate)
+
+        result = publisher.publish_candidate(
+            candidate_id="candidate-001",
+            action="abandon",
+            confirmation_ref=".garage/memory/confirmations/batch-001.json",
+        )
+
+        assert result["published_id"] is None
+        assert knowledge_store.list_entries() == []
+
+    def test_publish_abandon_skips_experience_summary(
+        self,
+        publisher,
+        candidate_store,
+        experience_summary_candidate,
+        experience_index,
+    ) -> None:
+        """abandon must skip experience publication too."""
+        candidate_store.store_candidate(experience_summary_candidate)
+
+        result = publisher.publish_candidate(
+            candidate_id="candidate-002",
+            action="abandon",
+            confirmation_ref=".garage/memory/confirmations/batch-001.json",
+        )
+
+        assert result["published_id"] is None
+        assert experience_index.list_records() == []
+
     def test_reject_or_defer_does_not_publish(
         self,
         publisher,

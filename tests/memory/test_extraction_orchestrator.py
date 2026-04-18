@@ -101,6 +101,40 @@ class TestExtractionOrchestrator:
         assert stored_batch is not None
         assert stored_batch["candidate_ids"] == []
 
+    def test_extract_truncates_to_max_pending_and_records_truncated_count(
+        self,
+        temp_storage,
+        candidate_store,
+        archived_session_payload,
+    ) -> None:
+        """Sessions with more than 5 candidate signals must be truncated to 5 with truncated_count > 0 (FR-303a)."""
+        from garage_os.memory.extraction_orchestrator import (
+            ExtractionConfig,
+            MemoryExtractionOrchestrator,
+        )
+
+        oversized = dict(archived_session_payload)
+        oversized["session_id"] = "session-oversized"
+        oversized["artifacts"] = [
+            {"path": f"docs/example/file-{idx}.md", "status": "approved"}
+            for idx in range(8)
+        ]
+
+        orchestrator = MemoryExtractionOrchestrator(
+            temp_storage,
+            candidate_store,
+            ExtractionConfig(),
+        )
+
+        summary = orchestrator.extract_for_archived_session(oversized)
+
+        assert summary["evaluation_summary"] == "evaluated_with_candidates"
+        assert len(summary["candidate_ids"]) == 5
+        assert summary["truncated_count"] >= 1
+        stored_batch = candidate_store.retrieve_batch(summary["batch_id"])
+        assert stored_batch is not None
+        assert stored_batch["truncated_count"] == summary["truncated_count"]
+
     def test_extract_records_evaluated_no_candidate(
         self,
         temp_storage,

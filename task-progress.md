@@ -4,7 +4,7 @@
 
 - Goal: F003 — Garage Memory（自动知识提取与经验推荐）
 - Owner: hujianbest
-- Status: 🟡 F003 全部任务已实现并通过高信号测试，待进入质量链收尾
+- Status: 🟡 F003 test-review r1 = 需修改，回流修订已完成（+7 测试，376 passed），待进入 test-review r2
 - Last Updated: 2026-04-18
 
 ## Previous Milestones
@@ -14,12 +14,12 @@
 
 ## Current Workflow State
 
-- Current Stage: hf-test-driven-dev
+- Current Stage: hf-test-driven-dev（test-review r1 回流修订完成）
 - Workflow Profile: full
 - Execution Mode: auto
 - Workspace Isolation: in-place
-- Current Active Task: F003 实现批次已完成
-- Pending Reviews And Gates: hf-test-review / hf-code-review / hf-traceability-review / hf-regression-gate / hf-completion-gate
+- Current Active Task: F003 全量实现批次（回流修订批次已完成）
+- Pending Reviews And Gates: hf-test-review (r2) / hf-code-review / hf-traceability-review / hf-regression-gate / hf-completion-gate
 - Next Action Or Recommended Skill: hf-test-review
 - Relevant Files:
   - `docs/features/F003-garage-memory-auto-extraction.md`（F003 已批准规格）
@@ -28,6 +28,8 @@
   - `docs/approvals/F003-tasks-approval.md`（F003 任务批准记录）
   - `docs/approvals/F003-T1-test-design-approval.md`（T1 测试设计确认记录）
   - `docs/verification/F003-T1-implementation-handoff.md`（T1 实现交接块）
+  - `docs/reviews/test-review-F003-garage-memory-auto-extraction.md`（F003 test-review r1 记录）
+  - `docs/verification/F003-test-review-r1-handoff.md`（F003 test-review r1 回流修订交接块）
   - `src/garage_os/memory/`（F003 memory pipeline 实现）
   - `tests/memory/`（F003 memory pipeline 测试）
   - `docs/designs/2026-04-18-garage-memory-auto-extraction-design.md`（F003 已批准设计）
@@ -48,6 +50,6 @@
 
 ## Next Step
 
-1. 派发 `hf-test-review`，评审当前实现批次的测试质量与 RED/GREEN 证据
-2. 若质量链通过，进入 `hf-completion-gate`
+1. 派发 `hf-test-review` r2，复审本轮回流修订（关闭分支覆盖、supersede/abandon、truncation、FR-302b 校验）
+2. r2 通过 → `hf-code-review` → `hf-traceability-review` → `hf-regression-gate` → `hf-completion-gate`
 3. completion gate 通过后由 router / finalize 决定后续走向

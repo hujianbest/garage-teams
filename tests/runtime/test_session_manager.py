@@ -290,6 +290,53 @@ def test_archive_session_ignores_memory_errors(
     assert archived_dir.exists()
 
 
+def test_archive_session_skips_memory_when_extraction_disabled(
+    session_manager: SessionManager,
+    tmp_path: Path,
+):
+    """Archive must skip memory extraction when the feature flag is off (T4 acceptance)."""
+    metadata = session_manager.create_session("test-pack", "Disabled topic")
+    session_id = metadata.session_id
+
+    platform_config = tmp_path / "config" / "platform.json"
+    platform_config.parent.mkdir(parents=True, exist_ok=True)
+    platform_config.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "memory": {
+                    "extraction_enabled": False,
+                    "recommendation_enabled": False,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    active_session_file = tmp_path / "sessions" / "active" / session_id / "session.json"
+    data = json.loads(active_session_file.read_text(encoding="utf-8"))
+    data["context"]["metadata"] = {
+        "problem_domain": "memory_pipeline",
+        "tags": ["workspace-first"],
+    }
+    data["artifacts"] = [
+        {
+            "path": "docs/designs/2026-04-18-garage-memory-auto-extraction-design.md",
+            "status": "approved",
+        }
+    ]
+    active_session_file.write_text(json.dumps(data), encoding="utf-8")
+
+    result = session_manager.archive_session(session_id)
+
+    assert result is True
+    archived_dir = tmp_path / "sessions" / "archived" / session_id
+    assert archived_dir.exists()
+    batches_dir = tmp_path / "memory" / "candidates" / "batches"
+    if batches_dir.exists():
+        assert list(batches_dir.glob("*.json")) == []
+
+
 def test_archive_nonexistent(session_manager: SessionManager):
     """Test archiving a nonexistent session returns False."""
     result = session_manager.archive_session("session-doesnotexist-001")

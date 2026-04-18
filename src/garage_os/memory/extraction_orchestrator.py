@@ -55,18 +55,22 @@ class MemoryExtractionOrchestrator:
                 session_id=session_id,
                 evaluation_summary="no_evidence",
                 candidate_ids=[],
+                truncated_count=0,
                 metadata={"reason": "no_evidence"},
             )
             self._candidate_store.store_batch(summary)
             return summary
 
-        candidates = self._generate_candidates(archived_session, signals)
+        candidates, truncated_count = self._generate_candidates(
+            archived_session, signals
+        )
         if not candidates:
             summary = self._build_summary(
                 batch_id=batch_id,
                 session_id=session_id,
                 evaluation_summary="evaluated_no_candidate",
                 candidate_ids=[],
+                truncated_count=0,
                 metadata={"reason": "filtered_below_threshold"},
             )
             self._candidate_store.store_batch(summary)
@@ -82,6 +86,7 @@ class MemoryExtractionOrchestrator:
             session_id=session_id,
             evaluation_summary="evaluated_with_candidates",
             candidate_ids=stored_candidate_ids,
+            truncated_count=truncated_count,
             metadata={"reason": "candidates_generated"},
         )
         self._candidate_store.store_batch(summary)
@@ -175,7 +180,7 @@ class MemoryExtractionOrchestrator:
         self,
         archived_session: dict[str, Any],
         signals: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
+    ) -> tuple[list[dict[str, Any]], int]:
         """Generate candidate drafts from extracted signals."""
         session_id = archived_session["session_id"]
         topic = archived_session.get("topic", "Memory candidate")
@@ -228,7 +233,10 @@ class MemoryExtractionOrchestrator:
             )
 
         generated.sort(key=lambda item: item["priority_score"], reverse=True)
-        return generated[: CandidateStore.MAX_PENDING_CANDIDATES]
+        truncated_count = max(
+            0, len(generated) - CandidateStore.MAX_PENDING_CANDIDATES
+        )
+        return generated[: CandidateStore.MAX_PENDING_CANDIDATES], truncated_count
 
     def _build_summary(
         self,
@@ -237,6 +245,7 @@ class MemoryExtractionOrchestrator:
         session_id: str,
         evaluation_summary: str,
         candidate_ids: list[str],
+        truncated_count: int,
         metadata: dict[str, Any],
     ) -> dict[str, Any]:
         return {
@@ -245,7 +254,7 @@ class MemoryExtractionOrchestrator:
             "status": "pending_review",
             "trigger": "session_archived",
             "candidate_ids": candidate_ids,
-            "truncated_count": 0,
+            "truncated_count": truncated_count,
             "evaluation_summary": evaluation_summary,
             "created_at": datetime.now().isoformat(),
             "metadata": metadata,
