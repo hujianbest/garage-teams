@@ -4,7 +4,7 @@
 
 - Goal: F003 — Garage Memory（自动知识提取与经验推荐）
 - Owner: hujianbest
-- Status: 🟡 F003 规格评审已通过，等待规格真人确认
+- Status: 🟡 F003 已进入实现阶段，T1 已完成并等待测试评审
 - Last Updated: 2026-04-18
 
 ## Previous Milestones
@@ -14,20 +14,29 @@
 
 ## Current Workflow State
 
-- Current Stage: 规格真人确认
+- Current Stage: hf-test-driven-dev
 - Workflow Profile: full
-- Execution Mode: interactive
+- Execution Mode: auto
 - Workspace Isolation: in-place
-- Current Active Task: F003 规格确认
-- Pending Reviews And Gates: 规格真人确认
-- Next Action Or Recommended Skill: 规格真人确认
+- Current Active Task: T1
+- Pending Reviews And Gates: hf-test-review
+- Next Action Or Recommended Skill: hf-test-review
 - Relevant Files:
-  - `docs/features/F003-garage-memory-auto-extraction.md`（F003 规格草稿）
+  - `docs/features/F003-garage-memory-auto-extraction.md`（F003 已批准规格）
+  - `docs/approvals/F003-spec-approval.md`（F003 规格批准记录）
+  - `docs/approvals/F003-design-approval.md`（F003 设计批准记录）
+  - `docs/approvals/F003-tasks-approval.md`（F003 任务批准记录）
+  - `docs/approvals/F003-T1-test-design-approval.md`（T1 测试设计确认记录）
+  - `docs/verification/F003-T1-implementation-handoff.md`（T1 实现交接块）
+  - `docs/designs/2026-04-18-garage-memory-auto-extraction-design.md`（F003 已批准设计）
+  - `docs/tasks/2026-04-18-garage-memory-auto-extraction-tasks.md`（F003 任务计划草稿）
+  - `docs/reviews/tasks-review-F003-garage-memory-auto-extraction.md`（F003 第一轮任务评审记录）
+  - `docs/reviews/tasks-review-F003-garage-memory-auto-extraction-r2.md`（F003 第二轮任务评审记录）
+  - `docs/reviews/tasks-review-F003-garage-memory-auto-extraction-r3.md`（F003 第三轮任务评审记录）
   - `docs/soul/manifesto.md`（项目宣言）
   - `docs/soul/user-pact.md`（用户契约）
   - `docs/soul/design-principles.md`（设计原则）
   - `docs/soul/growth-strategy.md`（成长策略）
-  - `docs/designs/2026-04-15-garage-agent-os-design.md`（Phase 2 Auto Extractor 设计线索）
 - Constraints:
   - Stage 2 仍保持 workspace-first，不引入外部数据库、常驻服务、Web UI
   - 优先使用 markdown、JSON、文件系统存储
@@ -37,6 +46,6 @@
 
 ## Next Step
 
-1. 执行 `规格真人确认`
-2. 规格批准后进入 `hf-design`
-3. 若规格确认要求修改，则回到 `hf-specify`
+1. 派发 `hf-test-review`，评审 T1 的测试质量与 RED/GREEN 证据
+2. 若测试评审通过，继续进入 `hf-code-review`
+3. 质量链通过后由 router 重选下一任务

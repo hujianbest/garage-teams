@@ -1,6 +1,6 @@
 # F003: Garage Memory — 自动知识提取与经验推荐
 
-- 状态: 草稿
+- 状态: 已批准
 - 主题: 让 Garage 从“会存”走向“会记得、会提醒”
 - 日期: 2026-04-18
 - 关联:
@@ -340,6 +340,6 @@ session / artifact / experience
 
 ---
 
-**文档状态**: 规格草稿已完成，等待 `hf-spec-review` 评审。
+**文档状态**: 规格已批准，可作为 `hf-design` 的稳定输入。
 
-**下一步**: 派发独立 reviewer subagent 执行 `hf-spec-review`。
+**下一步**: 进入 `hf-design`，起草 F003 实现设计。
