@@ -258,6 +258,9 @@ class ExperienceIndex:
             "lessons_learned": record.lessons_learned,
             "pitfalls": record.pitfalls,
             "recommendations": record.recommendations,
+            "source_evidence_anchors": record.source_evidence_anchors,
+            "confirmation_ref": record.confirmation_ref,
+            "published_from_candidate": record.published_from_candidate,
             "created_at": record.created_at.isoformat(),
             "updated_at": record.updated_at.isoformat(),
         }
@@ -294,6 +297,9 @@ class ExperienceIndex:
             lessons_learned=data.get("lessons_learned", []),
             pitfalls=data.get("pitfalls", []),
             recommendations=data.get("recommendations", []),
+            source_evidence_anchors=data.get("source_evidence_anchors", []),
+            confirmation_ref=data.get("confirmation_ref"),
+            published_from_candidate=data.get("published_from_candidate"),
             created_at=created_at,
             updated_at=updated_at,
         )

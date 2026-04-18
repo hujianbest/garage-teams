@@ -58,6 +58,28 @@ class CandidateStore:
         front_matter["content"] = body
         return front_matter
 
+    def list_candidates_by_status(self, status: str) -> list[dict[str, Any]]:
+        """List all candidate drafts matching a status."""
+        candidates: list[dict[str, Any]] = []
+        for path in self._storage.list_files(self.ITEMS_DIR, "*.md"):
+            content = self._storage.read_text(f"{self.ITEMS_DIR}/{path.name}")
+            if content is None:
+                continue
+            front_matter, body = FrontMatterParser.parse(content)
+            if front_matter.get("status") != status:
+                continue
+            front_matter["content"] = body
+            candidates.append(front_matter)
+        return candidates
+
+    def update_candidate(self, candidate_id: str, updates: dict[str, Any]) -> str:
+        """Update a stored candidate draft."""
+        existing = self.retrieve_candidate(candidate_id)
+        if existing is None:
+            raise FileNotFoundError(f"Candidate not found: {candidate_id}")
+        existing.update(updates)
+        return self.store_candidate(existing)
+
     def store_confirmation(self, confirmation: dict[str, Any]) -> str:
         """Store a confirmation record as JSON."""
         batch_id = confirmation["batch_id"]

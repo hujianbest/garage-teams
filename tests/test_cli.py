@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 from garage_os.cli import main
+from garage_os.storage.file_storage import FileStorage
 
 
 class TestInitCreatesStructure:
@@ -283,6 +284,52 @@ class TestRunCommand:
         assert result == 0
         MockAdapter.assert_called_once_with(tmp_path, timeout=17)
 
+    def test_run_shows_recommendation_summary_when_enabled(
+        self,
+        tmp_path: Path,
+        capsys,
+    ) -> None:
+        """run should print a recommendation summary before execution when enabled."""
+        main(["init", "--path", str(tmp_path)])
+        garage_dir = tmp_path / ".garage"
+        platform_json = garage_dir / "config" / "platform.json"
+        config = json.loads(platform_json.read_text(encoding="utf-8"))
+        config["memory"]["recommendation_enabled"] = True
+        platform_json.write_text(json.dumps(config), encoding="utf-8")
+
+        decision_path = garage_dir / "knowledge" / "decisions" / "decision-memory.md"
+        decision_path.write_text(
+            """---
+id: decision-memory
+type: decision
+topic: Recommendation for timed-skill
+date: 2026-04-18T10:00:00
+tags: [timed-skill, workspace-first]
+status: active
+version: 1
+---
+
+Use workspace-first memory recommendations.
+""",
+            encoding="utf-8",
+        )
+
+        with patch("garage_os.cli.ClaudeCodeAdapter") as MockAdapter:
+            mock_adapter = MagicMock()
+            mock_adapter.invoke_skill.return_value = {
+                "output": "",
+                "exit_code": 0,
+                "success": True,
+            }
+            MockAdapter.return_value = mock_adapter
+
+            result = main(["run", "timed-skill", "--path", str(tmp_path)])
+
+        captured = capsys.readouterr()
+        assert result == 0
+        assert "Recommendations:" in captured.out
+        assert "Recommendation for timed-skill" in captured.out
+
 
 class TestExperienceRecording:
     """Test that experience is automatically recorded after skill execution."""
@@ -342,6 +389,173 @@ class TestExperienceRecording:
         # Verify failure outcome
         assert exp_data["outcome"] == "failure"
         assert exp_data["skill_ids"] == ["failing-skill"]
+
+
+class TestMemoryReviewCommand:
+    """Test CLI memory review command."""
+
+    def test_memory_review_shows_batch_summary(
+        self,
+        tmp_path: Path,
+        capsys,
+    ) -> None:
+        """memory review should show candidate batch summary."""
+        from garage_os.memory.candidate_store import CandidateStore
+
+        main(["init", "--path", str(tmp_path)])
+        storage = FileStorage(tmp_path / ".garage")
+        candidate_store = CandidateStore(storage)
+        candidate_store.store_candidate(
+            {
+                "schema_version": "1",
+                "candidate_id": "candidate-001",
+                "candidate_type": "decision",
+                "session_id": "session-001",
+                "source_artifacts": ["docs/designs/example.md"],
+                "match_reasons": ["artifact:docs/designs/example.md"],
+                "status": "pending_review",
+                "priority_score": 0.9,
+                "title": "Use candidate batches",
+                "summary": "Summary",
+                "content": "Body",
+            }
+        )
+        candidate_store.store_batch(
+            {
+                "batch_id": "batch-001",
+                "session_id": "session-001",
+                "status": "pending_review",
+                "trigger": "session_archived",
+                "candidate_ids": ["candidate-001"],
+                "truncated_count": 0,
+                "evaluation_summary": "evaluated_with_candidates",
+                "created_at": "2026-04-18T10:00:00",
+                "metadata": {},
+            }
+        )
+
+        result = main(["memory", "review", "batch-001", "--path", str(tmp_path)])
+
+        captured = capsys.readouterr()
+        assert result == 0
+        assert "Candidate Batch: batch-001" in captured.out
+        assert "Use candidate batches" in captured.out
+
+    def test_memory_review_batch_reject_updates_candidates(
+        self,
+        tmp_path: Path,
+        capsys,
+    ) -> None:
+        """batch_reject should reject every candidate in the batch."""
+        from garage_os.memory.candidate_store import CandidateStore
+
+        main(["init", "--path", str(tmp_path)])
+        storage = FileStorage(tmp_path / ".garage")
+        candidate_store = CandidateStore(storage)
+        for candidate_id in ["candidate-001", "candidate-002"]:
+            candidate_store.store_candidate(
+                {
+                    "schema_version": "1",
+                    "candidate_id": candidate_id,
+                    "candidate_type": "decision",
+                    "session_id": "session-001",
+                    "source_artifacts": ["docs/designs/example.md"],
+                    "match_reasons": ["artifact:docs/designs/example.md"],
+                    "status": "pending_review",
+                    "priority_score": 0.9,
+                    "title": f"Title {candidate_id}",
+                    "summary": "Summary",
+                    "content": "Body",
+                }
+            )
+        candidate_store.store_batch(
+            {
+                "batch_id": "batch-001",
+                "session_id": "session-001",
+                "status": "pending_review",
+                "trigger": "session_archived",
+                "candidate_ids": ["candidate-001", "candidate-002"],
+                "truncated_count": 0,
+                "evaluation_summary": "evaluated_with_candidates",
+                "created_at": "2026-04-18T10:00:00",
+                "metadata": {},
+            }
+        )
+
+        result = main(
+            [
+                "memory",
+                "review",
+                "batch-001",
+                "--action",
+                "batch_reject",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+
+        captured = capsys.readouterr()
+        assert result == 0
+        assert "Applied action 'batch_reject'" in captured.out
+        assert candidate_store.retrieve_candidate("candidate-001")["status"] == "rejected"
+        assert candidate_store.retrieve_candidate("candidate-002")["status"] == "rejected"
+
+    def test_memory_review_defer_marks_batch_pending_later(
+        self,
+        tmp_path: Path,
+        capsys,
+    ) -> None:
+        """defer should keep the batch available for later review."""
+        from garage_os.memory.candidate_store import CandidateStore
+
+        main(["init", "--path", str(tmp_path)])
+        storage = FileStorage(tmp_path / ".garage")
+        candidate_store = CandidateStore(storage)
+        candidate_store.store_candidate(
+            {
+                "schema_version": "1",
+                "candidate_id": "candidate-001",
+                "candidate_type": "decision",
+                "session_id": "session-001",
+                "source_artifacts": ["docs/designs/example.md"],
+                "match_reasons": ["artifact:docs/designs/example.md"],
+                "status": "pending_review",
+                "priority_score": 0.9,
+                "title": "Keep later",
+                "summary": "Summary",
+                "content": "Body",
+            }
+        )
+        candidate_store.store_batch(
+            {
+                "batch_id": "batch-001",
+                "session_id": "session-001",
+                "status": "pending_review",
+                "trigger": "session_archived",
+                "candidate_ids": ["candidate-001"],
+                "truncated_count": 0,
+                "evaluation_summary": "evaluated_with_candidates",
+                "created_at": "2026-04-18T10:00:00",
+                "metadata": {},
+            }
+        )
+
+        result = main(
+            [
+                "memory",
+                "review",
+                "batch-001",
+                "--action",
+                "defer",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+
+        captured = capsys.readouterr()
+        assert result == 0
+        assert "Applied action 'defer'" in captured.out
+        assert candidate_store.retrieve_batch("batch-001")["status"] == "deferred"
 
 
 class TestKnowledgeCommand:

@@ -9,6 +9,13 @@ from typing import Optional, Sequence
 from garage_os.adapter.claude_code_adapter import ClaudeCodeAdapter
 from garage_os.knowledge.experience_index import ExperienceIndex
 from garage_os.knowledge.knowledge_store import KnowledgeStore
+from garage_os.memory.candidate_store import CandidateStore
+from garage_os.memory.extraction_orchestrator import load_memory_config
+from garage_os.memory.publisher import KnowledgePublisher
+from garage_os.memory.recommendation_service import (
+    RecommendationContextBuilder,
+    RecommendationService,
+)
 from garage_os.runtime.session_manager import SessionManager
 from garage_os.storage import FileStorage
 from garage_os.types import SessionState
@@ -23,6 +30,9 @@ GARAGE_DIRS = [
     "knowledge/patterns",
     "knowledge/solutions",
     "experience/records",
+    "memory/candidates/batches",
+    "memory/candidates/items",
+    "memory/confirmations",
     "sessions/active",
     "sessions/archived",
 ]
@@ -35,8 +45,36 @@ This directory contains all runtime data for Garage OS.
 - **contracts/**: Interface contracts
 - **knowledge/**: Knowledge entries (decisions, patterns, solutions)
 - **experience/**: Experience records
+- **memory/**: Candidate drafts, review batches, and confirmation records
 - **sessions/**: Active and archived sessions
 """
+
+DEFAULT_PLATFORM_CONFIG = {
+    "schema_version": 1,
+    "platform_name": "Garage Agent OS",
+    "stage": 1,
+    "storage_mode": "artifact-first",
+    "host_type": "claude-code",
+    "session_timeout_seconds": 7200,
+    "max_active_sessions": 1,
+    "knowledge_indexing": "manual",
+    "memory": {
+        "extraction_enabled": False,
+        "recommendation_enabled": False,
+    },
+}
+
+DEFAULT_HOST_ADAPTER_CONFIG = {
+    "schema_version": 1,
+    "host_type": "claude-code",
+    "interaction_mode": "file-system",
+    "capabilities": {
+        "session_state_api": False,
+        "file_read_write": True,
+        "memory_auto_load": True,
+        "subprocess": True,
+    },
+}
 
 
 def _find_garage_root(start: Optional[Path] = None) -> Path:
@@ -68,6 +106,20 @@ def _init(garage_root: Path) -> None:
     readme_path = garage_dir / "README.md"
     if not readme_path.exists():
         readme_path.write_text(GARAGE_README.strip() + "\n", encoding="utf-8")
+
+    platform_config_path = garage_dir / "config" / "platform.json"
+    if not platform_config_path.exists():
+        platform_config_path.write_text(
+            json.dumps(DEFAULT_PLATFORM_CONFIG, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
+    host_adapter_config_path = garage_dir / "config" / "host-adapter.json"
+    if not host_adapter_config_path.exists():
+        host_adapter_config_path.write_text(
+            json.dumps(DEFAULT_HOST_ADAPTER_CONFIG, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
 
     print(f"Initialized Garage OS in {garage_dir}")
 
@@ -144,6 +196,7 @@ def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> int:
         return 1
 
     storage = FileStorage(garage_dir)
+    memory_config = load_memory_config(storage)
 
     # Create session manager and start a new session
     session_manager = SessionManager(storage)
@@ -153,10 +206,40 @@ def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> int:
         user_goals=[],
         constraints=[],
     )
-    session_manager.update_session(session.session_id, state=SessionState.RUNNING)
+    session_manager.update_session(
+        session.session_id,
+        state=SessionState.RUNNING,
+        context_metadata={
+            "domain": "general",
+            "problem_domain": skill_name,
+            "tags": [skill_name],
+        },
+    )
 
     # Create adapter and invoke the skill
     adapter = ClaudeCodeAdapter(garage_root, timeout=timeout)
+
+    if memory_config["recommendation_enabled"]:
+        recommendation_service = RecommendationService(
+            KnowledgeStore(storage),
+            ExperienceIndex(storage),
+        )
+        context_builder = RecommendationContextBuilder()
+        repo_state = adapter.get_repository_state()
+        recommendation_context = context_builder.build(
+            skill_name=skill_name,
+            params={},
+            session_topic=session.topic,
+            session_metadata=session.context.metadata,
+            repo_state=repo_state,
+            artifact_paths=[],
+        )
+        recommendations = recommendation_service.recommend(recommendation_context)
+        if recommendations:
+            print("Recommendations:")
+            for item in recommendations[:3]:
+                reasons = ", ".join(item["match_reasons"])
+                print(f"  - {item['title']} [{item['entry_type']}] ({reasons})")
 
     start_time = time.time()
     outcome = "success"
@@ -299,6 +382,145 @@ def _knowledge_list(garage_root: Path) -> None:
         print()
 
 
+def _memory_review(
+    garage_root: Path,
+    batch_id: str,
+    action: Optional[str] = None,
+    candidate_id: Optional[str] = None,
+    title: Optional[str] = None,
+    summary: Optional[str] = None,
+    content: Optional[str] = None,
+    tags: Optional[str] = None,
+) -> int:
+    """Show or apply actions to a candidate review batch on the CLI."""
+    garage_dir = garage_root / ".garage"
+    if not garage_dir.is_dir():
+        print("No .garage/ directory found. Run 'garage init' first.")
+        return 1
+
+    storage = FileStorage(garage_dir)
+    candidate_store = CandidateStore(storage)
+    batch = candidate_store.retrieve_batch(batch_id)
+    if batch is None:
+        print(f"No candidate batch found for '{batch_id}'")
+        return 1
+
+    if action:
+        knowledge_store = KnowledgeStore(storage)
+        experience_index = ExperienceIndex(storage)
+        publisher = KnowledgePublisher(candidate_store, knowledge_store, experience_index)
+        confirmation_ref = f".garage/{candidate_store.CONFIRMATIONS_DIR}/{batch_id}.json"
+
+        if action == "batch_reject":
+            actions = [
+                {"candidate_id": cid, "action": "reject"}
+                for cid in batch["candidate_ids"]
+            ]
+            candidate_store.store_confirmation(
+                {
+                    "schema_version": "1",
+                    "batch_id": batch_id,
+                    "resolution": "batch_reject",
+                    "actions": actions,
+                    "resolved_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "surface": "cli",
+                    "approver": "user",
+                }
+            )
+            for cid in batch["candidate_ids"]:
+                candidate_store.update_candidate(cid, {"status": "rejected"})
+            batch["status"] = "rejected"
+            candidate_store.store_batch(batch)
+            print(f"Applied action 'batch_reject' to batch '{batch_id}'")
+            return 0
+
+        if action == "defer":
+            candidate_store.store_confirmation(
+                {
+                    "schema_version": "1",
+                    "batch_id": batch_id,
+                    "resolution": "defer",
+                    "actions": [],
+                    "resolved_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "surface": "cli",
+                    "approver": "user",
+                }
+            )
+            for cid in batch["candidate_ids"]:
+                candidate_store.update_candidate(cid, {"status": "deferred"})
+            batch["status"] = "deferred"
+            candidate_store.store_batch(batch)
+            print(f"Applied action 'defer' to batch '{batch_id}'")
+            return 0
+
+        if candidate_id is None:
+            print("Action requires --candidate-id")
+            return 1
+
+        if action == "show-conflicts":
+            conflict = publisher.detect_conflicts(candidate_id)
+            print(f"Conflict strategy: {conflict['strategy']}")
+            print(f"Similar entries: {conflict['similar_entries']}")
+            return 0
+
+        if action not in {"accept", "edit_accept", "reject"}:
+            print(f"Unsupported action '{action}'")
+            return 1
+
+        edited_fields = None
+        if action == "edit_accept":
+            edited_fields = {}
+            if title is not None:
+                edited_fields["title"] = title
+            if summary is not None:
+                edited_fields["summary"] = summary
+            if content is not None:
+                edited_fields["content"] = content
+            if tags is not None:
+                edited_fields["tags"] = [tag.strip() for tag in tags.split(",") if tag.strip()]
+
+        candidate_store.store_confirmation(
+            {
+                "schema_version": "1",
+                "batch_id": batch_id,
+                "resolution": action,
+                "actions": [{"candidate_id": candidate_id, "action": action}],
+                "resolved_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "surface": "cli",
+                "approver": "user",
+            }
+        )
+
+        publish_result = publisher.publish_candidate(
+            candidate_id=candidate_id,
+            action=action,
+            confirmation_ref=confirmation_ref,
+            edited_fields=edited_fields,
+        )
+        new_status = {
+            "accept": "published",
+            "edit_accept": "published",
+            "reject": "rejected",
+        }[action]
+        candidate_store.update_candidate(candidate_id, {"status": new_status})
+        print(
+            f"Candidate '{candidate_id}' action '{action}' applied; "
+            f"published_id={publish_result['published_id']}"
+        )
+        return 0
+
+    print(f"Candidate Batch: {batch['batch_id']}")
+    print(f"Status: {batch['status']}")
+    print(f"Evaluation: {batch['evaluation_summary']}")
+    print(f"Candidates: {len(batch['candidate_ids'])}")
+    for candidate_id in batch["candidate_ids"]:
+        candidate = candidate_store.retrieve_candidate(candidate_id)
+        if candidate is None:
+            continue
+        print(f"  - {candidate['candidate_id']}: {candidate['title']} [{candidate['candidate_type']}]")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build and return the argument parser."""
     # Create parent parser for common arguments
@@ -358,6 +580,31 @@ def build_parser() -> argparse.ArgumentParser:
         "list", help="List all knowledge entries", parents=[path_parser]
     )
 
+    # memory
+    memory_parser = subparsers.add_parser(
+        "memory", help="Review memory candidate batches", parents=[path_parser]
+    )
+    memory_subparsers = memory_parser.add_subparsers(dest="memory_command")
+    review_parser = memory_subparsers.add_parser(
+        "review", help="Show candidate batch summary", parents=[path_parser]
+    )
+    review_parser.add_argument("batch_id", help="Candidate batch identifier")
+    review_parser.add_argument(
+        "--action",
+        choices=["accept", "edit_accept", "reject", "batch_reject", "defer", "show-conflicts"],
+        default=None,
+        help="Optional review action to apply",
+    )
+    review_parser.add_argument(
+        "--candidate-id",
+        default=None,
+        help="Candidate identifier for single-candidate actions",
+    )
+    review_parser.add_argument("--title", default=None, help="Edited title for edit_accept")
+    review_parser.add_argument("--summary", default=None, help="Edited summary for edit_accept")
+    review_parser.add_argument("--content", default=None, help="Edited content for edit_accept")
+    review_parser.add_argument("--tags", default=None, help="Comma-separated tags for edit_accept")
+
     return parser
 
 
@@ -394,6 +641,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print("Knowledge command requires 'search' or 'list' subcommand")
             return 1
         return 0
+
+    if args.command == "memory":
+        root = args.path if args.path else _find_garage_root()
+        if args.memory_command == "review":
+            return _memory_review(
+                root,
+                args.batch_id,
+                action=args.action,
+                candidate_id=args.candidate_id,
+                title=args.title,
+                summary=args.summary,
+                content=args.content,
+                tags=args.tags,
+            )
+        print("Memory command requires 'review' subcommand")
+        return 1
 
     parser.print_help()
     return 0

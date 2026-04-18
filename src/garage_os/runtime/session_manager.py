@@ -2,11 +2,19 @@
 
 import hashlib
 import json
+import logging
 import re
 import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+try:
+    from garage_os.memory import CandidateStore, ExtractionConfig, MemoryExtractionOrchestrator
+except ImportError:  # pragma: no cover - memory pipeline may not exist in early stages
+    CandidateStore = None
+    ExtractionConfig = None
+    MemoryExtractionOrchestrator = None
 
 from garage_os.types import (
     SessionMetadata,
@@ -16,6 +24,8 @@ from garage_os.types import (
     RecoveryResult,
 )
 from garage_os.storage import FileStorage
+
+logger = logging.getLogger(__name__)
 
 
 class SessionManager:
@@ -123,6 +133,21 @@ class SessionManager:
                 data["current_node_id"] = value
             elif key in ("pack_id", "topic"):
                 data[key] = value
+            elif key == "context_metadata":
+                context = data.setdefault("context", {})
+                existing_metadata = context.get("metadata", {})
+                if not isinstance(existing_metadata, dict):
+                    existing_metadata = {}
+                if isinstance(value, dict):
+                    existing_metadata.update(value)
+                context["metadata"] = existing_metadata
+            elif key == "artifacts":
+                data["artifacts"] = value
+            elif key == "context_metadata":
+                context = data.setdefault("context", {})
+                metadata = context.setdefault("metadata", {})
+                if isinstance(value, dict):
+                    metadata.update(value)
 
         # Update timestamp
         data["updated_at"] = datetime.now().isoformat()
@@ -138,6 +163,7 @@ class SessionManager:
         self,
         session_id: str,
         reason: str = "session_archived",
+        extraction_orchestrator: Optional[object] = None,
     ) -> bool:
         """Archive a session from active to archived storage.
 
@@ -168,7 +194,51 @@ class SessionManager:
         }
         self._storage.write_json(f"{archived_dir}/archive.json", archive_data)
 
+        # Best-effort memory extraction must never block archive success.
+        self._trigger_memory_extraction(
+            session_id,
+            extraction_orchestrator=extraction_orchestrator,
+        )
+
         return True
+
+    def _trigger_memory_extraction(
+        self,
+        session_id: str,
+        extraction_orchestrator: Optional[object] = None,
+    ) -> None:
+        """Run archive-time memory extraction when the feature is enabled."""
+        orchestrator = extraction_orchestrator
+        if orchestrator is None:
+            if (
+                CandidateStore is None
+                or ExtractionConfig is None
+                or MemoryExtractionOrchestrator is None
+            ):
+                return
+
+            orchestrator = MemoryExtractionOrchestrator(
+                self._storage,
+                CandidateStore(self._storage),
+                ExtractionConfig(),
+            )
+        if not orchestrator.is_extraction_enabled():
+            return
+
+        archived_session_path = f"sessions/archived/{session_id}/session.json"
+        archived_session = self._storage.read_json(archived_session_path)
+        if archived_session is None:
+            return
+
+        try:
+            orchestrator.extract_for_archived_session(archived_session)
+        except Exception as exc:  # pragma: no cover - defensive best-effort path
+            logger.warning(
+                "Memory extraction failed for archived session %s: %s",
+                session_id,
+                exc,
+                exc_info=True,
+            )
 
     def list_active_sessions(self) -> list[SessionMetadata]:
         """List all active sessions.

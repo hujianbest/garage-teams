@@ -549,6 +549,54 @@ class TestKnowledgeIntegration:
         assert result.success is True
         assert len(result.related_knowledge) == 0
 
+    def test_execute_skill_uses_recommendation_service_when_available(self):
+        """Skill execution should surface recommendations built from richer context."""
+        host_adapter = Mock()
+        host_adapter.invoke_skill.return_value = {
+            "status": "success",
+            "result": {"output": "test output"},
+        }
+        host_adapter.get_repository_state.return_value = {"branch": "main", "dirty": False}
+
+        session_manager = Mock(spec=SessionManager)
+        session_manager.restore_session.return_value = Mock(
+            topic="F003 design",
+            context=Mock(metadata={"problem_domain": "memory_pipeline"}),
+        )
+        state_machine = StateMachine(initial_state=SessionState.IDLE)
+        error_handler = ErrorHandler()
+
+        executor = SkillExecutor(
+            host_adapter=host_adapter,
+            session_manager=session_manager,
+            state_machine=state_machine,
+            error_handler=error_handler,
+        )
+
+        recommendation_service = Mock()
+        recommendation_service.recommend.return_value = [
+            {
+                "entry_id": "decision-1",
+                "match_reasons": ["skill:hf-design"],
+            }
+        ]
+
+        result = executor.execute_skill(
+            "hf-design",
+            {"domain": "garage_os"},
+            session_id="test-session",
+            recommendation_service=recommendation_service,
+        )
+
+        assert result.success is True
+        assert result.recommendations == [
+            {
+                "entry_id": "decision-1",
+                "match_reasons": ["skill:hf-design"],
+            }
+        ]
+        recommendation_service.recommend.assert_called_once()
+
 
 class TestSkillExecutorEdgeCases:
     """Test edge cases and error handling."""

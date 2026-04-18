@@ -120,3 +120,31 @@ class TestCandidateStore:
 
         with pytest.raises(ValueError, match="at most 5"):
             candidate_store.store_batch(oversized_batch)
+
+    def test_store_and_retrieve_confirmation_record(
+        self,
+        candidate_store,
+    ) -> None:
+        """Confirmation records should round-trip through JSON storage."""
+        confirmation = {
+            "schema_version": "1",
+            "batch_id": "batch-001",
+            "resolution": "mixed",
+            "actions": [
+                {"candidate_id": "candidate-001", "action": "accept"},
+                {"candidate_id": "candidate-002", "action": "reject"},
+            ],
+            "resolved_at": datetime.now().isoformat(),
+            "surface": "cli",
+            "approver": "user",
+        }
+
+        checksum = candidate_store.store_confirmation(confirmation)
+
+        assert isinstance(checksum, str)
+        assert len(checksum) == 64
+
+        retrieved = candidate_store.retrieve_confirmation("batch-001")
+        assert retrieved is not None
+        assert retrieved["resolution"] == "mixed"
+        assert len(retrieved["actions"]) == 2

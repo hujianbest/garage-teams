@@ -4,7 +4,7 @@
 
 - Goal: F003 — Garage Memory（自动知识提取与经验推荐）
 - Owner: hujianbest
-- Status: 🟡 F003 已进入实现阶段，T1 已完成并等待测试评审
+- Status: 🟡 F003 全部任务已实现并通过高信号测试，待进入质量链收尾
 - Last Updated: 2026-04-18
 
 ## Previous Milestones
@@ -18,8 +18,8 @@
 - Workflow Profile: full
 - Execution Mode: auto
 - Workspace Isolation: in-place
-- Current Active Task: T1
-- Pending Reviews And Gates: hf-test-review
+- Current Active Task: F003 实现批次已完成
+- Pending Reviews And Gates: hf-test-review / hf-code-review / hf-traceability-review / hf-regression-gate / hf-completion-gate
 - Next Action Or Recommended Skill: hf-test-review
 - Relevant Files:
   - `docs/features/F003-garage-memory-auto-extraction.md`（F003 已批准规格）
@@ -28,6 +28,8 @@
   - `docs/approvals/F003-tasks-approval.md`（F003 任务批准记录）
   - `docs/approvals/F003-T1-test-design-approval.md`（T1 测试设计确认记录）
   - `docs/verification/F003-T1-implementation-handoff.md`（T1 实现交接块）
+  - `src/garage_os/memory/`（F003 memory pipeline 实现）
+  - `tests/memory/`（F003 memory pipeline 测试）
   - `docs/designs/2026-04-18-garage-memory-auto-extraction-design.md`（F003 已批准设计）
   - `docs/tasks/2026-04-18-garage-memory-auto-extraction-tasks.md`（F003 任务计划草稿）
   - `docs/reviews/tasks-review-F003-garage-memory-auto-extraction.md`（F003 第一轮任务评审记录）
@@ -46,6 +48,6 @@
 
 ## Next Step
 
-1. 派发 `hf-test-review`，评审 T1 的测试质量与 RED/GREEN 证据
-2. 若测试评审通过，继续进入 `hf-code-review`
-3. 质量链通过后由 router 重选下一任务
+1. 派发 `hf-test-review`，评审当前实现批次的测试质量与 RED/GREEN 证据
+2. 若质量链通过，进入 `hf-completion-gate`
+3. completion gate 通过后由 router / finalize 决定后续走向

@@ -12,10 +12,17 @@ from pathlib import Path
 from typing import Any, Optional, List, Dict
 
 from garage_os.adapter.host_adapter import HostAdapterProtocol
+from garage_os.memory.recommendation_service import (
+    RecommendationContextBuilder,
+    RecommendationService,
+)
 from garage_os.runtime.session_manager import SessionManager
 from garage_os.runtime.state_machine import StateMachine
 from garage_os.runtime.error_handler import ErrorHandler, ErrorLogEntry
 from garage_os.knowledge.integration import KnowledgeIntegration
+from garage_os.knowledge.knowledge_store import KnowledgeStore
+from garage_os.knowledge.experience_index import ExperienceIndex
+from garage_os.storage.file_storage import FileStorage
 from garage_os.types import (
     SessionState,
     SessionMetadata,
@@ -49,6 +56,7 @@ class SkillExecutionResult:
     artifacts: List[Dict[str, Any]] = field(default_factory=list)
     state_transitions: List[str] = field(default_factory=list)
     related_knowledge: List[KnowledgeEntry] = field(default_factory=list)
+    recommendations: List[Dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -92,6 +100,7 @@ class SkillExecutor:
         state_machine: StateMachine,
         error_handler: ErrorHandler,
         knowledge_integration: Optional[KnowledgeIntegration] = None,
+        recommendation_service: Optional[RecommendationService] = None,
     ):
         """Initialize the SkillExecutor.
 
@@ -107,15 +116,18 @@ class SkillExecutor:
         self._state_machine = state_machine
         self._error_handler = error_handler
         self._knowledge_integration = knowledge_integration
+        self._recommendation_service = recommendation_service
 
         # Track execution context for resume operations
         self._execution_contexts: Dict[str, Dict[str, Any]] = {}
+        self._recommendation_context_builder = RecommendationContextBuilder()
 
     def execute_skill(
         self,
         skill_name: str,
         params: Optional[Dict[str, Any]] = None,
         session_id: Optional[str] = None,
+        recommendation_service: Optional[RecommendationService] = None,
     ) -> SkillExecutionResult:
         """Execute a skill and manage state transitions.
 
@@ -138,6 +150,7 @@ class SkillExecutor:
         params = params or {}
         state_transitions: List[str] = []
         related_knowledge: List[KnowledgeEntry] = []
+        recommendations: List[Dict[str, Any]] = []
 
         try:
             # Step 1: Transition to RUNNING
@@ -159,6 +172,27 @@ class SkillExecutor:
                     if skill_name.lower() in entry.topic.lower() or
                        any(skill_name.lower() in tag.lower() for tag in entry.tags)
                 ]
+
+            session_topic, session_metadata = self._get_session_context(session_id)
+            session_metadata = dict(session_metadata)
+            session_metadata = self._merge_recommendation_metadata(session_metadata, params)
+            self._persist_session_runtime_context(session_id, SessionState.RUNNING, session_metadata)
+
+            # Step 2.5: Query recommendations if available
+            recommendation_service = recommendation_service or self._build_recommendation_service()
+            if recommendation_service is not None and self._recommendation_service_enabled(
+                recommendation_service
+            ):
+                repo_state = self._safe_get_repository_state()
+                recommendation_context = self._recommendation_context_builder.build(
+                    skill_name=skill_name,
+                    params=params,
+                    session_topic=session_topic,
+                    session_metadata=session_metadata,
+                    repo_state=repo_state,
+                    artifact_paths=[],
+                )
+                recommendations = recommendation_service.recommend(recommendation_context)
 
             # Step 3: Execute skill with retry logic
             def execute_operation():
@@ -196,6 +230,7 @@ class SkillExecutor:
                         error_entry=error_entry,
                         state_transitions=state_transitions,
                         related_knowledge=related_knowledge,
+                    recommendations=recommendations,
                     )
 
                 # For other errors, transition to FAILED
@@ -213,6 +248,7 @@ class SkillExecutor:
                     error_entry=error_entry,
                     state_transitions=state_transitions,
                     related_knowledge=related_knowledge,
+                    recommendations=recommendations,
                 )
 
             # Step 5: Extract artifacts from result if present
@@ -237,6 +273,13 @@ class SkillExecutor:
                 elif "files" in result:
                     artifacts = result["files"]
 
+            self._persist_session_artifacts(session_id, artifacts)
+            self._persist_session_runtime_context(
+                session_id,
+                SessionState.COMPLETED,
+                session_metadata,
+            )
+
             # Step 6: Transition to COMPLETED
             transition = self._state_machine.transition(
                 SessionState.COMPLETED,
@@ -253,6 +296,7 @@ class SkillExecutor:
                 artifacts=artifacts if isinstance(artifacts, list) else [],
                 state_transitions=state_transitions,
                 related_knowledge=related_knowledge,
+                recommendations=recommendations,
             )
 
         except Exception as e:
@@ -280,6 +324,7 @@ class SkillExecutor:
                 error_entry=error_entry,
                 state_transitions=state_transitions,
                 related_knowledge=related_knowledge,
+                recommendations=recommendations,
             )
 
     def resume_skill(
@@ -412,6 +457,7 @@ class SkillExecutor:
                 output=result,
                 artifacts=artifacts if isinstance(artifacts, list) else [],
                 state_transitions=state_transitions,
+                recommendations=[],
             )
 
         except Exception as e:
@@ -439,7 +485,120 @@ class SkillExecutor:
                 session_id=session_id,
                 error_entry=error_entry,
                 state_transitions=state_transitions,
+                recommendations=[],
             )
+
+    def _build_recommendation_service(self) -> RecommendationService | None:
+        """Build a recommendation service when knowledge stores are available."""
+        if self._recommendation_service is not None:
+            return self._recommendation_service
+
+        if self._knowledge_integration is not None:
+            knowledge_store = getattr(self._knowledge_integration, "_knowledge_store", None)
+            experience_index = getattr(self._knowledge_integration, "_experience_index", None)
+            if knowledge_store is not None and experience_index is not None:
+                return RecommendationService(knowledge_store, experience_index)
+            return None
+
+        if self._session_manager is not None and hasattr(self._session_manager, "_storage"):
+            storage = getattr(self._session_manager, "_storage")
+            if isinstance(storage, FileStorage):
+                return RecommendationService(
+                    KnowledgeStore(storage),
+                    ExperienceIndex(storage),
+                )
+
+        return None
+
+    def _recommendation_service_enabled(
+        self,
+        recommendation_service: RecommendationService,
+    ) -> bool:
+        """Return whether the provided recommendation service should run."""
+        enabled_checker = getattr(recommendation_service, "is_enabled", None)
+        if callable(enabled_checker):
+            return bool(enabled_checker())
+        return True
+
+    def _get_session_context(
+        self,
+        session_id: Optional[str],
+    ) -> tuple[str | None, dict[str, Any]]:
+        """Fetch session topic/metadata when session information is available."""
+        if not session_id or self._session_manager is None:
+            return None, {}
+        session = self._session_manager.restore_session(session_id)
+        if session is None:
+            return None, {}
+        topic = getattr(session, "topic", None)
+        context = getattr(session, "context", None)
+        metadata = getattr(context, "metadata", {}) if context is not None else {}
+        if isinstance(metadata, dict):
+            return topic, dict(metadata)
+        return topic, {}
+
+    def _safe_get_repository_state(self) -> dict[str, Any]:
+        """Best-effort repository state fetch for recommendation context."""
+        try:
+            return self._host_adapter.get_repository_state()
+        except Exception:
+            return {}
+
+    def _merge_recommendation_metadata(
+        self,
+        existing_metadata: dict[str, Any],
+        params: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Merge recommendation-relevant params into session metadata."""
+        merged = dict(existing_metadata)
+        if params.get("problem_domain"):
+            merged["problem_domain"] = params["problem_domain"]
+        if params.get("domain"):
+            merged["domain"] = params["domain"]
+        tags = params.get("tags")
+        if isinstance(tags, list):
+            merged["tags"] = tags
+        return merged
+
+    def _persist_session_runtime_context(
+        self,
+        session_id: Optional[str],
+        state: SessionState,
+        metadata: dict[str, Any],
+    ) -> None:
+        """Best-effort writeback of runtime state/metadata to session.json."""
+        if not session_id or self._session_manager is None:
+            return
+        try:
+            self._session_manager.update_session(
+                session_id,
+                state=state,
+                context_metadata=metadata,
+            )
+        except Exception:
+            logger.debug("Failed to persist session runtime context", exc_info=True)
+
+    def _persist_session_artifacts(
+        self,
+        session_id: Optional[str],
+        artifacts: list[Any],
+    ) -> None:
+        """Best-effort writeback of artifact paths to session.json."""
+        if not session_id or self._session_manager is None or not artifacts:
+            return
+        artifact_payloads: list[dict[str, Any]] = []
+        for artifact in artifacts:
+            if isinstance(artifact, str):
+                artifact_payloads.append({"path": artifact, "status": "produced"})
+            elif isinstance(artifact, dict):
+                artifact_payloads.append(artifact)
+        try:
+            self._session_manager.update_session(
+                session_id,
+                artifacts=artifact_payloads,
+            )
+        except Exception:
+            logger.debug("Failed to persist session artifacts", exc_info=True)
 
     def get_skill_metadata(self, skill_name: str) -> Optional[SkillMetadata]:
         """Get metadata about a skill.

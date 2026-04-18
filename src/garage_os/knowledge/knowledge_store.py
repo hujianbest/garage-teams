@@ -378,6 +378,9 @@ class KnowledgeStore:
             "related_tasks": entry.related_tasks,
             "source_session": entry.source_session,
             "source_artifact": entry.source_artifact,
+            "source_evidence_anchor": entry.source_evidence_anchor,
+            "confirmation_ref": entry.confirmation_ref,
+            "published_from_candidate": entry.published_from_candidate,
         }
 
     def _front_matter_to_entry(self, fm: dict, content: str) -> KnowledgeEntry:
@@ -422,5 +425,8 @@ class KnowledgeStore:
             related_tasks=fm.get("related_tasks", []),
             source_session=fm.get("source_session"),
             source_artifact=fm.get("source_artifact"),
+            source_evidence_anchor=fm.get("source_evidence_anchor"),
+            confirmation_ref=fm.get("confirmation_ref"),
+            published_from_candidate=fm.get("published_from_candidate"),
             front_matter=fm,  # Store original front matter
         )

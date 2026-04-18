@@ -418,15 +418,15 @@ T1 -> T2 -> T3 -> T9
 
 | Task ID | Status | Depends On | Ready When | Selection Priority | Milestone |
 |---------|--------|------------|------------|-------------------|-----------|
-| T1 | ready | - | spec/design/tasks approval 已完成 | P1 | M1 |
-| T2 | pending | T1 | T1=done | P1 | M1 |
-| T3 | pending | T2 | T2=done | P1 | M2 |
-| T4 | pending | T1 | T1=done | P1 | M1 |
-| T5 | pending | T1,T2 | T1=done AND T2=done | P1 | M2 |
-| T6 | pending | T5 | T5=done | P2 | M2 |
-| T7 | pending | T5 | T5=done | P2 | M3 |
-| T8 | pending | T4,T5 | T4=done AND T5=done | P2 | M3 |
-| T9 | pending | T3,T6,T7,T8 | T3=done AND T6=done AND T7=done AND T8=done | P3 | M3 |
+| T1 | done | - | spec/design/tasks approval 已完成 | P1 | M1 |
+| T2 | done | T1 | T1=done | P1 | M1 |
+| T3 | done | T2 | T2=done | P1 | M2 |
+| T4 | done | T1 | T1=done | P1 | M1 |
+| T5 | done | T1,T2 | T1=done AND T2=done | P1 | M2 |
+| T6 | done | T5 | T5=done | P2 | M2 |
+| T7 | done | T5 | T5=done | P2 | M3 |
+| T8 | done | T4,T5 | T4=done AND T5=done | P2 | M3 |
+| T9 | done | T3,T6,T7,T8 | T3=done AND T6=done AND T7=done AND T8=done | P3 | M3 |
 ```
 
 ---
@@ -453,6 +453,6 @@ T1 -> T2 -> T3 -> T9
 
 ---
 
-**文档状态**：草稿，待 `hf-tasks-review` 评审
+**文档状态**：已按计划完成实现，质量链收尾中
 
-**下一步**：派发独立 reviewer subagent 执行 `hf-tasks-review`
+**下一步**：消费实现交接块与 fresh verification evidence，进入剩余质量链 / 完成门禁

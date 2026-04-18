@@ -7,6 +7,15 @@ from garage_os.memory.types import (
     ConfirmationRecord,
 )
 from garage_os.memory.candidate_store import CandidateStore
+from garage_os.memory.extraction_orchestrator import (
+    ExtractionConfig,
+    MemoryExtractionOrchestrator,
+)
+from garage_os.memory.publisher import KnowledgePublisher
+from garage_os.memory.recommendation_service import (
+    RecommendationContextBuilder,
+    RecommendationService,
+)
 
 __all__ = [
     "ALLOWED_CANDIDATE_TYPES",
@@ -14,4 +23,9 @@ __all__ = [
     "CandidateDraft",
     "ConfirmationRecord",
     "CandidateStore",
+    "ExtractionConfig",
+    "MemoryExtractionOrchestrator",
+    "KnowledgePublisher",
+    "RecommendationContextBuilder",
+    "RecommendationService",
 ]

@@ -109,6 +109,9 @@ class KnowledgeEntry:
     related_tasks: List[str] = field(default_factory=list)
     source_session: Optional[str] = None
     source_artifact: Optional[str] = None
+    source_evidence_anchor: Optional[Dict[str, Any]] = None
+    confirmation_ref: Optional[str] = None
+    published_from_candidate: Optional[str] = None
     front_matter: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -131,6 +134,9 @@ class ExperienceRecord:
     lessons_learned: List[str] = field(default_factory=list)
     pitfalls: List[str] = field(default_factory=list)
     recommendations: List[str] = field(default_factory=list)
+    source_evidence_anchors: List[Dict[str, Any]] = field(default_factory=list)
+    confirmation_ref: Optional[str] = None
+    published_from_candidate: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 
