@@ -129,7 +129,7 @@ def _status(garage_root: Path) -> None:
         print(f"Most recent experience: {recent_experience}")
 
 
-def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> None:
+def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> int:
     """Run a Garage skill and record the experience.
 
     Args:
@@ -141,7 +141,7 @@ def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> None:
 
     if not garage_dir.is_dir():
         print("No .garage/ directory found. Run 'garage init' first.")
-        return
+        return 1
 
     storage = FileStorage(garage_dir)
 
@@ -163,6 +163,8 @@ def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> None:
     exit_code = 0
     output = ""
 
+    return_code = 0
+
     try:
         result = adapter.invoke_skill(skill_name)
         output = result.get("output", "")
@@ -170,6 +172,7 @@ def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> None:
 
         if not result.get("success", False):
             outcome = "failure"
+            return_code = exit_code or 1
             session_manager.update_session(
                 session.session_id, state=SessionState.FAILED
             )
@@ -186,6 +189,7 @@ def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> None:
 
     except Exception as e:
         outcome = "failure"
+        return_code = 1
         session_manager.update_session(
             session.session_id, state=SessionState.FAILED
         )
@@ -225,6 +229,8 @@ def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> None:
         print(f"Session archived: {session.session_id}")
     else:
         print(f"Warning: Failed to archive session: {session.session_id}")
+
+    return return_code
 
 
 def _knowledge_search(garage_root: Path, query: Optional[str]) -> None:
@@ -376,8 +382,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.command == "run":
         root = args.path if args.path else _find_garage_root()
-        _run(root, args.skill_name, timeout=args.timeout)
-        return 0
+        return _run(root, args.skill_name, timeout=args.timeout)
 
     if args.command == "knowledge":
         root = args.path if args.path else _find_garage_root()

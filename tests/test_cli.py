@@ -161,9 +161,10 @@ class TestRunCommand:
             mock_adapter.invoke_skill.return_value = mock_result
             MockAdapter.return_value = mock_adapter
 
-            main(["run", "test-skill", "--path", str(tmp_path)])
+            result = main(["run", "test-skill", "--path", str(tmp_path)])
 
         captured = capsys.readouterr()
+        assert result == 0
         assert "Skill 'test-skill' completed successfully" in captured.out
         assert "Experience recorded:" in captured.out
         assert "Session archived:" in captured.out
@@ -200,9 +201,10 @@ class TestRunCommand:
             mock_adapter.invoke_skill.return_value = mock_result
             MockAdapter.return_value = mock_adapter
 
-            main(["run", "failing-skill", "--path", str(tmp_path)])
+            result = main(["run", "failing-skill", "--path", str(tmp_path)])
 
         captured = capsys.readouterr()
+        assert result == 1
         assert "Skill 'failing-skill' failed" in captured.out
         assert "Experience recorded:" in captured.out
         assert "Session archived:" in captured.out
@@ -245,6 +247,41 @@ class TestRunCommand:
         assert list((garage_dir / "sessions" / "active").iterdir()) == []
         sessions = list((garage_dir / "sessions" / "archived").iterdir())
         assert len(sessions) == 2
+
+    def test_run_returns_nonzero_on_exception(self, tmp_path: Path, capsys) -> None:
+        """run should return non-zero when the adapter raises an exception."""
+        main(["init", "--path", str(tmp_path)])
+
+        with patch("garage_os.cli.ClaudeCodeAdapter") as MockAdapter:
+            mock_adapter = MagicMock()
+            mock_adapter.invoke_skill.side_effect = Exception("boom")
+            MockAdapter.return_value = mock_adapter
+
+            result = main(["run", "broken-skill", "--path", str(tmp_path)])
+
+        captured = capsys.readouterr()
+        assert result == 1
+        assert "Error running skill 'broken-skill': boom" in captured.out
+
+    def test_run_passes_timeout_to_adapter(self, tmp_path: Path) -> None:
+        """run should pass the requested timeout through to ClaudeCodeAdapter."""
+        main(["init", "--path", str(tmp_path)])
+
+        with patch("garage_os.cli.ClaudeCodeAdapter") as MockAdapter:
+            mock_adapter = MagicMock()
+            mock_adapter.invoke_skill.return_value = {
+                "output": "",
+                "exit_code": 0,
+                "success": True,
+            }
+            MockAdapter.return_value = mock_adapter
+
+            result = main(
+                ["run", "timed-skill", "--timeout", "17", "--path", str(tmp_path)]
+            )
+
+        assert result == 0
+        MockAdapter.assert_called_once_with(tmp_path, timeout=17)
 
 
 class TestExperienceRecording:
