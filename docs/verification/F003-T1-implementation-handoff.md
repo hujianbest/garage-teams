@@ -1,0 +1,32 @@
+# 实现交接块
+
+- Task ID: `T1`
+- 回流来源: 主链实现
+- 触碰工件:
+  - `src/garage_os/memory/types.py`
+  - `src/garage_os/memory/candidate_store.py`
+  - `src/garage_os/memory/__init__.py`
+  - `tests/memory/test_candidate_store.py`
+  - `docs/approvals/F003-tasks-approval.md`
+  - `docs/approvals/F003-T1-test-design-approval.md`
+  - `task-progress.md`
+- Workspace Isolation / Worktree Path / Worktree Branch: `in-place` / `N/A` / `cursor/f003-auto-knowledge-extraction-e0e5`
+- 测试设计确认证据:
+  - `docs/approvals/F003-T1-test-design-approval.md`
+- RED 证据:
+  - `uv run pytest tests/memory/test_candidate_store.py -q`
+  - 首次失败摘要：`ModuleNotFoundError: No module named 'garage_os.memory'`
+  - 为什么预期失败：T1 要求的 `memory` 子模块与候选存储契约在实现前不存在，测试用于证明该缺口真实存在
+- GREEN 证据:
+  - `uv run pytest tests/memory/test_candidate_store.py -q`
+  - 通过摘要：`3 passed in 0.07s`
+  - 关键结果：候选 batch / candidate / confirmation 的最小存储契约已可写可读，非法 `candidate_type` 与超过 5 条 `pending_review` batch 均被拒绝
+- 与任务计划测试种子的差异:
+  - 与 T1 测试种子一致，无额外偏离
+- 剩余风险 / 未覆盖项:
+  - 当前只覆盖 T1 最小存储契约，尚未覆盖 extraction、publish、recommendation 等下游行为
+  - `ConfirmationRecord` 当前仅提供最小类型与存储接口，字段完整性将在后续任务中扩展验证
+- Pending Reviews And Gates:
+  - `hf-test-review`
+- Next Action Or Recommended Skill:
+  - `hf-test-review`
