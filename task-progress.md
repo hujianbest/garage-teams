@@ -4,7 +4,7 @@
 
 - Goal: F003 — Garage Memory（自动知识提取与经验推荐）
 - Owner: hujianbest
-- Status: 🟡 F003 code-review r1 = 需修改，回流修订已完成（+8 测试，384 passed），待进入 hf-test-review 增量轮 → code-review r2
+- Status: 🟡 F003 质量链全部通过（test-review r3 / code-review r2 / traceability / regression-gate 均 = 通过），待进入 hf-completion-gate
 - Last Updated: 2026-04-18
 
 ## Previous Milestones
@@ -14,13 +14,13 @@
 
 ## Current Workflow State
 
-- Current Stage: hf-test-driven-dev（code-review r1 回流修订完成）
+- Current Stage: hf-regression-gate（通过）
 - Workflow Profile: full
 - Execution Mode: auto
 - Workspace Isolation: in-place
-- Current Active Task: F003 全量实现批次（code-review r1 回流修订完成）
-- Pending Reviews And Gates: hf-test-review (incremental) / hf-code-review (r2) / hf-traceability-review / hf-regression-gate / hf-completion-gate
-- Next Action Or Recommended Skill: hf-test-review
+- Current Active Task: F003 全量实现批次（质量链已贯通至 regression-gate）
+- Pending Reviews And Gates: hf-completion-gate
+- Next Action Or Recommended Skill: hf-completion-gate
 - Relevant Files:
   - `docs/features/F003-garage-memory-auto-extraction.md`（F003 已批准规格）
   - `docs/approvals/F003-spec-approval.md`（F003 规格批准记录）
@@ -30,9 +30,13 @@
   - `docs/verification/F003-T1-implementation-handoff.md`（T1 实现交接块）
   - `docs/reviews/test-review-F003-garage-memory-auto-extraction.md`（F003 test-review r1 记录）
   - `docs/reviews/test-review-F003-garage-memory-auto-extraction-r2.md`（F003 test-review r2 记录）
+  - `docs/reviews/test-review-F003-garage-memory-auto-extraction-r3.md`（F003 test-review r3 增量记录）
   - `docs/reviews/code-review-F003-garage-memory-auto-extraction.md`（F003 code-review r1 记录）
+  - `docs/reviews/code-review-F003-garage-memory-auto-extraction-r2.md`（F003 code-review r2 记录）
+  - `docs/reviews/traceability-review-F003-garage-memory-auto-extraction.md`（F003 追溯评审记录）
   - `docs/verification/F003-test-review-r1-handoff.md`（F003 test-review r1 回流修订交接块）
   - `docs/verification/F003-code-review-r1-handoff.md`（F003 code-review r1 回流修订交接块）
+  - `docs/verification/F003-regression-gate.md`（F003 regression gate 验证记录）
   - `src/garage_os/memory/`（F003 memory pipeline 实现）
   - `tests/memory/`（F003 memory pipeline 测试）
   - `docs/designs/2026-04-18-garage-memory-auto-extraction-design.md`（F003 已批准设计）
@@ -53,7 +57,5 @@
 
 ## Next Step
 
-1. 派发 `hf-test-review` 增量轮，复审本轮 +8 fresh evidence（orchestrator anchors / experience_summary 完整性 / extraction_failed batch / publisher conflict_strategy / CLI abandon + strategy 强制提示）
-2. 增量轮通过 → `hf-code-review` r2 复审实现修订
-3. r2 通过 → `hf-traceability-review` → `hf-regression-gate` → `hf-completion-gate`
-4. completion gate 通过后由 router / finalize 决定后续走向
+1. 进入 `hf-completion-gate`：判断 F003 全量批次是否可宣告完成（需消费 regression-gate 与 traceability 通过结论）
+2. completion gate 通过后由 router / finalize 决定收尾走向（含 traceability 列出的 minor LLM-FIXABLE 顺手清理 + USER-INPUT 真人裁决）
