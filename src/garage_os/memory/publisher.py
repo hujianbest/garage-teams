@@ -8,6 +8,7 @@ from typing import Any, Optional
 from garage_os.knowledge.experience_index import ExperienceIndex
 from garage_os.knowledge.knowledge_store import KnowledgeStore
 from garage_os.memory.candidate_store import CandidateStore
+from garage_os.memory.conflict_detector import ConflictDetector
 from garage_os.types import ExperienceRecord, KnowledgeEntry, KnowledgeType
 
 
@@ -23,6 +24,7 @@ class KnowledgePublisher:
         self._candidate_store = candidate_store
         self._knowledge_store = knowledge_store
         self._experience_index = experience_index
+        self._conflict_detector = ConflictDetector(knowledge_store)
 
     def publish_candidate(
         self,
@@ -53,6 +55,9 @@ class KnowledgePublisher:
                 "action": action,
             }
 
+        if action == "abandon":
+            return {"published_id": None, "knowledge_type": None, "action": action}
+
         entry = self._to_knowledge_entry(payload, confirmation_ref)
         self._knowledge_store.store(entry)
         return {
@@ -60,6 +65,16 @@ class KnowledgePublisher:
             "knowledge_type": entry.type,
             "action": action,
         }
+
+    def detect_conflicts(self, candidate_id: str) -> dict[str, Any]:
+        """Return conflict suggestions for a candidate before publication."""
+        candidate = self._candidate_store.retrieve_candidate(candidate_id)
+        if candidate is None:
+            raise ValueError(f"Candidate not found: {candidate_id}")
+        return self._conflict_detector.detect(
+            title=str(candidate.get("title", "")),
+            tags=list(candidate.get("tags", [])),
+        )
 
     def _to_knowledge_entry(
         self,

@@ -121,6 +121,26 @@ def experience_summary_candidate():
 class TestKnowledgePublisher:
     """Tests for publishing accepted candidates."""
 
+    def test_detect_conflicts_returns_supersede_for_similar_knowledge(
+        self,
+        publisher,
+        candidate_store,
+        decision_candidate,
+        knowledge_store,
+    ) -> None:
+        """Similar published knowledge should produce a supersede suggestion."""
+        candidate_store.store_candidate(decision_candidate)
+        published = publisher._to_knowledge_entry(  # noqa: SLF001 - test helper use
+            decision_candidate,
+            confirmation_ref=".garage/memory/confirmations/batch-001.json",
+        )
+        knowledge_store.store(published)
+
+        conflict = publisher.detect_conflicts("candidate-001")
+
+        assert conflict["strategy"] == "supersede"
+        assert published.id in conflict["similar_entries"]
+
     def test_publish_decision_candidate_with_traceability(
         self,
         publisher,

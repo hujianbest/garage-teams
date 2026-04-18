@@ -201,6 +201,95 @@ def test_archive_session(session_manager: SessionManager, tmp_path: Path):
     assert archive_data["reason"] == "session_archived"
 
 
+def test_archive_session_creates_memory_batch_when_enabled(
+    session_manager: SessionManager,
+    tmp_path: Path,
+):
+    """Archiving a completed session should trigger memory extraction when enabled."""
+    metadata = session_manager.create_session("test-pack", "Memory topic")
+    session_id = metadata.session_id
+    session_manager.update_session(
+        session_id,
+        current_node_id="node-123",
+    )
+
+    platform_config = tmp_path / "config" / "platform.json"
+    platform_config.parent.mkdir(parents=True, exist_ok=True)
+    platform_config.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "memory": {
+                    "extraction_enabled": True,
+                    "recommendation_enabled": False,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    active_session_file = tmp_path / "sessions" / "active" / session_id / "session.json"
+    data = json.loads(active_session_file.read_text(encoding="utf-8"))
+    data["context"]["metadata"] = {
+        "problem_domain": "memory_pipeline",
+        "tags": ["workspace-first"],
+    }
+    data["artifacts"] = [
+        {
+            "path": "docs/designs/2026-04-18-garage-memory-auto-extraction-design.md",
+            "status": "approved",
+        }
+    ]
+    active_session_file.write_text(json.dumps(data), encoding="utf-8")
+
+    result = session_manager.archive_session(session_id)
+
+    assert result is True
+    batch_files = list((tmp_path / "memory" / "candidates" / "batches").glob("*.json"))
+    assert len(batch_files) == 1
+    batch_data = json.loads(batch_files[0].read_text(encoding="utf-8"))
+    assert batch_data["evaluation_summary"] == "evaluated_with_candidates"
+
+
+def test_archive_session_ignores_memory_errors(
+    session_manager: SessionManager,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Memory extraction failures should not block archive_session."""
+    metadata = session_manager.create_session("test-pack", "Error topic")
+    session_id = metadata.session_id
+
+    platform_config = tmp_path / "config" / "platform.json"
+    platform_config.parent.mkdir(parents=True, exist_ok=True)
+    platform_config.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "memory": {
+                    "extraction_enabled": True,
+                    "recommendation_enabled": False,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("memory exploded")
+
+    monkeypatch.setattr(
+        "garage_os.runtime.session_manager.MemoryExtractionOrchestrator.extract_for_archived_session",
+        _boom,
+    )
+
+    result = session_manager.archive_session(session_id)
+
+    assert result is True
+    archived_dir = tmp_path / "sessions" / "archived" / session_id
+    assert archived_dir.exists()
+
+
 def test_archive_nonexistent(session_manager: SessionManager):
     """Test archiving a nonexistent session returns False."""
     result = session_manager.archive_session("session-doesnotexist-001")

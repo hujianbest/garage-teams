@@ -877,3 +877,141 @@ This artifact has been approved.
         assert restored1 is not None
         assert restored2 is not None
         assert restored1.session_id != restored2.session_id
+
+    def test_memory_pipeline_e2e_flow(self, tmp_path: Path):
+        """Archive -> candidate batch -> publish -> recommendation should work end-to-end."""
+        from garage_os.memory.candidate_store import CandidateStore
+        from garage_os.memory.extraction_orchestrator import (
+            ExtractionConfig,
+            MemoryExtractionOrchestrator,
+        )
+        from garage_os.memory.publisher import KnowledgePublisher
+        from garage_os.memory.recommendation_service import RecommendationService
+
+        storage = FileStorage(tmp_path)
+        session_manager = SessionManager(storage)
+        state_machine = StateMachine(SessionState.IDLE)
+        error_handler = ErrorHandler()
+
+        knowledge_store = KnowledgeStore(storage)
+        experience_index = ExperienceIndex(storage)
+        knowledge_integration = KnowledgeIntegration(knowledge_store, experience_index)
+        candidate_store = CandidateStore(storage)
+        orchestrator = MemoryExtractionOrchestrator(
+            storage,
+            candidate_store,
+            ExtractionConfig(),
+        )
+        publisher = KnowledgePublisher(candidate_store, knowledge_store, experience_index)
+        recommendation_service = RecommendationService(knowledge_store, experience_index)
+
+        storage.write_json(
+            "config/platform.json",
+            {
+                "schema_version": 1,
+                "platform_name": "Garage Agent OS",
+                "stage": 1,
+                "storage_mode": "artifact-first",
+                "host_type": "claude-code",
+                "session_timeout_seconds": 7200,
+                "max_active_sessions": 1,
+                "knowledge_indexing": "manual",
+                "memory": {
+                    "extraction_enabled": True,
+                    "recommendation_enabled": True,
+                },
+            },
+        )
+
+        host_adapter = MockHostAdapter(tmp_path)
+        host_adapter.register_skill(
+            "hf-design",
+            {
+                "status": "success",
+                "result": {
+                    "output": "design complete",
+                    "artifacts": [
+                        "docs/designs/2026-04-18-garage-memory-auto-extraction-design.md",
+                    ],
+                },
+            },
+        )
+
+        skill_executor = SkillExecutor(
+            host_adapter=host_adapter,
+            session_manager=session_manager,
+            state_machine=state_machine,
+            error_handler=error_handler,
+            knowledge_integration=knowledge_integration,
+            recommendation_service=recommendation_service,
+        )
+
+        session = session_manager.create_session(
+            pack_id="hf-design",
+            topic="F003 design",
+        )
+        session_id = session.session_id
+
+        result = skill_executor.execute_skill(
+            skill_name="hf-design",
+            params={
+                "domain": "garage_os",
+                "problem_domain": "memory_pipeline",
+                "tags": ["workspace-first"],
+            },
+            session_id=session_id,
+        )
+        assert result.success is True
+
+        session_manager.update_session(
+            session_id,
+            current_node_id="hf-design",
+        )
+        archived = session_manager.archive_session(
+            session_id,
+            extraction_orchestrator=orchestrator,
+        )
+        assert archived is True
+
+        batches = storage.list_files("memory/candidates/batches", "*.json")
+        assert len(batches) == 1
+        batch_data = storage.read_json(f"memory/candidates/batches/{batches[0].name}")
+        assert batch_data is not None
+        assert batch_data["candidate_ids"]
+
+        candidate_id = batch_data["candidate_ids"][0]
+        storage.write_json(
+            "memory/confirmations/batch-confirm.json",
+            {
+                "schema_version": "1",
+                "batch_id": "batch-confirm",
+                "resolution": "mixed",
+                "actions": [
+                    {
+                        "candidate_id": candidate_id,
+                        "action": "accept",
+                    }
+                ],
+                "resolved_at": datetime.now().isoformat(),
+                "surface": "cli",
+                "approver": "user",
+            },
+        )
+
+        publish_result = publisher.publish_candidate(
+            candidate_id=candidate_id,
+            action="accept",
+            confirmation_ref=".garage/memory/confirmations/batch-confirm.json",
+        )
+        assert publish_result["published_id"] is not None
+
+        recommendations = recommendation_service.recommend(
+            {
+                "skill_name": "hf-design",
+                "domain": "garage_os",
+                "problem_domain": "memory_pipeline",
+                "tags": ["workspace-first"],
+                "artifact_paths": [],
+            }
+        )
+        assert recommendations

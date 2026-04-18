@@ -49,9 +49,15 @@ class RecommendationService:
         self,
         knowledge_store: KnowledgeStore,
         experience_index: ExperienceIndex,
+        enabled: bool = True,
     ) -> None:
         self._knowledge_store = knowledge_store
         self._experience_index = experience_index
+        self._enabled = enabled
+
+    def is_enabled(self) -> bool:
+        """Return whether recommendation queries should run."""
+        return self._enabled
 
     def recommend(self, context: dict[str, Any]) -> list[dict[str, Any]]:
         """Recommend published entries based on heuristics."""

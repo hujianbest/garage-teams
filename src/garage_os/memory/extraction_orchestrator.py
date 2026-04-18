@@ -91,6 +91,13 @@ class MemoryExtractionOrchestrator:
         """Return whether extraction is enabled."""
         return load_memory_config(self._storage)["extraction_enabled"]
 
+    def extract_for_archived_session_id(self, session_id: str) -> dict[str, Any]:
+        """Load an archived session from disk and extract candidates for it."""
+        archived = self._storage.read_json(f"sessions/archived/{session_id}/session.json")
+        if archived is None:
+            raise ValueError(f"Archived session not found: {session_id}")
+        return self.extract_for_archived_session(archived)
+
     def _build_signals(self, archived_session: dict[str, Any]) -> list[dict[str, Any]]:
         """Build evidence signals from archived session payload."""
         signals: list[dict[str, Any]] = []
@@ -127,6 +134,41 @@ class MemoryExtractionOrchestrator:
                     }
                 )
 
+        # Only use weaker session metadata as supplemental signals once at least
+        # one stronger evidence source exists. This preserves the explicit
+        # "no_evidence" branch for empty sessions while still helping real
+        # archived sessions produce candidates.
+        if signals:
+            pack_id = archived_session.get("pack_id")
+            if isinstance(pack_id, str) and pack_id:
+                signals.append(
+                    {
+                        "kind": "pack_id",
+                        "value": pack_id,
+                        "priority_score": 0.58,
+                    }
+                )
+
+            topic = archived_session.get("topic")
+            if isinstance(topic, str) and topic:
+                signals.append(
+                    {
+                        "kind": "topic",
+                        "value": topic,
+                        "priority_score": 0.56,
+                    }
+                )
+
+            current_node_id = archived_session.get("current_node_id")
+            if isinstance(current_node_id, str) and current_node_id:
+                signals.append(
+                    {
+                        "kind": "current_node",
+                        "value": current_node_id,
+                        "priority_score": 0.57,
+                    }
+                )
+
         return signals
 
     def _generate_candidates(
@@ -142,6 +184,20 @@ class MemoryExtractionOrchestrator:
             for artifact in archived_session.get("artifacts", [])
             if artifact.get("path")
         ]
+        context = archived_session.get("context", {})
+        metadata = context.get("metadata", {})
+        candidate_tags: list[str] = []
+        for raw_tag in metadata.get("tags", []):
+            if isinstance(raw_tag, str) and raw_tag:
+                candidate_tags.append(raw_tag)
+        for tag in (
+            archived_session.get("pack_id"),
+            metadata.get("domain"),
+            metadata.get("problem_domain"),
+        ):
+            if isinstance(tag, str) and tag:
+                candidate_tags.append(tag)
+        candidate_tags = list(dict.fromkeys(candidate_tags))
         generated: list[dict[str, Any]] = []
         for index, signal in enumerate(signals):
             priority_score = float(signal["priority_score"])
@@ -167,6 +223,7 @@ class MemoryExtractionOrchestrator:
                     "title": f"{topic} / {signal['kind']}",
                     "summary": f"Candidate generated from {signal['kind']}",
                     "content": f"Derived from {signal['kind']}: {signal['value']}",
+                    "tags": candidate_tags,
                 }
             )
 
