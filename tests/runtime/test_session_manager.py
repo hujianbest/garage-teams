@@ -88,6 +88,20 @@ def test_create_session_increments_id(session_manager: SessionManager, tmp_path:
     assert seq3 == 3
 
 
+def test_create_session_increments_after_archive(
+    session_manager: SessionManager, tmp_path: Path
+):
+    """Archived sessions should still count toward the next session sequence."""
+    session1 = session_manager.create_session("pack-1", "topic-1")
+    archived = session_manager.archive_session(session1.session_id)
+
+    assert archived is True
+
+    session2 = session_manager.create_session("pack-2", "topic-2")
+
+    assert session2.session_id.endswith("-002")
+
+
 def test_restore_session(session_manager: SessionManager):
     """Test restoring an existing session."""
     # Create a session

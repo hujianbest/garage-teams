@@ -3,6 +3,7 @@
 import hashlib
 import json
 import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -133,11 +134,16 @@ class SessionManager:
 
         return self._deserialize_metadata(data)
 
-    def archive_session(self, session_id: str) -> bool:
+    def archive_session(
+        self,
+        session_id: str,
+        reason: str = "session_archived",
+    ) -> bool:
         """Archive a session from active to archived storage.
 
         Args:
             session_id: Session identifier to archive
+            reason: Archive reason recorded in ``archive.json``
 
         Returns:
             True if archived successfully, False otherwise
@@ -149,38 +155,18 @@ class SessionManager:
         if data is None:
             return False
 
-        # Create archive.json with archive metadata
-        now = datetime.now()
+        src_path = f"sessions/active/{session_id}"
+        archived_dir = f"sessions/archived/{session_id}"
+        moved = self._storage.move(src_path, archived_dir)
+        if not moved:
+            return False
+
         archive_data = {
             "session_id": session_id,
-            "archived_at": now.isoformat(),
-            "reason": "session_archived",
+            "archived_at": datetime.now().isoformat(),
+            "reason": reason,
         }
-
-        # Ensure archived directory exists
-        archived_dir = f"sessions/archived/{session_id}"
-        self._storage.ensure_dir(archived_dir)
-
-        # Write archive.json
         self._storage.write_json(f"{archived_dir}/archive.json", archive_data)
-
-        # Move session directory
-        src_path = f"sessions/active/{session_id}"
-        dst_path = f"sessions/archived/{session_id}/session.json"
-        self._storage.ensure_dir(f"sessions/archived/{session_id}")
-
-        # Read the session data first
-        session_data = self._storage.read_json(f"sessions/active/{session_id}/session.json")
-
-        # Write to new location
-        self._storage.write_json(dst_path, session_data)
-
-        # Remove old directory
-        old_session_dir = self._storage._get_full_path(f"sessions/active/{session_id}")
-        if old_session_dir.exists():
-            for item in old_session_dir.iterdir():
-                item.unlink()
-            old_session_dir.rmdir()
 
         return True
 
@@ -238,37 +224,8 @@ class SessionManager:
                 if data is None:
                     continue
 
-                # Create archive.json with archive metadata
-                archive_data = {
-                    "session_id": session_id,
-                    "archived_at": now.isoformat(),
-                    "reason": "session_timeout",
-                }
-
-                # Ensure archived directory exists
-                archived_dir = f"sessions/archived/{session_id}"
-                self._storage.ensure_dir(archived_dir)
-
-                # Write archive.json
-                self._storage.write_json(f"{archived_dir}/archive.json", archive_data)
-
-                # Move session directory
-                dst_path = f"sessions/archived/{session_id}/session.json"
-
-                # Read the session data first
-                session_data = self._storage.read_json(f"sessions/active/{session_id}/session.json")
-
-                # Write to new location
-                self._storage.write_json(dst_path, session_data)
-
-                # Remove old directory
-                old_session_dir = self._storage._get_full_path(f"sessions/active/{session_id}")
-                if old_session_dir.exists():
-                    for item in old_session_dir.iterdir():
-                        item.unlink()
-                    old_session_dir.rmdir()
-
-                archived_ids.append(session_id)
+                if self.archive_session(session_id, reason="session_timeout"):
+                    archived_ids.append(session_id)
 
         return archived_ids
 
@@ -335,17 +292,44 @@ class SessionManager:
 
         # Also check archived sessions
         archived_dir = self._storage._get_full_path(f"sessions/archived")
-        if archived_dir.exists():
-            for date_dir in archived_dir.iterdir():
-                if date_dir.is_dir():
-                    for session_dir in date_dir.iterdir():
-                        match = pattern.match(session_dir.name)
-                        if match:
-                            seq = int(match.group(1))
-                            max_seq = max(max_seq, seq)
+        max_seq = self._scan_session_sequence(archived_dir, pattern, max_seq)
 
         next_seq = max_seq + 1
         return f"session-{today}-{next_seq:03d}"
+
+    def _scan_session_sequence(
+        self,
+        base_dir: Path,
+        pattern: re.Pattern[str],
+        current_max: int,
+    ) -> int:
+        """Scan active/archived directories for the highest sequence number.
+
+        Supports both the current layout ``sessions/<state>/<session_id>/`` and an
+        older nested archived layout where session directories may sit one level
+        deeper under date buckets.
+        """
+        max_seq = current_max
+        if not base_dir.exists():
+            return max_seq
+
+        for child in base_dir.iterdir():
+            if not child.is_dir():
+                continue
+
+            match = pattern.match(child.name)
+            if match:
+                max_seq = max(max_seq, int(match.group(1)))
+                continue
+
+            for nested in child.iterdir():
+                if not nested.is_dir():
+                    continue
+                match = pattern.match(nested.name)
+                if match:
+                    max_seq = max(max_seq, int(match.group(1)))
+
+        return max_seq
 
     def _serialize_metadata(self, metadata: SessionMetadata) -> dict:
         """Serialize session metadata to JSON-compatible dict.

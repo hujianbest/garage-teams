@@ -13,10 +13,10 @@ F001 Phase 1 构建了完整的 Garage OS 引擎（Session、State Machine、Err
 
 具体问题：
 
-1. **没有 CLI 入口**：用户无法直接与 Garage OS 交互，所有模块只能通过 Python API 或 mock 测试调用
-2. **ClaudeCodeAdapter 是半成品**：`invoke_skill()` 只读取 SKILL.md 文件内容返回，并不真正调用 Claude Code
-3. **知识从未被写入**：KnowledgeStore 和 ExperienceIndex 只在测试中用过 tmp_path，`.garage/` 目录下没有真实数据
-4. **没有端到端验证**：Phase 1 的 E2E 测试用的是 mock skill，没有真实的 skill 执行链路
+1. **CLI 虽已存在，但链路语义未完全对齐规格**：`garage init/status/run/knowledge` 已可用，但 `run` 的 session 生命周期与规格要求仍需持续校准
+2. **ClaudeCodeAdapter 已能真实调用 Claude Code，但宿主约定仍需固化**：`invoke_skill()` 已通过 `claude -p` 执行 `.agents/skills/<name>/SKILL.md`，仍需保证文档、技能布局与用户预期一致
+3. **知识与 experience 已可写入，但缺少真实使用闭环验证**：`.garage/` 已能落盘真实 session / experience 数据，仍需通过稳定 demo 反复验证
+4. **没有真实宿主端到端验收**：当前 E2E 主要仍依赖 mock skill / mock adapter，缺少可重复的真实 skill 执行链路验收
 
 如果不解决这些问题，Phase 2（自动知识提取）就是在没有验证过的地基上盖楼。
 
@@ -67,7 +67,7 @@ F001 Phase 1 构建了完整的 Garage OS 引擎（Session、State Machine、Err
 |------|------|
 | CLI 入口 | `garage` 命令 + 子命令（init, run, status, knowledge） |
 | 真实 ClaudeCodeAdapter | `invoke_skill()` 调用 `claude -p` 命令执行 skill |
-| Session 管理 | run 命令创建 session，执行完归档 |
+| Session 管理 | run 命令创建 session，执行期间更新状态，执行完归档 |
 | Experience 记录 | skill 执行后自动写入 experience record |
 | 知识查询 | CLI 可搜索已有知识条目 |
 | E2E Demo | 用 `ahe-specify` skill 跑通完整链路 |

@@ -85,14 +85,15 @@
   - `src/garage_os/cli.py`（更新）
   - `tests/test_cli.py`（更新）
 - **测试设计种子**:
-  1. `garage run ahe-specify` → 创建 session → 执行 → 归档
-  2. 执行成功 → session 状态为 completed
-  3. 执行失败 → session 状态为 failed + 错误信息
+  1. `garage run ahe-specify` → 创建 session → 执行 → 写 experience → 归档
+  2. 执行成功 → archived session 状态为 completed
+  3. 执行失败 → archived session 状态为 failed + 错误信息
   4. 超时参数传递 → adapter 使用指定 timeout
   5. mock 整个执行链路（不依赖真实 claude）
+  6. 已归档 session 存在时，下一次 run 的 session id 继续递增
 - **完成条件**:
-  - run 命令完成 session 全生命周期管理
-  - 状态转换正确
+  - run 命令完成 session 全生命周期管理（idle → running → completed/failed → archived）
+  - active / archived 路径语义一致，状态转换正确
 
 ---
 

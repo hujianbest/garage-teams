@@ -2,18 +2,15 @@
 
 import argparse
 import json
-import sys
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Optional, Sequence
 
-from garage_os.storage import FileStorage
-from garage_os.storage.file_storage import FileStorage
 from garage_os.adapter.claude_code_adapter import ClaudeCodeAdapter
-from garage_os.runtime.session_manager import SessionManager
 from garage_os.knowledge.experience_index import ExperienceIndex
 from garage_os.knowledge.knowledge_store import KnowledgeStore
+from garage_os.runtime.session_manager import SessionManager
+from garage_os.storage import FileStorage
 from garage_os.types import SessionState
 
 
@@ -85,9 +82,10 @@ def _status(garage_root: Path) -> None:
 
     storage = FileStorage(garage_dir)
 
-    # Count sessions
-    active_sessions = storage.list_files("sessions/active", "*.json")
-    archived_sessions = storage.list_files("sessions/archived", "*.json")
+    # Count sessions using the real on-disk session layout:
+    # sessions/<state>/<session_id>/session.json
+    active_sessions = storage.list_files("sessions/active", "*/session.json")
+    archived_sessions = storage.list_files("sessions/archived", "*/session.json")
     total_sessions = len(active_sessions) + len(archived_sessions)
 
     # Count knowledge entries
@@ -106,7 +104,12 @@ def _status(garage_root: Path) -> None:
         latest = max(experience_records, key=lambda p: p.stat().st_mtime)
         try:
             data = json.loads(latest.read_text(encoding="utf-8"))
-            recent_experience = data.get("timestamp", str(latest))
+            recent_experience = (
+                data.get("updated_at")
+                or data.get("created_at")
+                or data.get("timestamp")
+                or str(latest)
+            )
         except (json.JSONDecodeError, OSError):
             recent_experience = str(latest)
 
@@ -150,6 +153,7 @@ def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> None:
         user_goals=[],
         constraints=[],
     )
+    session_manager.update_session(session.session_id, state=SessionState.RUNNING)
 
     # Create adapter and invoke the skill
     adapter = ClaudeCodeAdapter(garage_root, timeout=timeout)
@@ -216,6 +220,11 @@ def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> None:
         print(f"Experience recorded: {experience_record.record_id}")
     except Exception as e:
         print(f"Warning: Failed to record experience: {e}")
+
+    if session_manager.archive_session(session.session_id):
+        print(f"Session archived: {session.session_id}")
+    else:
+        print(f"Warning: Failed to archive session: {session.session_id}")
 
 
 def _knowledge_search(garage_root: Path, query: Optional[str]) -> None:
