@@ -1,7 +1,8 @@
 # D006: Garage Recall & Knowledge Graph 设计
 
-- 状态: 草稿
+- 状态: 已批准（auto-mode approval；见 `docs/approvals/F006-design-approval.md`）
 - 日期: 2026-04-19
+- Revision: r1（按 design-review 3 项 minor LLM-FIXABLE 直接收敛；详见 `docs/reviews/design-review-F006-recall-and-knowledge-graph.md`）
 - 关联规格: `docs/features/F006-garage-recall-and-knowledge-graph.md`（已批准）
 - 关联批准记录: `docs/approvals/F006-spec-approval.md`
 - 关联前序设计: `docs/designs/2026-04-19-garage-knowledge-authoring-cli-design.md`（D005）
@@ -224,7 +225,12 @@ garage
 RECOMMEND_NO_RESULTS_FMT = "No matching knowledge or experience for query: '{query}'"
 KNOWLEDGE_LINKED_FMT = "Linked '{src}' -> '{dst}' ({kind})"
 KNOWLEDGE_LINK_ALREADY_FMT = "Already linked '{src}' -> '{dst}' ({kind})"
-ERR_LINK_FROM_NOT_FOUND_FMT = "Knowledge entry '{eid}' not found"  # alias of KNOWLEDGE_NOT_FOUND_FMT
+ERR_LINK_FROM_NOT_FOUND_FMT = "Knowledge entry '{eid}' not found"
+# Implementation note (design review D2): the literal value is identical to
+# F005's KNOWLEDGE_NOT_FOUND_FMT. Code may either define a separate constant
+# in cli.py for readability under the F006 link/graph handlers, or reuse
+# KNOWLEDGE_NOT_FOUND_FMT directly. Both are acceptable; tests assert on the
+# rendered string, not on the constant identity.
 ERR_LINK_FROM_AMBIGUOUS_FMT = (
     "Knowledge entry id '{eid}' is ambiguous; found in types {types}. "
     "Rename one of the entries to disambiguate."
@@ -262,6 +268,7 @@ sequenceDiagram
     CB-->>H: context dict
     H->>RS: recommend(context)              # knowledge half
     RS-->>H: knowledge results (score>0)
+    Note over H,RS: RecommendationService.recommend() may return entries with<br/>match_reasons=["skill_name_only"] and score=0.1 when only<br/>skill_name matched (recommendation_service.py:117-133 fallback).<br/>F006 CLI prints these uniformly: same `[TYPE] title / ID / Score: 0.10<br/>/ Match: skill_name_only` block; no special wording.
     H->>EI: list_records()
     EI-->>H: List[ExperienceRecord]
     H->>E: _recommend_experience(records, context)
@@ -348,6 +355,7 @@ sequenceDiagram
 | `recommend` 全部 score=0 | query 完全不命中 | 同上 | 同上 |
 | `RecommendationService.recommend()` 抛错 | (未观察到) | uncaught | F006 不引入新捕获；继承 stdlib 行为（exit 1 + traceback） |
 | `KnowledgeStore.update()` 在未来 cycle 不再 `version+=1` | F004/F005 不变量被破坏 | 单元测试断言 `version=N+1` | NFR-601 + link 路径专项断言 |
+| `graph` 入边扫描遇到磁盘损坏 entry | 用户手改 markdown / 磁盘故障 | `KnowledgeStore.list_entries()` 内部 `_rebuild_index` 已用 `try/except (ValueError, OSError): continue` 跳过损坏文件（见 `knowledge_store.py:299-300`） | 沿用现有降级行为；F006 graph handler 不重新发明 try/except；损坏 entry 不出现在入边扫描结果中是已知可接受行为，由 NFR-601 零回归 + KnowledgeStore 现有兜底承担 |
 
 ## 13. 测试策略
 
