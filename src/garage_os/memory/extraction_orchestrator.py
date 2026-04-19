@@ -65,7 +65,7 @@ class MemoryExtractionOrchestrator:
             candidates, truncated_count = self._generate_candidates(
                 archived_session, signals
             )
-        except Exception as exc:  # pragma: no cover - defensive: persisted instead of raising
+        except Exception as exc:
             summary = self._build_summary(
                 batch_id=batch_id,
                 session_id=session_id,
