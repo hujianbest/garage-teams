@@ -1,10 +1,13 @@
 """Command-line interface for Garage OS."""
 
 import argparse
+import hashlib
 import json
+import sys
 import time
+from datetime import datetime
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Callable, Optional, Sequence
 
 from garage_os.adapter.claude_code_adapter import ClaudeCodeAdapter
 
@@ -20,6 +23,40 @@ MEMORY_REVIEW_ABANDONED_CONFLICT = (
     "Candidate '{cid}' abandoned due to conflict with published knowledge"
 )
 
+# F005 § 9.5 / NFR-504: stable stdout / stderr markers for the CLI
+# authoring path (`garage knowledge add|edit|show|delete` and
+# `garage experience add|show|delete`). All CLI handlers MUST format their
+# success / failure output via these constants so that downstream Agents
+# can grep-match without parsing prose.
+KNOWLEDGE_ADDED_FMT = "Knowledge entry '{eid}' added"
+KNOWLEDGE_EDITED_FMT = "Knowledge entry '{eid}' edited (version {version})"
+KNOWLEDGE_DELETED_FMT = "Knowledge entry '{eid}' deleted"
+KNOWLEDGE_NOT_FOUND_FMT = "Knowledge entry '{eid}' not found"
+KNOWLEDGE_ALREADY_EXISTS_FMT = (
+    "Entry with id '{eid}' already exists; "
+    "pass --id to override or change inputs"
+)
+EXPERIENCE_ADDED_FMT = "Experience record '{rid}' added"
+EXPERIENCE_DELETED_FMT = "Experience record '{rid}' deleted"
+EXPERIENCE_NOT_FOUND_FMT = "Experience record '{rid}' not found"
+
+ERR_NO_GARAGE = "No .garage/ directory found. Run 'garage init' first."
+ERR_CONTENT_AND_FILE_MUTEX = "--content and --from-file are mutually exclusive"
+ERR_ADD_REQUIRES_CONTENT = "add requires --content or --from-file"
+ERR_FILE_NOT_FOUND_FMT = "File not found: {path}"
+ERR_EDIT_REQUIRES_FIELD = (
+    "edit requires at least one of --topic / --tags / --content / "
+    "--from-file / --status"
+)
+
+# F005 § ADR-503: the `cli:` namespace prefix is reserved for source markers
+# written by the CLI authoring path. Any artifact / source_artifact value
+# starting with `cli:` MUST come from this CLI; publisher-path values MUST NOT
+# start with `cli:`. Tests grep on this prefix to assert provenance.
+CLI_SOURCE_KNOWLEDGE_ADD = "cli:knowledge-add"
+CLI_SOURCE_KNOWLEDGE_EDIT = "cli:knowledge-edit"
+CLI_SOURCE_EXPERIENCE_ADD = "cli:experience-add"
+
 from garage_os.knowledge.experience_index import ExperienceIndex
 from garage_os.knowledge.knowledge_store import KnowledgeStore
 from garage_os.memory.candidate_store import CandidateStore
@@ -31,7 +68,12 @@ from garage_os.memory.recommendation_service import (
 )
 from garage_os.runtime.session_manager import SessionManager
 from garage_os.storage import FileStorage
-from garage_os.types import SessionState
+from garage_os.types import (
+    ExperienceRecord,
+    KnowledgeEntry,
+    KnowledgeType,
+    SessionState,
+)
 
 
 # Sub-directories to create under .garage/
@@ -567,6 +609,359 @@ def _memory_review(
     return 0
 
 
+# ---------------------------------------------------------------------------
+# F005 Knowledge / Experience authoring CLI
+# ---------------------------------------------------------------------------
+
+
+def _now_default() -> datetime:
+    """Default clock used by the CLI authoring path.
+
+    Indirected so unit tests can monkeypatch ``cli._now_default`` to lock
+    seconds, which is required to deterministically exercise the FR-508 ID
+    collision branch (same topic + content + same second → second `add` is
+    rejected, not silently overwritten).
+    """
+    return datetime.now()
+
+
+def _parse_tags(raw: Optional[str]) -> list[str]:
+    """Parse a comma-separated tag string into a list, dropping blanks."""
+    if raw is None:
+        return []
+    return [t.strip() for t in raw.split(",") if t.strip()]
+
+
+def _resolve_content(
+    content_arg: Optional[str],
+    from_file_arg: Optional[Path],
+    *,
+    require_one: bool,
+) -> tuple[Optional[str], Optional[str]]:
+    """Resolve the ``content`` field for `add` / `edit`.
+
+    Returns ``(content, error)``. If ``error`` is non-None the caller
+    must print it to stderr and exit 1. The two arguments are mutually
+    exclusive (FR-502 / FR-503).
+    """
+    if content_arg is not None and from_file_arg is not None:
+        return None, ERR_CONTENT_AND_FILE_MUTEX
+    if content_arg is None and from_file_arg is None:
+        if require_one:
+            return None, ERR_ADD_REQUIRES_CONTENT
+        return None, None
+    if content_arg is not None:
+        return content_arg, None
+    assert from_file_arg is not None
+    if not from_file_arg.is_file():
+        return None, ERR_FILE_NOT_FOUND_FMT.format(path=from_file_arg)
+    return from_file_arg.read_text(encoding="utf-8"), None
+
+
+def _generate_entry_id(
+    knowledge_type: KnowledgeType,
+    topic: str,
+    content: str,
+    now: datetime,
+) -> str:
+    """Generate a deterministic-with-time-salt ID for a knowledge entry.
+
+    Implements FR-508 / ADR-502. Format: ``<type>-<YYYYMMDD>-<6 hex>`` where
+    the 6 hex chars come from the SHA-256 of ``topic\\ncontent\\n<iso seconds>``.
+    The timestamp is part of the input so that two `add` calls with the
+    same topic + content but in different seconds produce distinct IDs;
+    callers that want true determinism must pass an explicit ``--id``.
+    """
+    timestamp = now.replace(microsecond=0).isoformat()
+    digest_input = f"{topic}\n{content}\n{timestamp}".encode("utf-8")
+    short = hashlib.sha256(digest_input).hexdigest()[:6]
+    return f"{knowledge_type.value}-{now.strftime('%Y%m%d')}-{short}"
+
+
+def _generate_experience_id(task_type: str, summary: str, now: datetime) -> str:
+    """Generate a deterministic-with-time-salt ID for an experience record.
+
+    Mirrors :func:`_generate_entry_id` for the experience surface (FR-508
+    experience branch). Format: ``exp-<YYYYMMDD>-<6 hex>``.
+    """
+    timestamp = now.replace(microsecond=0).isoformat()
+    digest_input = f"{task_type}\n{summary}\n{timestamp}".encode("utf-8")
+    short = hashlib.sha256(digest_input).hexdigest()[:6]
+    return f"exp-{now.strftime('%Y%m%d')}-{short}"
+
+
+def _require_garage(garage_root: Path) -> Optional[Path]:
+    """Return the ``.garage/`` Path if it exists, else None.
+
+    Caller should print ``ERR_NO_GARAGE`` to stderr and exit 1 when None.
+    """
+    garage_dir = garage_root / ".garage"
+    return garage_dir if garage_dir.is_dir() else None
+
+
+def _knowledge_add(
+    garage_root: Path,
+    *,
+    knowledge_type: str,
+    topic: str,
+    content_arg: Optional[str],
+    from_file: Optional[Path],
+    tags_raw: Optional[str],
+    explicit_id: Optional[str],
+    now_provider: Callable[[], datetime] = _now_default,
+) -> int:
+    """Implement ``garage knowledge add`` (FR-501 / FR-502 / FR-508 / FR-509)."""
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    content, err = _resolve_content(content_arg, from_file, require_one=True)
+    if err is not None:
+        print(err, file=sys.stderr)
+        return 1
+    assert content is not None
+
+    ktype = KnowledgeType(knowledge_type)
+    now = now_provider()
+    eid = explicit_id or _generate_entry_id(ktype, topic, content, now)
+
+    storage = FileStorage(garage_dir)
+    knowledge_store = KnowledgeStore(storage)
+
+    if knowledge_store.retrieve(ktype, eid) is not None:
+        print(KNOWLEDGE_ALREADY_EXISTS_FMT.format(eid=eid), file=sys.stderr)
+        return 1
+
+    entry = KnowledgeEntry(
+        id=eid,
+        type=ktype,
+        topic=topic,
+        date=now,
+        tags=_parse_tags(tags_raw),
+        content=content,
+        status="active",
+        version=1,
+        source_artifact=CLI_SOURCE_KNOWLEDGE_ADD,
+    )
+    knowledge_store.store(entry)
+    print(KNOWLEDGE_ADDED_FMT.format(eid=eid))
+    return 0
+
+
+def _knowledge_edit(
+    garage_root: Path,
+    *,
+    knowledge_type: str,
+    eid: str,
+    topic: Optional[str],
+    content_arg: Optional[str],
+    from_file: Optional[Path],
+    tags_raw: Optional[str],
+    status: Optional[str],
+) -> int:
+    """Implement ``garage knowledge edit`` (FR-503 / FR-509 / CON-503)."""
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    # FR-503: at least one mutable field must be supplied.
+    if (
+        topic is None
+        and content_arg is None
+        and from_file is None
+        and tags_raw is None
+        and status is None
+    ):
+        print(ERR_EDIT_REQUIRES_FIELD, file=sys.stderr)
+        return 1
+
+    content, err = _resolve_content(content_arg, from_file, require_one=False)
+    if err is not None:
+        print(err, file=sys.stderr)
+        return 1
+
+    ktype = KnowledgeType(knowledge_type)
+    storage = FileStorage(garage_dir)
+    knowledge_store = KnowledgeStore(storage)
+
+    entry = knowledge_store.retrieve(ktype, eid)
+    if entry is None:
+        print(KNOWLEDGE_NOT_FOUND_FMT.format(eid=eid), file=sys.stderr)
+        return 1
+
+    # Selective overlay per design §10.2.1. Untouched fields keep their
+    # current value; CLI never modifies entry.date or publisher metadata.
+    if topic is not None:
+        entry.topic = topic
+    if content is not None:
+        entry.content = content
+    if tags_raw is not None:
+        entry.tags = _parse_tags(tags_raw)
+    if status is not None:
+        entry.status = status
+    entry.source_artifact = CLI_SOURCE_KNOWLEDGE_EDIT
+
+    knowledge_store.update(entry)  # mutates entry.version += 1 in place
+    print(KNOWLEDGE_EDITED_FMT.format(eid=eid, version=entry.version))
+    return 0
+
+
+def _knowledge_show(
+    garage_root: Path,
+    *,
+    knowledge_type: str,
+    eid: str,
+) -> int:
+    """Implement ``garage knowledge show`` (FR-504)."""
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    ktype = KnowledgeType(knowledge_type)
+    storage = FileStorage(garage_dir)
+    knowledge_store = KnowledgeStore(storage)
+
+    entry = knowledge_store.retrieve(ktype, eid)
+    if entry is None:
+        print(KNOWLEDGE_NOT_FOUND_FMT.format(eid=eid), file=sys.stderr)
+        return 1
+
+    # Human-readable front matter dump (key: value), then a blank line, then
+    # the body. Includes derived fields version + source_artifact (OD-504).
+    tags_str = ", ".join(entry.tags) if entry.tags else ""
+    print(f"id: {entry.id}")
+    print(f"type: {entry.type.value}")
+    print(f"topic: {entry.topic}")
+    print(f"date: {entry.date.isoformat()}")
+    print(f"tags: {tags_str}")
+    print(f"status: {entry.status}")
+    print(f"version: {entry.version}")
+    if entry.source_artifact is not None:
+        print(f"source_artifact: {entry.source_artifact}")
+    print("")
+    print(entry.content)
+    return 0
+
+
+def _knowledge_delete(
+    garage_root: Path,
+    *,
+    knowledge_type: str,
+    eid: str,
+) -> int:
+    """Implement ``garage knowledge delete`` (FR-505)."""
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    ktype = KnowledgeType(knowledge_type)
+    storage = FileStorage(garage_dir)
+    knowledge_store = KnowledgeStore(storage)
+
+    if not knowledge_store.delete(ktype, eid):
+        print(KNOWLEDGE_NOT_FOUND_FMT.format(eid=eid), file=sys.stderr)
+        return 1
+    print(KNOWLEDGE_DELETED_FMT.format(eid=eid))
+    return 0
+
+
+def _experience_add(
+    garage_root: Path,
+    *,
+    task_type: str,
+    skills: list[str],
+    domain: str,
+    outcome: str,
+    duration: int,
+    complexity: str,
+    summary: str,
+    explicit_id: Optional[str],
+    problem_domain: Optional[str],
+    tech: Optional[list[str]],
+    tags_raw: Optional[str],
+    now_provider: Callable[[], datetime] = _now_default,
+) -> int:
+    """Implement ``garage experience add`` (FR-506 / FR-508 experience / FR-509)."""
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    now = now_provider()
+    rid = explicit_id or _generate_experience_id(task_type, summary, now)
+
+    storage = FileStorage(garage_dir)
+    experience_index = ExperienceIndex(storage)
+
+    if experience_index.retrieve(rid) is not None:
+        print(KNOWLEDGE_ALREADY_EXISTS_FMT.format(eid=rid), file=sys.stderr)
+        return 1
+
+    record = ExperienceRecord(
+        record_id=rid,
+        task_type=task_type,
+        skill_ids=list(skills),
+        tech_stack=list(tech) if tech else [],
+        domain=domain,
+        problem_domain=problem_domain or task_type,
+        outcome=outcome,
+        duration_seconds=duration,
+        complexity=complexity,
+        session_id="",
+        artifacts=[CLI_SOURCE_EXPERIENCE_ADD],
+        key_patterns=_parse_tags(tags_raw),
+        lessons_learned=[summary],
+        pitfalls=[],
+        recommendations=[],
+        created_at=now,
+        updated_at=now,
+    )
+    experience_index.store(record)
+    print(EXPERIENCE_ADDED_FMT.format(rid=rid))
+    return 0
+
+
+def _experience_show(garage_root: Path, *, rid: str) -> int:
+    """Implement ``garage experience show`` (FR-507a)."""
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    record_path = garage_dir / "experience" / "records" / f"{rid}.json"
+    if not record_path.is_file():
+        print(EXPERIENCE_NOT_FOUND_FMT.format(rid=rid), file=sys.stderr)
+        return 1
+
+    try:
+        data = json.loads(record_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"Failed to read experience record '{rid}': {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(data, indent=2, ensure_ascii=False))
+    return 0
+
+
+def _experience_delete(garage_root: Path, *, rid: str) -> int:
+    """Implement ``garage experience delete`` (FR-507b)."""
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    storage = FileStorage(garage_dir)
+    experience_index = ExperienceIndex(storage)
+    if not experience_index.delete(rid):
+        print(EXPERIENCE_NOT_FOUND_FMT.format(rid=rid), file=sys.stderr)
+        return 1
+    print(EXPERIENCE_DELETED_FMT.format(rid=rid))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build and return the argument parser."""
     # Create parent parser for common arguments
@@ -624,6 +1019,169 @@ def build_parser() -> argparse.ArgumentParser:
     # knowledge list
     list_parser = knowledge_subparsers.add_parser(
         "list", help="List all knowledge entries", parents=[path_parser]
+    )
+
+    # F005: knowledge add / edit / show / delete (CLI authoring path)
+    add_parser = knowledge_subparsers.add_parser(
+        "add", help="Add a knowledge entry", parents=[path_parser]
+    )
+    add_parser.add_argument(
+        "--type",
+        dest="entry_type",
+        choices=[t.value for t in KnowledgeType],
+        required=True,
+        help="Knowledge type (decision / pattern / solution)",
+    )
+    add_parser.add_argument("--topic", required=True, help="Entry topic (non-empty)")
+    add_parser.add_argument("--content", default=None, help="Entry content (mutex with --from-file)")
+    add_parser.add_argument(
+        "--from-file",
+        dest="from_file",
+        type=Path,
+        default=None,
+        help="Read content from file (mutex with --content)",
+    )
+    add_parser.add_argument("--tags", default=None, help="Comma-separated tags")
+    add_parser.add_argument(
+        "--id",
+        dest="entry_id",
+        default=None,
+        help="Explicit entry id (default: derived per FR-508)",
+    )
+
+    edit_parser = knowledge_subparsers.add_parser(
+        "edit", help="Edit a knowledge entry (selective overlay)", parents=[path_parser]
+    )
+    edit_parser.add_argument(
+        "--type",
+        dest="entry_type",
+        choices=[t.value for t in KnowledgeType],
+        required=True,
+        help="Knowledge type",
+    )
+    edit_parser.add_argument(
+        "--id", dest="entry_id", required=True, help="Entry id (required)"
+    )
+    edit_parser.add_argument("--topic", default=None, help="New topic")
+    edit_parser.add_argument(
+        "--content", default=None, help="New content (mutex with --from-file)"
+    )
+    edit_parser.add_argument(
+        "--from-file",
+        dest="from_file",
+        type=Path,
+        default=None,
+        help="Read new content from file (mutex with --content)",
+    )
+    edit_parser.add_argument("--tags", default=None, help="New comma-separated tags (overwrite)")
+    edit_parser.add_argument("--status", default=None, help="New status")
+
+    show_parser = knowledge_subparsers.add_parser(
+        "show", help="Show a single knowledge entry", parents=[path_parser]
+    )
+    show_parser.add_argument(
+        "--type",
+        dest="entry_type",
+        choices=[t.value for t in KnowledgeType],
+        required=True,
+        help="Knowledge type",
+    )
+    show_parser.add_argument(
+        "--id", dest="entry_id", required=True, help="Entry id"
+    )
+
+    delete_parser = knowledge_subparsers.add_parser(
+        "delete", help="Delete a knowledge entry", parents=[path_parser]
+    )
+    delete_parser.add_argument(
+        "--type",
+        dest="entry_type",
+        choices=[t.value for t in KnowledgeType],
+        required=True,
+        help="Knowledge type",
+    )
+    delete_parser.add_argument(
+        "--id", dest="entry_id", required=True, help="Entry id"
+    )
+
+    # F005: experience add / show / delete (CLI authoring path)
+    experience_parser = subparsers.add_parser(
+        "experience", help="Manage experience records", parents=[path_parser]
+    )
+    experience_subparsers = experience_parser.add_subparsers(dest="experience_command")
+
+    exp_add_parser = experience_subparsers.add_parser(
+        "add", help="Add an experience record", parents=[path_parser]
+    )
+    exp_add_parser.add_argument("--task-type", dest="task_type", required=True, help="Task type")
+    exp_add_parser.add_argument(
+        "--skill",
+        dest="skills",
+        action="append",
+        required=True,
+        help="Skill id (repeat for multiple)",
+    )
+    exp_add_parser.add_argument("--domain", required=True, help="Domain (e.g. platform)")
+    exp_add_parser.add_argument(
+        "--outcome",
+        choices=["success", "failure", "partial"],
+        required=True,
+        help="Outcome",
+    )
+    exp_add_parser.add_argument(
+        "--duration",
+        type=int,
+        required=True,
+        help="Duration in seconds",
+    )
+    exp_add_parser.add_argument(
+        "--complexity",
+        choices=["low", "medium", "high"],
+        required=True,
+        help="Complexity",
+    )
+    exp_add_parser.add_argument(
+        "--summary",
+        required=True,
+        help="One-line summary (written to lessons_learned[0])",
+    )
+    exp_add_parser.add_argument(
+        "--id",
+        dest="record_id",
+        default=None,
+        help="Explicit record id (default: derived per FR-508)",
+    )
+    exp_add_parser.add_argument(
+        "--problem-domain",
+        dest="problem_domain",
+        default=None,
+        help="Problem domain (default: --task-type)",
+    )
+    exp_add_parser.add_argument(
+        "--tech",
+        dest="tech",
+        action="append",
+        default=None,
+        help="Tech stack item (repeat for multiple)",
+    )
+    exp_add_parser.add_argument(
+        "--tags",
+        default=None,
+        help="Comma-separated tags (written to key_patterns)",
+    )
+
+    exp_show_parser = experience_subparsers.add_parser(
+        "show", help="Show a single experience record", parents=[path_parser]
+    )
+    exp_show_parser.add_argument(
+        "--id", dest="record_id", required=True, help="Record id"
+    )
+
+    exp_delete_parser = experience_subparsers.add_parser(
+        "delete", help="Delete an experience record", parents=[path_parser]
+    )
+    exp_delete_parser.add_argument(
+        "--id", dest="record_id", required=True, help="Record id"
     )
 
     # memory
@@ -695,12 +1253,76 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         root = args.path if args.path else _find_garage_root()
         if args.knowledge_command == "search":
             _knowledge_search(root, args.query)
-        elif args.knowledge_command == "list":
+            return 0
+        if args.knowledge_command == "list":
             _knowledge_list(root)
-        else:
-            print("Knowledge command requires 'search' or 'list' subcommand")
-            return 1
-        return 0
+            return 0
+        if args.knowledge_command == "add":
+            return _knowledge_add(
+                root,
+                knowledge_type=args.entry_type,
+                topic=args.topic,
+                content_arg=args.content,
+                from_file=args.from_file,
+                tags_raw=args.tags,
+                explicit_id=args.entry_id,
+            )
+        if args.knowledge_command == "edit":
+            return _knowledge_edit(
+                root,
+                knowledge_type=args.entry_type,
+                eid=args.entry_id,
+                topic=args.topic,
+                content_arg=args.content,
+                from_file=args.from_file,
+                tags_raw=args.tags,
+                status=args.status,
+            )
+        if args.knowledge_command == "show":
+            return _knowledge_show(
+                root,
+                knowledge_type=args.entry_type,
+                eid=args.entry_id,
+            )
+        if args.knowledge_command == "delete":
+            return _knowledge_delete(
+                root,
+                knowledge_type=args.entry_type,
+                eid=args.entry_id,
+            )
+        print(
+            "Knowledge command requires one of: "
+            "search, list, add, edit, show, delete",
+            file=sys.stderr,
+        )
+        return 1
+
+    if args.command == "experience":
+        root = args.path if args.path else _find_garage_root()
+        if args.experience_command == "add":
+            return _experience_add(
+                root,
+                task_type=args.task_type,
+                skills=args.skills,
+                domain=args.domain,
+                outcome=args.outcome,
+                duration=args.duration,
+                complexity=args.complexity,
+                summary=args.summary,
+                explicit_id=args.record_id,
+                problem_domain=args.problem_domain,
+                tech=args.tech,
+                tags_raw=args.tags,
+            )
+        if args.experience_command == "show":
+            return _experience_show(root, rid=args.record_id)
+        if args.experience_command == "delete":
+            return _experience_delete(root, rid=args.record_id)
+        print(
+            "Experience command requires one of: add, show, delete",
+            file=sys.stderr,
+        )
+        return 1
 
     if args.command == "memory":
         root = args.path if args.path else _find_garage_root()
