@@ -2843,6 +2843,102 @@ class TestRecallAndGraphCrossCutting:
         """FR-607 / ADR-503 延伸: cli:knowledge-link 必须以 cli: 开头."""
         assert CLI_SOURCE_KNOWLEDGE_LINK.startswith("cli:")
 
+    def test_recommend_prints_source_line_when_present(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """OQ-607 / test-review TR-1: experience records with session_id should
+        produce a `Source: <session>` line in recommend stdout."""
+        main(["init", "--path", str(tmp_path)])
+        main(
+            [
+                "experience",
+                "add",
+                "--task-type",
+                "spike",
+                "--skill",
+                "x",
+                "--domain",
+                "platform",
+                "--outcome",
+                "success",
+                "--duration",
+                "10",
+                "--complexity",
+                "low",
+                "--summary",
+                "Tried SQLite indexing",
+                "--id",
+                "exp-with-session",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        # Patch session_id directly in the on-disk JSON (CLI add intentionally
+        # leaves session_id="" — F005 _experience_add behavior, see cli.py)
+        rec_path = (
+            tmp_path / ".garage" / "experience" / "records" / "exp-with-session.json"
+        )
+        data = json.loads(rec_path.read_text(encoding="utf-8"))
+        data["session_id"] = "sess-walkthrough-42"
+        rec_path.write_text(json.dumps(data), encoding="utf-8")
+        capsys.readouterr()
+        rc = main(
+            ["recommend", "indexing", "--domain", "platform", "--path", str(tmp_path)]
+        )
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "Source: sess-walkthrough-42" in out
+
+    def test_recommend_skill_name_only_fallback_prints_uniformly(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """test-review TR-2 / design §10.1 Note: when match is text-only
+        (skill_name token in topic/content but no tag/domain match),
+        RecommendationService returns lower-score entries; CLI must still
+        render them in the canonical `[TYPE] / ID / Score / Match` block."""
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(
+            tmp_path,
+            type_="decision",
+            eid="d-auth",
+            topic="some note about auth",
+            tags=None,
+        )
+        capsys.readouterr()
+        rc = main(["recommend", "auth", "--path", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "[DECISION]" in out
+        assert "ID: d-auth" in out
+        assert "Score:" in out
+        assert "Match:" in out
+        assert "skill" in out.lower()
+
+    def test_recommendation_service_recommend_byte_level_unchanged(self) -> None:
+        """test-review TR-3 / CON-605: RecommendationService.recommend()
+        signature and ranking weights MUST NOT have been mutated by F006."""
+        import inspect
+        from garage_os.memory import recommendation_service
+
+        sig = inspect.signature(
+            recommendation_service.RecommendationService.recommend
+        )
+        params = list(sig.parameters)
+        assert params == ["self", "context"]
+        src = inspect.getsource(
+            recommendation_service.RecommendationService.recommend
+        )
+        for token in (
+            "score += 1.0",
+            "score += 0.5",
+            "score += 0.8",
+            "score += 0.6",
+            "skill_name_only",
+        ):
+            assert token in src, (
+                f"CON-605 violated: token '{token}' missing from recommend()"
+            )
+
     def test_recommend_smoke_under_one_and_a_half_seconds(
         self, tmp_path: Path, capsys
     ) -> None:
