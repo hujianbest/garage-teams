@@ -1,6 +1,6 @@
 # F005: Garage Knowledge Authoring CLI — 让 Stage 2 飞轮能从终端起转
 
-- 状态: 草稿
+- 状态: 已批准（auto-mode approval；见 `docs/approvals/F005-spec-approval.md`）
 - 主题: 给 `garage` CLI 增加可被人类直接调用的 `knowledge add` / `knowledge edit` / `knowledge show` / `knowledge delete` 子命令（以及对应的 `experience add` / `experience show` / `experience delete`），让用户在没有触发 session 归档、也没有候选批次的情况下，也能用 1 行命令把一条决策 / 模式 / 解法（或一条 ad-hoc 经验）持久化到 `.garage/knowledge/`（或 `.garage/experience/`）。
 - 日期: 2026-04-19
 - 关联:

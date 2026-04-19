@@ -16,13 +16,13 @@
 
 ## Current Workflow State
 
-- Current Stage: `hf-specify`
+- Current Stage: `hf-design`
 - Workflow Profile: `standard`
 - Execution Mode: `auto`
 - Workspace Isolation: `in-place`
-- Current Active Task: 起草 F005 规格草稿
-- Pending Reviews And Gates: spec-review、design-review、tasks-review、test-review、code-review、traceability-review、regression-gate、completion-gate
-- Next Action Or Recommended Skill: `hf-spec-review`
+- Current Active Task: 起草 F005 设计文档
+- Pending Reviews And Gates: design-review、tasks-review、test-review、code-review、traceability-review、regression-gate、completion-gate
+- Next Action Or Recommended Skill: `hf-design-review`
 - Relevant Files:
   - `docs/features/F005-garage-knowledge-authoring-cli.md`（待创建）
   - `RELEASE_NOTES.md`（cycle 完成后追加 v1.2 段）
