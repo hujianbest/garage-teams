@@ -323,6 +323,89 @@ grep "abandoned due to conflict" .garage/memory/confirmations/*.json
 
 ---
 
+## Knowledge authoring (CLI)
+
+F005 起，`garage` 的 `knowledge` 与 `experience` 子命令支持完整 CRUD，让你不依赖 session 归档与候选提取，直接从终端把一条决策 / 模式 / 解法（或一条经验记录）持久化到 `.garage/knowledge/` 与 `.garage/experience/`。
+
+### Knowledge 子命令
+
+| 命令 | 用途 | 关键参数 |
+|------|------|---------|
+| `garage knowledge add` | 新增一条知识 | `--type {decision,pattern,solution}`、`--topic`、`--content` 或 `--from-file`、`--tags`、`--id`（可选） |
+| `garage knowledge edit` | 修改已存在的知识，自动 `version+=1` | `--type`、`--id`、`--topic` / `--content` / `--from-file` / `--tags` / `--status`（至少传一个） |
+| `garage knowledge show` | 精确读取一条知识 | `--type`、`--id` |
+| `garage knowledge delete` | 删除一条知识 | `--type`、`--id` |
+| `garage knowledge search` | （已有）按文本 / tag / type 搜索 | `query` |
+| `garage knowledge list` | （已有）列出全部知识 | — |
+
+### Experience 子命令
+
+| 命令 | 用途 | 关键参数 |
+|------|------|---------|
+| `garage experience add` | 手动追加一条经验记录 | `--task-type`、`--skill`（可重复）、`--domain`、`--outcome {success,failure,partial}`、`--duration`、`--complexity {low,medium,high}`、`--summary`、可选 `--tech` / `--tags` / `--problem-domain` / `--id` |
+| `garage experience show` | 读取单条经验（JSON） | `--id` |
+| `garage experience delete` | 删除单条经验，同时清理中央索引 | `--id` |
+
+### 最小示例
+
+```bash
+# 新增一条决策
+garage knowledge add --type decision \
+    --topic "Pick SQLite over Postgres for local index" \
+    --tags storage,decision \
+    --content "Postgres needs a daemon, violates workspace-first."
+
+# 用文件作为正文
+garage knowledge add --type pattern \
+    --topic "Front-matter as schema" \
+    --from-file pattern-notes.md \
+    --tags arch
+
+# 修改 tag（自动 version 递增）
+garage knowledge edit --type decision --id <id> --tags storage,decision,sqlite
+
+# 读取
+garage knowledge show --type decision --id <id>
+
+# 删除
+garage knowledge delete --type pattern --id <id>
+
+# 手动记录一条 spike 经验
+garage experience add \
+    --task-type spike --skill ahe-design --skill ahe-tasks \
+    --domain platform --outcome success --duration 1800 \
+    --complexity medium --summary "试出了 SQLite 索引方案"
+
+# 读取单条 experience
+garage experience show --id exp-...
+
+# 删除（同时清理 .garage/knowledge/.metadata/index.json 引用）
+garage experience delete --id exp-...
+```
+
+### ID 与来源标记
+
+- 不传 `--id` 时，CLI 自动生成 `<type>-<YYYYMMDD>-<6 hex chars>`，hash 输入含秒级时间戳；同一秒同一 topic + content 重复 add 会被拒绝（`Entry with id '<id>' already exists`），不会原地覆盖现有 entry。
+- 传 `--id custom` 则直接使用。`(type, custom)` 已存在时同样拒绝。
+- 通过 CLI 写入的 entry / record 在持久化层带有 `cli:` 命名空间前缀的来源标记：
+  - `garage knowledge add` → front matter `source_artifact: cli:knowledge-add`
+  - `garage knowledge edit` → 覆盖为 `source_artifact: cli:knowledge-edit`（**不**触动 publisher 路径写入的 `published_from_candidate` 等元数据）
+  - `garage experience add` → `record.artifacts[0] = "cli:experience-add"`
+
+可以用 `grep -l "cli:" .garage/knowledge/**/*.md` 一键筛选手工添加路径产出物，与 F003/F004 的候选 → publisher 路径产出物分离审计。
+
+### CLI authoring path 与 candidate→publisher path 的关系
+
+两条路径并列、互不依赖：
+
+- F003/F004 的 `garage memory review` 仍是**自动候选 → 用户确认 → 正式发布**的官方流程
+- F005 的 `garage knowledge add` / `experience add` 是**手工 ad-hoc 入库**的旁路
+- 两者写入相同的 `.garage/knowledge/` / `.garage/experience/` 目录，但通过 `source_artifact` / `artifacts[0]` 的 `cli:` 前缀可在审计时区分来源
+
+如果你发现自己在 `garage memory review` 之前已经手工 add 了等价 entry，candidate review 时 publisher 的相似度探测会触发常规冲突路径（`coexist` / `supersede` / `abandon`），不会静默覆盖你的手工版本。
+
+---
+
 ## 配置说明
 
 ### 平台配置（`.garage/config/platform.json`）

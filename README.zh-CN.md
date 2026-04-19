@@ -46,7 +46,7 @@
 
 - 位于 [packs/product-insights/skills/](packs/product-insights/skills/) 和 [packs/coding/skills/](packs/coding/skills/) 的 AHE workflow skills
 - 位于 [src/garage_os/](src/garage_os/) 的早期 Python runtime package，目前包名仍是 `garage-os`
-- 一个 `garage` CLI，已提供 `init`、`status`、`run`、`knowledge search` 和 `knowledge list`
+- 一个 `garage` CLI，已提供 `init`、`status`、`run`、`knowledge search`、`knowledge list`、`knowledge add`、`knowledge edit`、`knowledge show`、`knowledge delete`、`experience add`、`experience show`、`experience delete` 与 `memory review`
 - 位于 [.garage/](.garage/) 的文件优先 runtime 数据结构
 - [docs/features/F001-garage-agent-operating-system.md](docs/features/F001-garage-agent-operating-system.md) 中已批准的 Phase 1 方向，以及 [docs/guides/garage-os-user-guide.md](docs/guides/garage-os-user-guide.md) 和 [docs/guides/garage-os-developer-guide.md](docs/guides/garage-os-developer-guide.md) 两份运行时指南
 
