@@ -152,3 +152,90 @@ Precheck 通过，进入正式 rubric。
   ]
 }
 ```
+
+---
+
+## R2 Delta Review
+
+- 评审范围: `docs/features/F007-garage-packs-and-host-installer.md` r2 head（commit `eebc533`）
+- 评审者: cursor cloud agent (auto mode, reviewer subagent，由 `hf-specify` 父会话第 2 次派发)
+- 日期: 2026-04-19
+- 评审 mode: **delta-focused**（核对 r1 4 条 finding 闭合 + 回归扫描 + 范围稳定性）
+- 上游证据: r2 head spec、r1 review record（本文件 r1 部分）、`AGENTS.md`、`task-progress.md`、`docs/soul/design-principles.md`、`docs/features/F005`/`F006` 基线、`src/garage_os/cli.py`（用于校验 F-2 符号锚点）
+
+### R2.1 R1 Findings Closure Table
+
+| Finding | r1 严重度 | r1 描述摘要 | r2 闭合证据 | 状态 |
+|---|---|---|---|---|
+| **F-1** | important [Q4/A3] | FR-707 验收 #3 字面 `Path(".claude/skills/hf-specify/SKILL.md")` 与 FR 末段"spec 中**不**出现宿主特定路径硬编码"自相矛盾；statement 固化 `target_skill_path / target_agent_path / render` 三个 Python 函数签名（含返回类型注解）属 design HOW 泄漏 | r2 § 6 `FR-707` (lines 235-243): statement 改写为 "暴露 'skill 目标路径查询' 与 'agent 目标路径查询，或声明该宿主不支持 agent surface' 这两类**查询能力**"，去掉所有 Python 函数签名/返回类型注解，并显式补 "具体函数签名 / 类与对象划分留给 design"；验收 #3 改为 "其前缀对应该宿主原生约定的 skill 子目录（**具体字面值由 design 决定**）；`packs/` 内任何源文件与本 spec 正文均**不得**出现该字面值或其它宿主特定路径硬编码（与 NFR-701 一致）"，去掉了 `Path(".claude/skills/hf-specify/SKILL.md")` 字面，与 NFR-701 显式 cross-link 闭合矛盾。`grep` 全文确认 FR-707 内已无 `target_skill_path(skill_id) -> Path` 形态签名、无 `.claude/skills/hf-specify/SKILL.md` 字面期望值。 | **closed** |
+| **F-2** | minor [Q1] | § 1.3 引用 `src/garage_os/cli.py:139 / :150` 行号漂移（实测 133 / 148） | r2 § 1.3 第 3 段 (line 28) 已改为 "见 `src/garage_os/cli.py` 顶层 `DEFAULT_PLATFORM_CONFIG.host_type` 与 `DEFAULT_HOST_ADAPTER_CONFIG.host_type` 字面赋值 `\"claude-code\"`"，按符号定位，无行号。校验：`src/garage_os/cli.py` line 133 / 148 确为对应符号定义点，符号锚点稳定。 | **closed** |
+| **F-3** | minor [Q4] | § 4.1 把"标记块"列入本 cycle 实施项，但 FR-708 优先级 = Should，wording 不一致 | r2 § 4.1 包含表 (line 124) 已改为 "**标记块（Should，参 FR-708）** \| ... 让宿主依然能正常解析；本 cycle 不强求，**缺失时改用 manifest 的 `content_hash` 做 'Garage-owned' 判定**"；该回退路径与 FR-706b 第 3 条验收（"用户随后用同名手写文件覆盖了目标位置（无 manifest 重写）"）一致。 | **closed** |
+| **F-4** | minor [G1/GS3] | FR-706 单条承接 5 件事（hash 比对 + 未修改重写 + 已修改跳过 + `--force` 覆盖 + 新增 host 追加），可拆 | r2 已拆为 **FR-706a 幂等再运行（未修改文件）** (lines 215-223) + **FR-706b 已被本地修改文件的保护与 `--force`** (lines 225-233)；原 r1 FR-706 第 4 条 acceptance "新增 host 追加" 已并入 **FR-704 第 5 条** acceptance (line 203)。交叉引用同步：FR-708 acceptance #2 (line 252) 由 `FR-706` 改为 `FR-706b`；NFR-704 statement (line 304) 由 `FR-702/703/704/705/706` 改为 `FR-702/703/704/705/706a/706b`。`grep` 确认全文已无裸 `FR-706` 引用残留（仅 706a / 706b）。 | **closed** |
+
+**Closure tally**: 4 closed / 0 open / 0 regressed.
+
+### R2.2 R2 Regression Scan（rubric Q/A/C/G 轻量回归）
+
+| 回归点 | 检查 | 结论 |
+|---|---|---|
+| Q4 一致性 | FR-707 重写后是否在其它位置仍残留旧矛盾（§ 4.1 / § 12 / NFR-701 / 验收 #2 / #3 之间） | ✓ FR-707 statement、acceptance #3、NFR-701、§ 4.1 包含表均统一在 "宿主特定字面值由 design 决定 / packs 与 spec 不得出现宿主硬编码" 一致表述；§ 12 术语表 `target_skill_path` / `target_agent_path` 作为概念性 slot 名保留可读，未与 FR-707 capability-level 表述冲突。 |
+| A3 设计泄漏 | FR-707 重写后是否变得空洞（连"暴露什么能力"都不可验收） | ✓ 验收 #1（注册表 `--hosts all` 展开 = 3 项稳定排序）、#2（不支持 agent surface 时跳过物化、不报错、不进 `files[]`）、#3（路径相对项目根 + 前缀对应宿主原生 skill 子目录 + 无硬编码）三条均可冷读判定。能力级表达仍能形成通过 / 不通过判断。 |
+| Q3/A6 完整性 | FR-704 增第 5 条 acceptance 是否与 FR-706a/706b 重复或冲突 | ✓ FR-704 #5 描述 "新增宿主追加" 的副作用边界（既有宿主零变更 + 新增宿主物化 + `installed_hosts` 累加），与 FR-706a/706b 描述同一宿主下文件级 idempotency 是不同维度，不重复；wording "Garage-owned 文件零变更" 已与 FR-706a/706b 的 "未修改 / 已修改" 分支语义对齐。 |
+| Q2 模糊词 | FR-704 / FR-706a / FR-706b 重写后是否引入新模糊词 | ✓ 新表述均为可观察："本地内容 SHA-256 与 manifest 中 `content_hash` 一致 / 不一致"、"按当前 packs 源覆盖更新"、"`mtime` 不被刷新"、"`installed_hosts` 累加为两个宿主的稳定排序结果"，全部可程序化判定。 |
+| G1 粒度 | 拆出的 FR-706a / FR-706b 是否各自独立可测、acceptance 数量是否合理 | ✓ FR-706a 3 条验收（未修改覆盖 + mtime 不刷新 + 源版本变更同步 hash）；FR-706b 3 条验收（默认跳过 + `--force` 覆盖 + 手写文件回退路径）。各自聚焦单一行为族，无 GS3 风险。 |
+| C1 Requirement contract | 拆分后 FR-706a / FR-706b 是否各自具备 ID/Statement/Acceptance/Priority/Source | ✓ 两条均带完整 5 字段（Priority=Must、Source 分别指向 § 3.2 关键场景 3 + OpenSpec init Extend Mode / `docs/soul/user-pact.md` "数据归你"）。 |
+| C2 Scope closure | FR-706 拆分是否改变本轮 scope 边界 | ✓ 仍是同一组场景（关键场景 3）的拆分，本轮 deliverable 集合无增减；`installed_hosts` 字段语义、退出码语义、§ 5 deferred 表均未变。属于 `granularity-and-deferral.md` 中 "只改表达，不改范围" 的机械拆分，无需用户确认。 |
+| C3 Open question | r2 是否引入新阻塞性开放问题 | ✓ § 11 阻塞性开放问题仍为 0（未变）；非阻塞性 4 条不受 r2 修订影响。 |
+| C5 Deferral | r2 是否动了 § 5 deferred 表 | ✓ § 5 deferred 表 7 行未变，无新延后归属变化。 |
+| G3 Repairable | r2 修订是否引入需要再轮回修的 finding | ✓ 见 R2.3。 |
+
+**回归扫描结论**：r2 修订未引入新 critical / important finding；无新 minor finding 需要再轮闭合。
+
+### R2.3 R2 New Findings
+
+无。
+
+**观察（informational，非 finding）**：
+- § 4.1 包含表第 121 行与 § 12 术语表仍以 `target_skill_path(skill_id) -> Path`、`target_agent_path(agent_id) -> Path`、`render(content) -> content` 这种类签名形态出现，作为快速描述能力槽位的速记，与 r2 FR-707 已退到 capability-level 表述存在轻度风格差。但：(a) r1 review 即未把 § 4.1 / § 12 列入 F-1 finding 范围（F-1 明确锚定 FR-707 statement）；(b) FR-707 已显式声明 "具体函数签名 / 类与对象划分留给 design"，把这些速记定性为非锁定签名；(c) 这些名字承担术语表 / scope 表的可发现性，不引入硬编码或 design HOW 决策。判定为可接受残留，不升级为 r2 finding。如未来设计阶段最终选用与这些速记不同的命名，design reviewer 可一次性对齐。
+
+### R2.4 R2 Conclusion
+
+**通过**
+
+判断依据：
+- r1 全部 4 条 finding 闭合（1 important + 3 minor），证据可逐条冷读核对
+- r2 修订未引入新 critical / important / minor finding
+- FR-706 拆分属机械拆分（同一关键场景 3 / 不改 scope / 不改 deferred / 不改优先级），与 `granularity-and-deferral.md` 的 "Mechanical vs Scope-Shaping Split" 判定一致
+- 范围、scope 边界、deferred 处理、success criteria、assumptions、阻塞性开放问题闭合度与 r1 通过项一致，未发生退绿
+- 满足 rubric "通过：所有关键检查通过，且没有阻塞设计的 USER-INPUT finding"
+
+不判 `需修改`：剩余 informational 观察不强制 author 在进入 design 前修订。
+不判 `阻塞`：未发现 critical 矛盾或 scope 摇摆。
+
+### R2.5 R2 Next Action
+
+- **`规格真人确认`**（approval step）：reviewer 不替父会话触发 approval；父会话应向真人展示 ≤ 2 句 plain language 摘要后请真人裁决是否进入 `hf-design`。
+- 不需要 USER-INPUT 问卷
+- 不需要 reroute via router
+- 父会话向真人的摘要建议：**"F007 spec r2 已闭合 r1 全部 4 条 finding（1 important + 3 minor），未引入新问题；范围、deferred、success criteria 全部稳定。请确认是否进入 hf-design。"**
+
+### R2.6 R2 交接说明
+
+- 真人确认 `通过` 后由父会话同步：spec 状态字段 → 已批准；`task-progress.md` Current Stage → `hf-design`（或等价节点）；Next Action Or Recommended Skill → `hf-design`。
+- reviewer subagent 不代写以上更新。
+- `hf-design` 启动时可直接把 r2 head spec 作为稳定输入，无需再回 `hf-specify`。
+
+### R2.7 结构化返回（R2 only）
+
+```json
+{
+  "conclusion": "通过",
+  "next_action_or_recommended_skill": "规格真人确认",
+  "record_path": "/workspace/docs/reviews/spec-review-F007-garage-packs-and-host-installer.md",
+  "key_findings": [],
+  "needs_human_confirmation": true,
+  "reroute_via_router": false,
+  "finding_breakdown": []
+}
+```
+
