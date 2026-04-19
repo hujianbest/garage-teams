@@ -2,9 +2,9 @@
 
 ## Goal
 
-- Goal: F007 — Garage Packs 与宿主安装器（spec 已批准；待进入 hf-design）
+- Goal: F007 — Garage Packs 与宿主安装器（spec + design 已批准；待进入 hf-tasks）
 - Owner: hujianbest
-- Status: ▶ Active — 规格已批准，等待 design 阶段启动
+- Status: ▶ Active — 设计已批准，等待 tasks 拆解
 - Last Updated: 2026-04-19
 
 ## Previous Milestones
@@ -18,21 +18,20 @@
 
 ## Current Workflow State
 
-- Current Stage: `hf-design`
+- Current Stage: `hf-tasks`
 - Workflow Profile: `coding`
 - Execution Mode: `auto-mode`
 - Workspace Isolation: `in-place`
-- Current Active Task: F007 design 草稿已起草，待评审
-- Pending Reviews And Gates: F007 design review（待派发 reviewer subagent）
-- Next Action Or Recommended Skill: `hf-design-review`
+- Current Active Task: F007 task 计划（待起草）
+- Pending Reviews And Gates: F007 tasks review（tasks 草稿完成后派发）
+- Next Action Or Recommended Skill: `hf-tasks`
 - Relevant Files:
-  - `docs/features/F007-garage-packs-and-host-installer.md`（已批准规格，r2 head）
-  - `docs/approvals/F007-spec-approval.md`（auto-mode approval record）
-  - `docs/reviews/spec-review-F007-garage-packs-and-host-installer.md`（r1 + r2 review record）
+  - `docs/features/F007-garage-packs-and-host-installer.md`（已批准规格）
+  - `docs/designs/2026-04-19-garage-packs-and-host-installer-design.md`（已批准设计，r2）
+  - `docs/approvals/F007-spec-approval.md`、`docs/approvals/F007-design-approval.md`
+  - `docs/reviews/spec-review-F007-...md`、`docs/reviews/design-review-F007-...md`（r1+r2）
   - `docs/principles/skill-anatomy.md`（pack 内 skill anatomy 对齐基线）
   - `docs/soul/manifesto.md`、`design-principles.md`（宿主无关原则约束）
-  - 调研参考: OpenSpec `docs/supported-tools.md`（host id + skills/commands path pattern 模型）
-  - F006 closeout 链路：`docs/verification/F006-finalize-closeout-pack.md`、`RELEASE_NOTES.md` 首条目
 - Constraints:
   - Stage 2 仍保持 workspace-first，不引入外部数据库、常驻服务、Web UI
   - 优先使用 markdown、JSON、文件系统存储
@@ -40,9 +39,9 @@
 
 ## Next Step
 
-1. 启动 `hf-design`，输入 = 已批准的 F007 spec + F001 `HostAdapterProtocol` 不变契约 + F002 `garage init` 向后兼容承诺（CON-702）+ F005 stdout marker 风格基线。
-2. design 草稿完成后派发独立 reviewer subagent 执行 `hf-design-review`。
-3. design 阶段需消化 § 11 非阻塞性开放问题：Cursor surface 选型（`.cursor/skills/` vs `.cursor/rules/`）、安装标记块形式（HTML 注释 vs front matter）、交互 prompt 形式（stdlib `input()` 实现选型）、pack-id 收敛（单一 `garage` vs `coding/product-insights` 多 pack）。
+1. 启动 `hf-tasks`，输入 = 已批准 F007 spec + 已批准 r2 design（D7-1~D7-5 + §15 任务规划准备度 + §13 测试矩阵）。
+2. tasks 草稿完成后派发独立 reviewer subagent 执行 `hf-tasks-review`。
+3. tasks approval 后由 `hf-test-driven-dev` 顺序实施 5 个任务，其间不得回流 design。
 
 延后项（与 F007 解耦的后续候选）：
 

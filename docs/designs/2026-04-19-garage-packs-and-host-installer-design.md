@@ -1,7 +1,8 @@
 # D007: Garage Packs 与宿主安装器 设计
 
-- 状态: 草稿
+- 状态: 已批准（auto-mode approval；见 `docs/approvals/F007-design-approval.md`）
 - 日期: 2026-04-19
+- Revision: r2（按 design-review 7 项 finding 全部闭合后通过；详见 `docs/reviews/design-review-F007-garage-packs-and-host-installer.md`）
 - 关联规格: `docs/features/F007-garage-packs-and-host-installer.md`（已批准）
 - 关联批准记录: `docs/approvals/F007-spec-approval.md`
 - 关联评审记录: `docs/reviews/spec-review-F007-garage-packs-and-host-installer.md`
@@ -86,7 +87,7 @@ F007 把 "Garage 自带 skills/agents" 这件事拆成两层：
 | NFR-701 宿主无关性扫描 | `tests/adapter/installer/test_neutrality.py`：grep `packs/` 黑名单关键字 0 命中 | `tests/adapter/installer/` |
 | NFR-702 无写入幂等 | `tests/adapter/installer/test_idempotent.py` 比 `Path.stat().st_mtime_ns` 不变 | `tests/adapter/installer/` |
 | NFR-703 跨平台路径 | manifest 序列化用 `Path(...).as_posix()`；解析用 `PurePosixPath` | `adapter/installer/manifest.py` |
-| NFR-704 零回归 | 新模块独立；现有 391 个 cli 测试不改 | `tests/` 整体 |
+| NFR-704 零回归 | 新模块独立；现有 ≥496 个测试（F006 closeout 基线）不改 | `tests/` 整体 |
 | CON-701 adapter 位置 | 子包路径 `src/garage_os/adapter/installer/hosts/`（位于既有 `src/garage_os/adapter/` 之下，符合 spec CON-701 字面要求） | `adapter/installer/hosts/` |
 | CON-702 不破坏 F002 | `_init()` 在没有任何 `--hosts*` 参数 + 无 TTY 提示 + `packs/` 缺失 + 无既有 manifest 时**早返回**，输出唯一行 `Initialized Garage OS in <path>` | `cli.py:_init` |
 | CON-703 schema_version | `MANIFEST_SCHEMA_VERSION = 1` + 在 `version_manager.py` 注册 entry | `adapter/installer/manifest.py`、`platform/version_manager.py` |
