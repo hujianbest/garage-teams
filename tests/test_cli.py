@@ -1432,26 +1432,28 @@ class TestKnowledgeAdd:
 
     def test_add_explicit_id_collision(self, tmp_path: Path, capsys) -> None:
         main(["init", "--path", str(tmp_path)])
-        for _ in range(2):
-            rc = main(
-                [
-                    "knowledge",
-                    "add",
-                    "--type",
-                    "decision",
-                    "--topic",
-                    "x",
-                    "--content",
-                    "y",
-                    "--id",
-                    "dup",
-                    "--path",
-                    str(tmp_path),
-                ]
-            )
-        assert rc == 1
-        err = capsys.readouterr().err
-        assert "already exists" in err
+        argv = [
+            "knowledge",
+            "add",
+            "--type",
+            "decision",
+            "--topic",
+            "x",
+            "--content",
+            "y",
+            "--id",
+            "dup",
+            "--path",
+            str(tmp_path),
+        ]
+        rc1 = main(argv)
+        assert rc1 == 0
+        out1 = capsys.readouterr().out
+        assert "Knowledge entry 'dup' added" in out1
+        rc2 = main(argv)
+        assert rc2 == 1
+        err2 = capsys.readouterr().err
+        assert KNOWLEDGE_ALREADY_EXISTS_FMT.format(eid="dup") in err2
 
     def test_generate_entry_id_format(self) -> None:
         now = datetime(2026, 4, 19, 12, 0, 0)
@@ -1684,6 +1686,12 @@ class TestKnowledgeShow:
         assert f"source_artifact: {CLI_SOURCE_KNOWLEDGE_ADD}" in out
         assert "tags: a, b" in out
         assert "Hello" in out
+        # Front matter must come before the body, separated by a blank line
+        # (TT4 reviewer feedback: ordering not previously asserted).
+        front_idx = out.index("source_artifact:")
+        body_idx = out.index("Hello")
+        assert front_idx < body_idx
+        assert "\n\nHello" in out
 
     def test_show_not_found(self, tmp_path: Path, capsys) -> None:
         main(["init", "--path", str(tmp_path)])
@@ -1819,6 +1827,45 @@ class TestExperienceAdd:
         rid = _generate_experience_id("spike", "summary", now)
         assert rid.startswith("exp-20260419-")
         assert len(rid.split("-")[-1]) == 6
+        # Same inputs same second → same id
+        assert _generate_experience_id("spike", "summary", now) == rid
+        # Different second → different id (time salt is part of the input)
+        next_sec = now + timedelta(seconds=1)
+        assert _generate_experience_id("spike", "summary", next_sec) != rid
+
+    def test_experience_add_id_collision_same_second(
+        self, tmp_path: Path, capsys, monkeypatch
+    ) -> None:
+        """FR-508 experience-branch parity with knowledge add collision."""
+        main(["init", "--path", str(tmp_path)])
+        fixed = datetime(2026, 4, 19, 12, 0, 0)
+        monkeypatch.setattr("garage_os.cli._now_default", lambda: fixed)
+        argv = [
+            "experience",
+            "add",
+            "--task-type",
+            "spike",
+            "--skill",
+            "x",
+            "--domain",
+            "d",
+            "--outcome",
+            "success",
+            "--duration",
+            "10",
+            "--complexity",
+            "low",
+            "--summary",
+            "same",
+            "--path",
+            str(tmp_path),
+        ]
+        rc1 = main(argv)
+        assert rc1 == 0
+        rc2 = main(argv)
+        assert rc2 == 1
+        err = capsys.readouterr().err
+        assert "already exists" in err
 
 
 class TestExperienceShow:
