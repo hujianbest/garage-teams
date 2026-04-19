@@ -4,6 +4,68 @@
 
 ---
 
+## F005 — Garage Knowledge Authoring CLI（让 Stage 2 飞轮能从终端起转）
+
+- 状态: ✅ 已完成（2026-04-19）
+- Workflow Profile: `standard`
+- Execution Mode: `auto`
+- Branch / PR: `cursor/f005-knowledge-add-cli-177b` / [#16](https://github.com/hujianbest/garage-agent/pull/16)
+- 关联文档:
+  - 规格 `docs/features/F005-garage-knowledge-authoring-cli.md`
+  - 设计 `docs/designs/2026-04-19-garage-knowledge-authoring-cli-design.md`（r1 inline-fixed）
+  - 任务计划 `docs/tasks/2026-04-19-garage-knowledge-authoring-cli-tasks.md`（r1 inline-fixed）
+  - completion gate `docs/verification/F005-completion-gate.md`
+  - regression gate `docs/verification/F005-regression-gate.md`
+  - 完整 review 链路：`docs/reviews/{spec,design,tasks,test,code,traceability}-review-F005-knowledge-authoring-cli.md`
+  - finalize closeout `docs/verification/F005-finalize-closeout-pack.md`
+
+### 用户可见变化
+
+- **新增 7 个 CLI 子命令**让用户在不依赖 session 归档与候选提取的前提下从终端直接 CRUD 知识与经验：
+  - `garage knowledge add --type {decision|pattern|solution} --topic ... --content ...`（或 `--from-file`）
+  - `garage knowledge edit --type ... --id ... [--topic|--content|--from-file|--tags|--status]`（自动 v1.1 `version+=1`）
+  - `garage knowledge show --type ... --id ...`（人类可读 front matter + body）
+  - `garage knowledge delete --type ... --id ...`
+  - `garage experience add --task-type ... --skill ... --domain ... --outcome ... --duration ... --complexity ... --summary ...`
+  - `garage experience show --id ...`（JSON pretty-print）
+  - `garage experience delete --id ...`（同时清理 `.garage/knowledge/.metadata/index.json` 中的引用）
+- **`cli:` 命名空间来源标记**让自动路径与手工路径产出物在持久层可被冷读区分（FR-509 + ADR-503）：
+  - `garage knowledge add` → front matter `source_artifact: cli:knowledge-add`
+  - `garage knowledge edit` → 覆盖为 `source_artifact: cli:knowledge-edit`，**不**触动 publisher 路径写入的 `published_from_candidate` 等元数据
+  - `garage experience add` → `record.artifacts[0] = "cli:experience-add"`
+  - 命令行中 `grep -l "cli:" .garage/knowledge/**/*.md` 即可一键筛选手工添加路径产出物
+- **时间敏感的 ID 自动生成**（FR-508 + ADR-502）：未传 `--id` 时按 `<type>-<YYYYMMDD>-<6 hex>` 生成，hash 输入含秒级时间戳。同一秒重复 add 同 topic+content 会被拒绝（`Entry with id '<id>' already exists`），不会原地覆盖现有 entry。
+- **CRUD 闭环对称**：同一 `(type, id)` 可被 `add → show → edit → show → delete → show` 全链路操作；前 5 步退出码 0，最后一步退出码 1。
+- **稳定 stdout 标识符常量**（NFR-504 + F004 § 11.5 同模式）：所有 success / failure 文案由模块顶层 `KNOWLEDGE_*_FMT` / `EXPERIENCE_*_FMT` / `ERR_*` 常量产出，便于 Agent 调用方做 stdout 解析。
+- **零配置可用**：在全新仓库内 `garage init && garage knowledge add ...` 一行就能成功写入 entry，不需要 platform.json 改动、不需要 Claude Code 在线、不需要先有 session。
+
+### 数据与契约影响
+
+- **零 schema 变更**：`KnowledgeEntry` / `ExperienceRecord` / `KnowledgeStore` / `ExperienceIndex` 公开 API 一字未改（CON-502 / CON-503）。
+- **零依赖变更**：`pyproject.toml` 在本 cycle `git diff main..HEAD` 为空（NFR-502 ✓）；新增 CLI 路径仅依赖 stdlib + `garage_os.*`。
+- **新增 CLI surface 模块常量**（`src/garage_os/cli.py`）：
+  - 7 个成功/失败 stdout 常量：`KNOWLEDGE_ADDED_FMT` / `KNOWLEDGE_EDITED_FMT` / `KNOWLEDGE_DELETED_FMT` / `KNOWLEDGE_NOT_FOUND_FMT` / `KNOWLEDGE_ALREADY_EXISTS_FMT` / `EXPERIENCE_ADDED_FMT` / `EXPERIENCE_DELETED_FMT` / `EXPERIENCE_NOT_FOUND_FMT` / `EXPERIENCE_ALREADY_EXISTS_FMT` / `EXPERIENCE_READ_ERR_FMT`
+  - 5 个 stderr 常量：`ERR_NO_GARAGE` / `ERR_CONTENT_AND_FILE_MUTEX` / `ERR_ADD_REQUIRES_CONTENT` / `ERR_FILE_NOT_FOUND_FMT` / `ERR_EDIT_REQUIRES_FIELD`
+  - 3 个 source-marker 常量：`CLI_SOURCE_KNOWLEDGE_ADD` / `CLI_SOURCE_KNOWLEDGE_EDIT` / `CLI_SOURCE_EXPERIENCE_ADD`
+- **新增 `experience` 二级父 subparser** + `add` / `show` / `delete` 三个子命令；不引入新顶级命令（CON-501）。
+
+### 验证证据
+
+- `pytest tests/ -q` → **451 passed in ~25s**（F004 baseline 414 → +37 个 F005 新增测试，零回归）
+- F005 触动模块 mypy 持平 baseline（无新引入错误）
+- E2E walkthrough：在干净 `.garage/` 内完成 `add → list → show → edit → show → experience add → experience show → experience delete → status` 全链路，全部 exit 0（详见 `/opt/cursor/artifacts/f005_cli_walkthrough.log`）
+- 完整质量链：spec-review r1（需修改）→ r2（通过）→ design-review（通过 4 minor inline-fixed）→ tasks-review（通过 3 minor; F-1 inline-fixed）→ test-review（通过 5 minor; TT3/TT4 supplementary tests added）→ code-review（通过 5 minor; CR-2/CR-4 inline-fixed）→ traceability-review（通过 2 minor）→ regression-gate（通过）→ completion-gate（通过）
+
+### 已知限制 / 后续工作
+
+- **Stage 2 → Stage 3 触发信号尚未达标**：`docs/soul/growth-strategy.md` 的 Stage 3 进入信号包括 "知识库条目 >100"。F005 把"添加"路径从必须经 session 归档触发，修到了"终端 1 行命令即可"，但**实际的 100 条条目仍依赖用户使用频率**。下一个 cycle 是否启动 Stage 3 由 `hf-workflow-router` 在新会话独立判断。
+- **`_experience_show` 与 design §3 traceability 文字不严格一致（traceability TZ5 minor）**：handler docstring 已就地说明绕过 `ExperienceIndex.retrieve()` 直接读盘的理由（forward-compat with on-disk schema additions）；design 文档未回流。
+- **CON-501 / CON-502 / NFR-502 间接证据（traceability TZ4 minor）**：`pyproject.toml` 空 diff 是机器证据，但 CON-501/502 目前由 code review 人工确认；可在后续 cycle 加契约测试。
+- **§ 5 deferred backlog（spec 显式不在本 cycle）**：批量导入 / `experience edit` / `garage knowledge link` / TUI wizard / `garage knowledge export` / `--format json` for show / `source_session` 自动绑定 — 全部由后续 cycle 独立立项。
+- **Pre-existing baseline mypy + ruff 警告**：23 个 F002/F003 历史 mypy errors + cli.py 25 个 ruff stylistic warnings + F004 line 541 mypy error — 全部超出 F005 范围，由独立 cycle 治理。F005 新引入的 ruff 增量（21 项 UP045/UP012）与 cli.py 既有代码风格保持一致，未引入新行为问题。
+
+---
+
 ## F004 — Garage Memory v1.1（发布身份解耦与确认语义收敛）
 
 - 状态: ✅ 已完成（2026-04-19）
