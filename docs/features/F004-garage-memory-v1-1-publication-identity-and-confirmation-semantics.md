@@ -1,6 +1,6 @@
 # F004: Garage Memory v1.1 — 发布身份解耦与确认语义收敛
 
-- 状态: 草稿
+- 状态: 已批准（auto-mode approval；见 `docs/approvals/F004-spec-approval.md`）
 - 主题: 收敛 F003 显式延后的 minor 与 USER-INPUT 候选，让 Stage 2 "记忆体"在重复发布、入口校验、放弃语义、session 触发证据 4 个面达到可治理的稳态
 - 日期: 2026-04-19
 - 关联:
@@ -74,7 +74,7 @@ session  → archive-time 提取失败永远在文件层留痕
 
 | 功能 | 描述 |
 |------|------|
-| 发布身份解耦 | `KnowledgePublisher` 引入"发布 ID 生成器"间接层；同一候选重复发布走 `KnowledgeStore.update()`，触发 `version+=1`，markdown 文件名稳定 |
+| 发布身份解耦 | `KnowledgePublisher` 引入"发布 ID 生成器（publication identity generator）"间接层；同一候选重复发布走 `KnowledgeStore.update()`，触发 `version+=1`，markdown 文件名稳定 |
 | 入口校验前置 | `publish_candidate` 在入口立即校验 `conflict_strategy` 合法性（仅当 caller 显式传值时；`None` 仍按"无冲突 → 不需要"或"有冲突 → 拒绝"现有语义） |
 | `abandon` 语义差异化 | CLI `--action=abandon` 与 `--action=accept --strategy=abandon` 在文档与 confirmation 留痕上可被独立识别；canonical 行为差异写入用户指南 |
 | session 触发证据持久化 | `SessionManager._trigger_memory_extraction` 在任何失败点写 `sessions/archived/<id>/memory-extraction-error.json`；orchestrator 内部失败仍由 batch 文件兜底，不双写冗余 |
@@ -130,16 +130,35 @@ session  → archive-time 提取失败永远在文件层留痕
   - Given 调用方传 `conflict_strategy=None`，When 候选不命中相似条目，Then 行为与 v1 一致（正常发布）
   - Given 调用方传 `conflict_strategy=None`，When 候选命中相似条目，Then 行为与 F003 FR-304 一致（抛 `ValueError` 要求显式选择）
 
-### FR-403 CLI abandon 双路径语义必须可区分
+### FR-403a confirmation 持久面必须可独立识别两条 abandon 路径
+
+- **优先级**: Must
+- **来源**: F003 code-review r2 minor LLM-FIXABLE (CR5/CR4)
+- **需求陈述**: 当用户使用 CLI `garage memory review` 的任一 abandon 路径时，系统必须在 confirmation 持久记录上让两条路径可被冷读区分。
+- **验收标准**:
+  - Given 用户运行 `--action=abandon`，When CLI 处理完成，Then 候选 `status=abandoned`；confirmation 文件 `resolution=abandon` 且 `conflict_strategy=null`
+  - Given 用户运行 `--action=accept --strategy=abandon` 且 publisher 命中相似条目，When abandon 早返回，Then 候选 `status=abandoned`；confirmation 文件 `resolution=accept` 且 `conflict_strategy=abandon`
+  - Given 用户运行 `--action=accept --strategy=abandon` 且 publisher 不命中相似条目，When 退化为正常 accept 发布，Then 候选 `status=published`；confirmation 文件 `resolution=accept` 且 `conflict_strategy=null`（与 F003 v1 一致）
+
+### FR-403b CLI 输出文案必须显式区分两条 abandon 路径
 
 - **优先级**: Must
 - **来源**: F003 code-review r2 minor LLM-FIXABLE (CR5/CR4); 用户契约 "透明可审计"
-- **需求陈述**: 当用户使用 CLI `garage memory review` 的两条 abandon 路径时，系统必须保证它们在 confirmation 持久记录与 CLI 输出上可被独立识别，且用户文档显式说明差异。
+- **需求陈述**: 当用户使用 CLI `garage memory review` 的两条 abandon 路径时，系统必须在 stdout 输出可被独立识别的提示语，使用户在不读 confirmation 文件的情况下就能区分。
 - **验收标准**:
-  - Given 用户运行 `--action=abandon`，When CLI 处理完成，Then 候选 `status=abandoned`，confirmation 文件 `resolution=abandon` 且 `conflict_strategy=null`，CLI 输出含 "abandoned candidate without publication attempt" 字样
-  - Given 用户运行 `--action=accept --strategy=abandon`，When publisher 命中相似条目并走 abandon 早返回，Then 候选 `status=abandoned`，confirmation 文件 `resolution=accept` 且 `conflict_strategy=abandon`，CLI 输出含 "abandoned due to conflict" 字样
-  - Given 用户运行 `--action=accept --strategy=abandon`，When publisher 不命中相似条目，Then 行为退化为正常 `accept` 发布（与 v1 一致），CLI 输出按正常 accept 路径
-  - Given 用户阅读 `docs/guides/garage-os-user-guide.md` memory review 段，When 找 abandon 相关说明，Then 文档用至少 1 段话明确两条路径的差异
+  - Given 用户运行 `--action=abandon`，When CLI 处理完成，Then stdout 至少包含一段含 "abandoned candidate without publication attempt" 含义的中英文之一稳定标识符
+  - Given 用户运行 `--action=accept --strategy=abandon` 且命中相似条目，When abandon 早返回，Then stdout 至少包含一段含 "abandoned due to conflict" 含义的中英文之一稳定标识符
+  - Given 同一 CLI 子命令的两条路径，When 用户用 `grep` 或日志搜索区分，Then 两条路径的标识字符串不重叠
+
+### FR-403c 用户文档必须显式说明两条 abandon 路径的差异
+
+- **优先级**: Must
+- **来源**: F003 code-review r2 minor LLM-FIXABLE (CR5/CR4); 设计原则 "约定可发现"
+- **需求陈述**: 当用户阅读 `docs/guides/garage-os-user-guide.md` 的 memory review 段时，系统文档必须用至少 1 段话讲清两条 abandon 路径的差异（语义、何时使用、对 confirmation 持久产物的影响）。
+- **验收标准**:
+  - Given `docs/guides/garage-os-user-guide.md` 含 memory review 段，When 读者搜索 "abandon"，Then 至少能命中 1 段独立说明
+  - Given 该说明段，When 读者读完，Then 能正确回答 "我应该用 `--action=abandon` 还是 `--action=accept --strategy=abandon`？"
+  - Given 该说明段，When 读者关心持久产物，Then 段落显式列出两条路径下 confirmation 文件的字段差异
 
 ### FR-404 archive-time 触发链路必须文件级留痕
 
@@ -168,19 +187,19 @@ session  → archive-time 提取失败永远在文件层留痕
 
 - **优先级**: Must
 - **来源**: 设计原则 "文件即契约"
-- **需求陈述**: 当 publisher 把 candidate 转成 publication identity 时，系统必须保证生成规则在代码或文档中可被独立读懂，且不依赖运行时随机性（同一 input 多次调用生成同一 id）。
+- **需求陈述**: 当 publisher 把 candidate 转成 publication identity 时，系统必须保证生成规则在 publisher 模块代码或开发者文档中可被独立读懂，且不依赖运行时随机性（同一 input 多次调用生成同一 id）。
 - **验收标准**:
   - Given 同一 candidate payload 与 confirmation_ref，When 调用发布身份生成器 N 次，Then 返回值完全相同
-  - Given 开发者读 `src/garage_os/memory/publisher.py` 与 `docs/guides/garage-os-developer-guide.md`，When 想知道 "k-..." id 怎么来的，Then 能在不跑代码的情况下复现规则
+  - Given 开发者读 publisher 模块与开发者文档，When 想知道某条已发布知识的 id 是怎么生成的，Then 能在不跑代码的情况下复现规则
+  - Given 任意已发布 entry，When 沿用同一份 candidate payload + confirmation_ref 再次调用发布身份生成器，Then 得到与已发布 entry 完全相同的 id（保证 update 路径可命中）
 
 ### NFR-402 不引入运行时性能退化
 
 - **优先级**: Should
 - **来源**: F003 NFR-303 Stage 2 性能门槛
-- **需求陈述**: 当 v1.1 修改部署后，单 session 候选生成 P90 与单次 publish_candidate 调用 P90 不应较 F003 baseline 退化超过 10%。
+- **需求陈述**: 当 v1.1 修改部署后，单 session 候选生成与单次 publish_candidate 调用的运行时长不应较 F003 baseline 退化超过 10%。
 - **验收标准**:
   - Given F003 baseline `pytest tests/memory/ -q` 总时长 T0，When v1.1 部署后同一 suite 跑 N 次取均值 T1，Then `T1 ≤ 1.1 * T0`
-  - Given 现有 `scripts/benchmark.py`（若覆盖 publisher 路径），When v1.1 跑一次，Then 相关报告中 publisher 段无显著退化（>10%）
 
 ## 9. 外部接口与依赖
 
@@ -242,6 +261,14 @@ session  → archive-time 提取失败永远在文件层留痕
 - **来源**: F003 finalize 时对 finding 5 的延后理由
 - **失效风险**: 若用户大量"先 accept 后改"，性能与 git diff 噪声会显著
 - **缓解措施**: 文档显式建议用户在 `edit_accept` 前优先用 `--action=defer`
+
+### ASM-403 性能基准脚本可能尚未覆盖 publisher 路径
+
+- **优先级**: Should
+- **来源**: NFR-402 验收标准的可执行性
+- **需求陈述**: 假设当前 `scripts/benchmark.py` 不一定覆盖 publisher 重复发布路径；如需性能验收的第二条独立证据，由 design / tasks stage 决定是否补 publisher 专项基准。
+- **失效风险**: 如果 design stage 不补该基准，NFR-402 只能用 `pytest tests/memory/ -q` 的 wall-clock 作为唯一验收口径，对 publisher 局部回归的 perf 可见度有限。
+- **缓解措施**: design stage 显式裁决是否在 `scripts/benchmark.py` 中追加 publisher 专项；不追加亦可，但需在 design 文档中说明为什么 wall-clock suite 已经够用。
 
 ## 12. 开放问题
 

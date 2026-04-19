@@ -15,13 +15,13 @@
 
 ## Current Workflow State
 
-- Current Stage: `hf-specify`
+- Current Stage: `规格真人确认`（auto-mode approval 已写入）→ 准备进入 `hf-design`
 - Workflow Profile: `full`
 - Execution Mode: `auto`
 - Workspace Isolation: `in-place`
-- Current Active Task: F004 spec authoring
-- Pending Reviews And Gates: `hf-spec-review`
-- Next Action Or Recommended Skill: `hf-spec-review`
+- Current Active Task: F004 design authoring
+- Pending Reviews And Gates: `hf-design-review`
+- Next Action Or Recommended Skill: `hf-design`
 - Relevant Files:
   - `docs/features/F004-garage-memory-v1-1-publication-identity-and-confirmation-semantics.md`（F004 spec draft）
   - `docs/features/F003-garage-memory-auto-extraction.md`（前一 cycle spec，作为对照）
@@ -43,4 +43,4 @@
 
 ## Next Step
 
-派发 reviewer subagent 执行 `hf-spec-review`，输入 = `docs/features/F004-garage-memory-v1-1-publication-identity-and-confirmation-semantics.md`。
+进入 `hf-design`：起草 F004 实现设计文档（`docs/designs/2026-04-19-garage-memory-v1-1-design.md`），重点覆盖发布身份生成器、入口校验前置、CLI abandon 双路径、`memory-extraction-error.json` schema。
