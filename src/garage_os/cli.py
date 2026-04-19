@@ -10,17 +10,6 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Sequence
 
 from garage_os.adapter.claude_code_adapter import ClaudeCodeAdapter
-from garage_os.adapter.installer import (
-    ConflictingSkillError,
-    InvalidPackError,
-    MalformedFrontmatterError,
-    PackManifestMismatchError,
-    UnknownHostError,
-    install_packs,
-    list_host_ids,
-    resolve_hosts_arg,
-)
-from garage_os.adapter.installer.interactive import prompt_hosts
 
 # F004 § 11.5: stable stdout markers for the two CLI abandon paths so users
 # (and downstream agents) can grep the audit log to differentiate intent.
@@ -76,26 +65,6 @@ CLI_SOURCE_EXPERIENCE_ADD = "cli:experience-add"
 # 覆写 source_artifact 为该值，让审计层面"手工建图动作"与"add/edit/publisher
 # 路径"完全可分。
 CLI_SOURCE_KNOWLEDGE_LINK = "cli:knowledge-link"
-
-# F007 § 6 FR-709 / NFR-704: stable stdout / stderr markers for the
-# `garage init --hosts ...` host installer path. Mirrors the F005
-# `KNOWLEDGE_*_FMT` pattern so downstream Agents / tests can grep-match.
-#
-# Format-string ownership map (consolidated per F007 hf-code-review F-2):
-# - INSTALLED_FMT, ERR_PACK_INVALID_FMT, ERR_MARKER_FAILED_FMT,
-#   ERR_HOST_FILE_FAILED_FMT are CLI-emitted and live here.
-# - ERR_UNKNOWN_HOST_FMT lives in
-#   garage_os.adapter.installer.host_registry (built into UnknownHostError);
-#   the CLI re-prints the exception message verbatim.
-# - WARN_LOCALLY_MODIFIED_FMT, WARN_OVERWRITE_FORCED_FMT, MSG_NO_PACKS_FMT
-#   live in garage_os.adapter.installer.pipeline (pipeline emits them
-#   directly to stderr/stdout during install).
-INSTALLED_FMT = (
-    "Installed {n_skills} skills, {n_agents} agents into hosts: {hosts}"
-)
-ERR_PACK_INVALID_FMT = "Invalid pack: {detail}"
-ERR_MARKER_FAILED_FMT = "SKILL.md marker injection failed: {detail}"
-ERR_HOST_FILE_FAILED_FMT = "Failed to write host file: {detail}"
 
 # F006 § 9.5 / NFR-604: stable stdout / stderr markers for the recall + graph
 # CLI surface (`garage recommend`, `garage knowledge link`, `garage knowledge
@@ -203,23 +172,10 @@ def _find_garage_root(start: Optional[Path] = None) -> Path:
     return Path.cwd()
 
 
-def _init(
-    garage_root: Path,
-    *,
-    hosts_arg: Optional[str] = None,
-    yes: bool = False,
-    force: bool = False,
-) -> int:
+def _init(garage_root: Path) -> None:
     """Create the .garage/ directory structure under garage_root.
 
-    F002 contract preserved: when called without any host installer args
-    (no ``hosts_arg`` / ``yes`` / TTY prompt → empty hosts) and no packs/
-    present, output is byte-equal to the legacy ``Initialized Garage OS in
-    <path>`` line (CON-702).
-
-    F007 extension: when ``hosts_arg`` is provided OR a TTY user selects
-    one or more hosts, also installs ``packs/<pack-id>/`` content into the
-    host-specific directories (e.g. ``.claude/skills/``).
+    Idempotent: does nothing for already-existing directories/files.
     """
     garage_dir = garage_root / ".garage"
     garage_dir.mkdir(parents=True, exist_ok=True)
@@ -247,67 +203,6 @@ def _init(
         )
 
     print(f"Initialized Garage OS in {garage_dir}")
-
-    # F007: optional host installer step. Returns early without touching any
-    # host directory when the resolved host list is empty (CON-702).
-    try:
-        hosts = _resolve_init_hosts(hosts_arg=hosts_arg, yes=yes)
-    except UnknownHostError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-
-    if not hosts:
-        return 0
-
-    try:
-        summary = install_packs(
-            workspace_root=garage_root,
-            packs_root=garage_root / "packs",
-            hosts=hosts,
-            force=force,
-        )
-    except UnknownHostError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-    except ConflictingSkillError as exc:
-        print(str(exc), file=sys.stderr)
-        return 2
-    except (InvalidPackError, PackManifestMismatchError) as exc:
-        print(ERR_PACK_INVALID_FMT.format(detail=exc), file=sys.stderr)
-        return 1
-    except MalformedFrontmatterError as exc:
-        print(ERR_MARKER_FAILED_FMT.format(detail=exc), file=sys.stderr)
-        return 1
-    except OSError as exc:
-        print(ERR_HOST_FILE_FAILED_FMT.format(detail=exc), file=sys.stderr)
-        return 1
-
-    print(
-        INSTALLED_FMT.format(
-            n_skills=summary.n_skills,
-            n_agents=summary.n_agents,
-            hosts=", ".join(summary.hosts),
-        )
-    )
-    return 0
-
-
-def _resolve_init_hosts(
-    *, hosts_arg: Optional[str], yes: bool
-) -> list[str]:
-    """Determine which hosts to install into based on CLI flags + TTY.
-
-    Resolution table (D7 §10.1):
-        --hosts <list>         → resolve_hosts_arg(<list>)
-        --yes (no --hosts)     → [] (equivalent to --hosts none, FR-702)
-        no flags + TTY         → interactive.prompt_hosts(...)
-        no flags + non-TTY     → [] + stderr notice (FR-703)
-    """
-    if hosts_arg is not None:
-        return resolve_hosts_arg(hosts_arg)
-    if yes:
-        return []
-    return prompt_hosts(list_host_ids(), stdin=sys.stdin, stderr=sys.stderr)
 
 
 def _status(garage_root: Path) -> None:
@@ -1409,37 +1304,6 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser = subparsers.add_parser(
         "init", help="Initialize .garage/ directory structure", parents=[path_parser]
     )
-    # F007 FR-702 / FR-703 / FR-706b: host installer flags.
-    init_parser.add_argument(
-        "--hosts",
-        dest="init_hosts",
-        default=None,
-        help=(
-            "Install Garage packs into the given hosts. Accepts 'all', "
-            "'none', or a comma-separated list of host ids "
-            "(e.g. 'claude,cursor'). Without this flag, an interactive "
-            "prompt is shown on TTY; otherwise no hosts are installed."
-        ),
-    )
-    init_parser.add_argument(
-        "--yes",
-        dest="init_yes",
-        action="store_true",
-        help=(
-            "Skip the interactive host prompt. With no --hosts, this is "
-            "equivalent to --hosts none (CI / scripted use)."
-        ),
-    )
-    init_parser.add_argument(
-        "--force",
-        dest="init_force",
-        action="store_true",
-        help=(
-            "Overwrite host files that have been locally modified since "
-            "Garage installed them. Without this flag they are skipped "
-            "and reported on stderr (FR-706b)."
-        ),
-    )
 
     # status
     status_parser = subparsers.add_parser(
@@ -1763,12 +1627,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.command == "init":
         root = args.path if args.path else Path.cwd()
-        return _init(
-            root,
-            hosts_arg=args.init_hosts,
-            yes=args.init_yes,
-            force=args.init_force,
-        )
+        _init(root)
+        return 0
 
     if args.command == "status":
         root = args.path if args.path else _find_garage_root()
