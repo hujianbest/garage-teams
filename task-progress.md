@@ -22,9 +22,9 @@
 - Workflow Profile: `coding`
 - Execution Mode: `auto-mode`
 - Workspace Isolation: `in-place`
-- Current Active Task: F007 task 计划（待起草）
-- Pending Reviews And Gates: F007 tasks review（tasks 草稿完成后派发）
-- Next Action Or Recommended Skill: `hf-tasks`
+- Current Active Task: F007 tasks 草稿已起草，待评审
+- Pending Reviews And Gates: F007 tasks review（待派发 reviewer subagent）
+- Next Action Or Recommended Skill: `hf-tasks-review`
 - Relevant Files:
   - `docs/features/F007-garage-packs-and-host-installer.md`（已批准规格）
   - `docs/designs/2026-04-19-garage-packs-and-host-installer-design.md`（已批准设计，r2）
