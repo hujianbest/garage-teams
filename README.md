@@ -46,7 +46,7 @@ The goal is not to hide the work behind a black box. The goal is to give your ag
 
 - AHE workflow skills under [packs/product-insights/skills/](packs/product-insights/skills/) and [packs/coding/skills/](packs/coding/skills/)
 - An early Python runtime package, currently named `garage-os`, under [src/garage_os/](src/garage_os/)
-- A `garage` CLI with `init`, `status`, `run`, `knowledge search`, and `knowledge list`
+- A `garage` CLI with `init`, `status`, `run`, `knowledge search`, `knowledge list`, `knowledge add`, `knowledge edit`, `knowledge show`, `knowledge delete`, `experience add`, `experience show`, `experience delete`, and `memory review`
 - File-first runtime data under [.garage/](.garage/)
 - Approved Phase 1 direction in [docs/features/F001-garage-agent-operating-system.md](docs/features/F001-garage-agent-operating-system.md) plus runtime guides in [docs/guides/garage-os-user-guide.md](docs/guides/garage-os-user-guide.md) and [docs/guides/garage-os-developer-guide.md](docs/guides/garage-os-developer-guide.md)
 

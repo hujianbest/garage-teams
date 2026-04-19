@@ -1125,3 +1125,989 @@ Repository pattern implementation.
         captured = capsys.readouterr()
         assert "No knowledge entries" in captured.out
 
+
+# ---------------------------------------------------------------------------
+# F005 — Knowledge / Experience authoring CLI
+# ---------------------------------------------------------------------------
+
+import pytest
+import time as _time_mod
+from datetime import datetime, timedelta
+
+from garage_os.cli import (
+    CLI_SOURCE_EXPERIENCE_ADD,
+    CLI_SOURCE_KNOWLEDGE_ADD,
+    CLI_SOURCE_KNOWLEDGE_EDIT,
+    EXPERIENCE_ADDED_FMT,
+    EXPERIENCE_DELETED_FMT,
+    EXPERIENCE_NOT_FOUND_FMT,
+    ERR_ADD_REQUIRES_CONTENT,
+    ERR_CONTENT_AND_FILE_MUTEX,
+    ERR_EDIT_REQUIRES_FIELD,
+    ERR_FILE_NOT_FOUND_FMT,
+    ERR_NO_GARAGE,
+    KNOWLEDGE_ADDED_FMT,
+    KNOWLEDGE_ALREADY_EXISTS_FMT,
+    KNOWLEDGE_DELETED_FMT,
+    KNOWLEDGE_EDITED_FMT,
+    KNOWLEDGE_NOT_FOUND_FMT,
+    _generate_entry_id,
+    _generate_experience_id,
+)
+from garage_os.knowledge.experience_index import ExperienceIndex
+from garage_os.knowledge.knowledge_store import KnowledgeStore
+from garage_os.storage import FileStorage
+from garage_os.types import KnowledgeType
+
+
+def _read_decision(garage_dir: Path, eid: str) -> dict:
+    """Helper: read a decision entry's front matter as dict."""
+    storage = FileStorage(garage_dir)
+    store = KnowledgeStore(storage)
+    entry = store.retrieve(KnowledgeType.DECISION, eid)
+    assert entry is not None, f"entry {eid} missing"
+    return {
+        "id": entry.id,
+        "type": entry.type.value,
+        "topic": entry.topic,
+        "tags": entry.tags,
+        "version": entry.version,
+        "status": entry.status,
+        "content": entry.content,
+        "source_artifact": entry.source_artifact,
+        "date": entry.date,
+        "published_from_candidate": entry.published_from_candidate,
+    }
+
+
+class TestKnowledgeAdd:
+    """T1 / FR-501 / FR-502 / FR-508 / FR-509."""
+
+    def test_add_happy_path_writes_entry_with_source_marker(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        main(["init", "--path", str(tmp_path)])
+        rc = main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "decision",
+                "--topic",
+                "Pick SQLite over Postgres",
+                "--content",
+                "Postgres needs a daemon",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 0
+        out = capsys.readouterr().out
+        # find the eid from stdout
+        assert "Knowledge entry '" in out
+        eid = out.split("'")[1]
+        assert eid.startswith("decision-")
+
+        garage_dir = tmp_path / ".garage"
+        fm = _read_decision(garage_dir, eid)
+        assert fm["topic"] == "Pick SQLite over Postgres"
+        assert fm["content"] == "Postgres needs a daemon"
+        assert fm["status"] == "active"
+        assert fm["version"] == 1
+        assert fm["source_artifact"] == CLI_SOURCE_KNOWLEDGE_ADD
+        assert fm["tags"] == []
+
+        # KnowledgeStore writes <type>-<entry.id>.md; entry.id already starts
+        # with the type prefix from FR-508, so the on-disk file name is e.g.
+        # decision-decision-YYYYMMDD-XXXXXX.md. This is intentional (we keep
+        # KnowledgeStore's existing file-naming contract untouched per CON-502).
+        assert (garage_dir / "knowledge" / "decisions" / f"decision-{eid}.md").is_file()
+
+    def test_add_with_tags_writes_tag_list(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "decision",
+                "--topic",
+                "x",
+                "--content",
+                "y",
+                "--tags",
+                "a, b ,c",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        eid = capsys.readouterr().out.split("'")[1]
+        fm = _read_decision(tmp_path / ".garage", eid)
+        assert fm["tags"] == ["a", "b", "c"]
+
+    def test_add_with_explicit_id(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        rc = main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "decision",
+                "--topic",
+                "x",
+                "--content",
+                "y",
+                "--id",
+                "custom-001",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "Knowledge entry 'custom-001' added" in out
+        # File name = decision-<entry.id>.md per KnowledgeStore.store(). Since
+        # explicit --id is "custom-001" (no type prefix), the file is
+        # decision-custom-001.md.
+        assert (
+            tmp_path / ".garage" / "knowledge" / "decisions" / "decision-custom-001.md"
+        ).is_file()
+
+    def test_add_from_file(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        body = "long body\nwith multiple lines\n"
+        body_file = tmp_path / "body.md"
+        body_file.write_text(body, encoding="utf-8")
+        main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "pattern",
+                "--topic",
+                "Front-matter pattern",
+                "--from-file",
+                str(body_file),
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        out = capsys.readouterr().out
+        eid = out.split("'")[1]
+        storage = FileStorage(tmp_path / ".garage")
+        store = KnowledgeStore(storage)
+        entry = store.retrieve(KnowledgeType.PATTERN, eid)
+        assert entry is not None
+        assert entry.content == body  # CON-505 byte-equality
+
+    def test_add_mutex_content_and_file(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        body = tmp_path / "body.md"
+        body.write_text("x", encoding="utf-8")
+        rc = main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "decision",
+                "--topic",
+                "x",
+                "--content",
+                "y",
+                "--from-file",
+                str(body),
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert ERR_CONTENT_AND_FILE_MUTEX in err
+
+    def test_add_requires_content_or_file(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        rc = main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "decision",
+                "--topic",
+                "x",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert ERR_ADD_REQUIRES_CONTENT in err
+
+    def test_add_from_file_not_found(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        missing = tmp_path / "missing.md"
+        rc = main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "decision",
+                "--topic",
+                "x",
+                "--from-file",
+                str(missing),
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert ERR_FILE_NOT_FOUND_FMT.format(path=missing) in err
+
+    def test_add_no_garage_dir(self, tmp_path: Path, capsys) -> None:
+        rc = main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "decision",
+                "--topic",
+                "x",
+                "--content",
+                "y",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert ERR_NO_GARAGE in err
+
+    def test_add_id_collision_same_second(
+        self, tmp_path: Path, capsys, monkeypatch
+    ) -> None:
+        main(["init", "--path", str(tmp_path)])
+        fixed = datetime(2026, 4, 19, 12, 0, 0)
+        monkeypatch.setattr("garage_os.cli._now_default", lambda: fixed)
+
+        rc1 = main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "decision",
+                "--topic",
+                "X",
+                "--content",
+                "Y",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc1 == 0
+        first_out = capsys.readouterr().out
+        eid = first_out.split("'")[1]
+
+        rc2 = main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "decision",
+                "--topic",
+                "X",
+                "--content",
+                "Y",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc2 == 1
+        err = capsys.readouterr().err
+        assert KNOWLEDGE_ALREADY_EXISTS_FMT.format(eid=eid) in err
+
+        # First entry must NOT be overwritten
+        fm = _read_decision(tmp_path / ".garage", eid)
+        assert fm["topic"] == "X"
+        assert fm["content"] == "Y"
+
+    def test_add_explicit_id_collision(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        argv = [
+            "knowledge",
+            "add",
+            "--type",
+            "decision",
+            "--topic",
+            "x",
+            "--content",
+            "y",
+            "--id",
+            "dup",
+            "--path",
+            str(tmp_path),
+        ]
+        rc1 = main(argv)
+        assert rc1 == 0
+        out1 = capsys.readouterr().out
+        assert "Knowledge entry 'dup' added" in out1
+        rc2 = main(argv)
+        assert rc2 == 1
+        err2 = capsys.readouterr().err
+        assert KNOWLEDGE_ALREADY_EXISTS_FMT.format(eid="dup") in err2
+
+    def test_generate_entry_id_format(self) -> None:
+        now = datetime(2026, 4, 19, 12, 0, 0)
+        eid = _generate_entry_id(KnowledgeType.DECISION, "topic", "content", now)
+        assert eid.startswith("decision-20260419-")
+        assert len(eid.split("-")[-1]) == 6
+        # Same inputs same second → same id
+        assert (
+            _generate_entry_id(KnowledgeType.DECISION, "topic", "content", now) == eid
+        )
+        # Different second → different id
+        next_sec = now + timedelta(seconds=1)
+        assert (
+            _generate_entry_id(KnowledgeType.DECISION, "topic", "content", next_sec)
+            != eid
+        )
+
+
+class TestKnowledgeEdit:
+    """T2 / FR-503 / FR-509 / CON-503 (v1.1 version+=1)."""
+
+    def _add(self, tmp_path: Path, capsys) -> str:
+        main(["init", "--path", str(tmp_path)])
+        main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "decision",
+                "--topic",
+                "Original",
+                "--content",
+                "Body v1",
+                "--tags",
+                "a",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        out = capsys.readouterr().out
+        return out.split("'")[1]
+
+    def test_edit_overlays_only_specified_fields_and_bumps_version(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        eid = self._add(tmp_path, capsys)
+        rc = main(
+            [
+                "knowledge",
+                "edit",
+                "--type",
+                "decision",
+                "--id",
+                eid,
+                "--tags",
+                "a,b",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert KNOWLEDGE_EDITED_FMT.format(eid=eid, version=2) in out
+
+        fm = _read_decision(tmp_path / ".garage", eid)
+        assert fm["tags"] == ["a", "b"]
+        assert fm["topic"] == "Original"  # untouched
+        assert fm["content"] == "Body v1"  # untouched
+        assert fm["version"] == 2  # CON-503 v1.1 invariant carried into CLI
+        assert fm["source_artifact"] == CLI_SOURCE_KNOWLEDGE_EDIT  # FR-509
+
+    def test_edit_requires_at_least_one_field(self, tmp_path: Path, capsys) -> None:
+        eid = self._add(tmp_path, capsys)
+        rc = main(
+            [
+                "knowledge",
+                "edit",
+                "--type",
+                "decision",
+                "--id",
+                eid,
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 1
+        assert ERR_EDIT_REQUIRES_FIELD in capsys.readouterr().err
+
+    def test_edit_mutex_content_and_file(self, tmp_path: Path, capsys) -> None:
+        eid = self._add(tmp_path, capsys)
+        body = tmp_path / "body.md"
+        body.write_text("x", encoding="utf-8")
+        rc = main(
+            [
+                "knowledge",
+                "edit",
+                "--type",
+                "decision",
+                "--id",
+                eid,
+                "--content",
+                "y",
+                "--from-file",
+                str(body),
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 1
+        assert ERR_CONTENT_AND_FILE_MUTEX in capsys.readouterr().err
+
+    def test_edit_not_found(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        rc = main(
+            [
+                "knowledge",
+                "edit",
+                "--type",
+                "decision",
+                "--id",
+                "missing",
+                "--topic",
+                "X",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert KNOWLEDGE_NOT_FOUND_FMT.format(eid="missing") in err
+
+    def test_edit_monotonic_version(self, tmp_path: Path, capsys) -> None:
+        eid = self._add(tmp_path, capsys)
+        for expected in (2, 3, 4):
+            main(
+                [
+                    "knowledge",
+                    "edit",
+                    "--type",
+                    "decision",
+                    "--id",
+                    eid,
+                    "--status",
+                    f"v{expected}",
+                    "--path",
+                    str(tmp_path),
+                ]
+            )
+            out = capsys.readouterr().out
+            assert KNOWLEDGE_EDITED_FMT.format(eid=eid, version=expected) in out
+
+    def test_edit_does_not_pollute_publisher_metadata(
+        self, tmp_path: Path
+    ) -> None:
+        """Verify CLI edit only overwrites source_artifact, leaving publisher
+        provenance fields (published_from_candidate etc.) intact."""
+        main(["init", "--path", str(tmp_path)])
+        garage_dir = tmp_path / ".garage"
+        storage = FileStorage(garage_dir)
+        store = KnowledgeStore(storage)
+        # Simulate a publisher-written entry: source_artifact is some
+        # publisher-shaped string (not "cli:..."); published_from_candidate set.
+        from garage_os.types import KnowledgeEntry
+        from datetime import datetime as _dt
+
+        publisher_entry = KnowledgeEntry(
+            id="pub-1",
+            type=KnowledgeType.DECISION,
+            topic="from publisher",
+            date=_dt(2026, 1, 1),
+            tags=["pub"],
+            content="publisher body",
+            status="active",
+            version=1,
+            source_artifact="published_by:F003",
+            published_from_candidate="cand-x",
+        )
+        store.store(publisher_entry)
+
+        rc = main(
+            [
+                "knowledge",
+                "edit",
+                "--type",
+                "decision",
+                "--id",
+                "pub-1",
+                "--tags",
+                "pub,extra",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 0
+        fm = _read_decision(garage_dir, "pub-1")
+        assert fm["source_artifact"] == CLI_SOURCE_KNOWLEDGE_EDIT
+        assert fm["published_from_candidate"] == "cand-x"  # publisher metadata preserved
+
+
+class TestKnowledgeShow:
+    """T3 / FR-504."""
+
+    def test_show_happy(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "solution",
+                "--topic",
+                "Showme",
+                "--content",
+                "Hello",
+                "--tags",
+                "a,b",
+                "--id",
+                "s1",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        capsys.readouterr()
+        rc = main(["knowledge", "show", "--type", "solution", "--id", "s1", "--path", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "id: s1" in out
+        assert "topic: Showme" in out
+        assert "version: 1" in out
+        assert f"source_artifact: {CLI_SOURCE_KNOWLEDGE_ADD}" in out
+        assert "tags: a, b" in out
+        assert "Hello" in out
+        # Front matter must come before the body, separated by a blank line
+        # (TT4 reviewer feedback: ordering not previously asserted).
+        front_idx = out.index("source_artifact:")
+        body_idx = out.index("Hello")
+        assert front_idx < body_idx
+        assert "\n\nHello" in out
+
+    def test_show_not_found(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        rc = main(["knowledge", "show", "--type", "solution", "--id", "missing", "--path", str(tmp_path)])
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert KNOWLEDGE_NOT_FOUND_FMT.format(eid="missing") in err
+
+
+class TestKnowledgeDelete:
+    """T3 / FR-505."""
+
+    def test_delete_happy(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "pattern",
+                "--topic",
+                "del",
+                "--content",
+                "x",
+                "--id",
+                "p1",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        capsys.readouterr()
+        path = tmp_path / ".garage" / "knowledge" / "patterns" / "pattern-p1.md"
+        assert path.is_file()
+        rc = main(["knowledge", "delete", "--type", "pattern", "--id", "p1", "--path", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert KNOWLEDGE_DELETED_FMT.format(eid="p1") in out
+        assert not path.is_file()
+
+    def test_delete_not_found(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        rc = main(["knowledge", "delete", "--type", "pattern", "--id", "missing", "--path", str(tmp_path)])
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert KNOWLEDGE_NOT_FOUND_FMT.format(eid="missing") in err
+
+
+class TestExperienceAdd:
+    """T4 / FR-506 / FR-508 experience / FR-509."""
+
+    def test_experience_add_happy(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        rc = main(
+            [
+                "experience",
+                "add",
+                "--task-type",
+                "spike",
+                "--skill",
+                "ahe-design",
+                "--skill",
+                "ahe-tasks",
+                "--domain",
+                "platform",
+                "--outcome",
+                "success",
+                "--duration",
+                "1800",
+                "--complexity",
+                "medium",
+                "--summary",
+                "Tried SQLite path",
+                "--tech",
+                "python",
+                "--tech",
+                "sqlite",
+                "--tags",
+                "indexing,storage",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "Experience record '" in out
+        rid = out.split("'")[1]
+        record_path = tmp_path / ".garage" / "experience" / "records" / f"{rid}.json"
+        assert record_path.is_file()
+        data = json.loads(record_path.read_text(encoding="utf-8"))
+        assert data["record_id"] == rid
+        assert data["task_type"] == "spike"
+        assert data["skill_ids"] == ["ahe-design", "ahe-tasks"]
+        assert data["outcome"] == "success"
+        assert data["duration_seconds"] == 1800
+        assert data["complexity"] == "medium"
+        assert data["lessons_learned"] == ["Tried SQLite path"]
+        assert data["tech_stack"] == ["python", "sqlite"]
+        assert data["key_patterns"] == ["indexing", "storage"]
+        assert data["problem_domain"] == "spike"  # default
+        # FR-509 / ADR-503: source marker via "cli:" prefix at artifacts[0]
+        assert data["artifacts"][0] == CLI_SOURCE_EXPERIENCE_ADD
+        assert data["artifacts"][0].startswith("cli:")
+
+    def test_experience_add_outcome_must_be_valid(self, tmp_path: Path) -> None:
+        main(["init", "--path", str(tmp_path)])
+        with pytest.raises(SystemExit) as exc:
+            main(
+                [
+                    "experience",
+                    "add",
+                    "--task-type",
+                    "spike",
+                    "--skill",
+                    "x",
+                    "--domain",
+                    "d",
+                    "--outcome",
+                    "garbage",
+                    "--duration",
+                    "10",
+                    "--complexity",
+                    "low",
+                    "--summary",
+                    "s",
+                    "--path",
+                    str(tmp_path),
+                ]
+            )
+        assert exc.value.code == 2
+
+    def test_generate_experience_id_format(self) -> None:
+        now = datetime(2026, 4, 19, 12, 0, 0)
+        rid = _generate_experience_id("spike", "summary", now)
+        assert rid.startswith("exp-20260419-")
+        assert len(rid.split("-")[-1]) == 6
+        # Same inputs same second → same id
+        assert _generate_experience_id("spike", "summary", now) == rid
+        # Different second → different id (time salt is part of the input)
+        next_sec = now + timedelta(seconds=1)
+        assert _generate_experience_id("spike", "summary", next_sec) != rid
+
+    def test_experience_add_id_collision_same_second(
+        self, tmp_path: Path, capsys, monkeypatch
+    ) -> None:
+        """FR-508 experience-branch parity with knowledge add collision."""
+        main(["init", "--path", str(tmp_path)])
+        fixed = datetime(2026, 4, 19, 12, 0, 0)
+        monkeypatch.setattr("garage_os.cli._now_default", lambda: fixed)
+        argv = [
+            "experience",
+            "add",
+            "--task-type",
+            "spike",
+            "--skill",
+            "x",
+            "--domain",
+            "d",
+            "--outcome",
+            "success",
+            "--duration",
+            "10",
+            "--complexity",
+            "low",
+            "--summary",
+            "same",
+            "--path",
+            str(tmp_path),
+        ]
+        rc1 = main(argv)
+        assert rc1 == 0
+        rc2 = main(argv)
+        assert rc2 == 1
+        err = capsys.readouterr().err
+        assert "already exists" in err
+
+
+class TestExperienceShow:
+    """T5 / FR-507a."""
+
+    def test_experience_show_happy(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        main(
+            [
+                "experience",
+                "add",
+                "--task-type",
+                "spike",
+                "--skill",
+                "x",
+                "--domain",
+                "d",
+                "--outcome",
+                "success",
+                "--duration",
+                "10",
+                "--complexity",
+                "low",
+                "--summary",
+                "s",
+                "--id",
+                "exp-1",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        capsys.readouterr()
+        rc = main(["experience", "show", "--id", "exp-1", "--path", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["record_id"] == "exp-1"
+        assert data["task_type"] == "spike"
+        assert data["outcome"] == "success"
+
+    def test_experience_show_not_found(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        rc = main(["experience", "show", "--id", "missing", "--path", str(tmp_path)])
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert EXPERIENCE_NOT_FOUND_FMT.format(rid="missing") in err
+
+
+class TestExperienceDelete:
+    """T5 / FR-507b — must also prune the central index."""
+
+    def test_experience_delete_happy_and_prunes_index(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        main(["init", "--path", str(tmp_path)])
+        main(
+            [
+                "experience",
+                "add",
+                "--task-type",
+                "spike",
+                "--skill",
+                "x",
+                "--domain",
+                "d",
+                "--outcome",
+                "success",
+                "--duration",
+                "10",
+                "--complexity",
+                "low",
+                "--summary",
+                "s",
+                "--id",
+                "exp-1",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        capsys.readouterr()
+        garage_dir = tmp_path / ".garage"
+        index_path = garage_dir / "knowledge" / ".metadata" / "index.json"
+        assert index_path.is_file()
+        index_before = json.loads(index_path.read_text(encoding="utf-8"))
+        assert "exp-1" in index_before
+
+        rc = main(["experience", "delete", "--id", "exp-1", "--path", str(tmp_path)])
+        assert rc == 0
+        assert EXPERIENCE_DELETED_FMT.format(rid="exp-1") in capsys.readouterr().out
+        assert not (garage_dir / "experience" / "records" / "exp-1.json").is_file()
+        index_after = json.loads(index_path.read_text(encoding="utf-8"))
+        assert "exp-1" not in index_after  # FR-507b key assertion
+
+        # Following show must report not-found
+        rc2 = main(["experience", "show", "--id", "exp-1", "--path", str(tmp_path)])
+        assert rc2 == 1
+
+    def test_experience_delete_not_found(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        rc = main(["experience", "delete", "--id", "missing", "--path", str(tmp_path)])
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert EXPERIENCE_NOT_FOUND_FMT.format(rid="missing") in err
+
+
+class TestKnowledgeAuthoringCrossCutting:
+    """T6 cross-cutting: help self-description, CRUD loop, smoke perf,
+    and FR-509 source-marker namespace.
+    """
+
+    def test_knowledge_help_lists_all_subcommands(self, capsys) -> None:
+        with pytest.raises(SystemExit) as exc:
+            main(["knowledge", "--help"])
+        assert exc.value.code == 0
+        out = capsys.readouterr().out
+        for sub in ("search", "list", "add", "edit", "show", "delete"):
+            assert sub in out
+
+    def test_experience_help_lists_all_subcommands(self, capsys) -> None:
+        with pytest.raises(SystemExit) as exc:
+            main(["experience", "--help"])
+        assert exc.value.code == 0
+        out = capsys.readouterr().out
+        for sub in ("add", "show", "delete"):
+            assert sub in out
+
+    def test_knowledge_add_help_lists_all_args(self, capsys) -> None:
+        with pytest.raises(SystemExit) as exc:
+            main(["knowledge", "add", "--help"])
+        assert exc.value.code == 0
+        out = capsys.readouterr().out
+        for arg in ("--type", "--topic", "--tags", "--content", "--from-file", "--id"):
+            assert arg in out
+
+    def test_crud_loop(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        # add
+        rc = main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "decision",
+                "--topic",
+                "T",
+                "--content",
+                "C",
+                "--id",
+                "loop-1",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 0
+        capsys.readouterr()
+
+        # show
+        assert (
+            main(
+                ["knowledge", "show", "--type", "decision", "--id", "loop-1", "--path", str(tmp_path)]
+            )
+            == 0
+        )
+        capsys.readouterr()
+
+        # edit
+        assert (
+            main(
+                [
+                    "knowledge",
+                    "edit",
+                    "--type",
+                    "decision",
+                    "--id",
+                    "loop-1",
+                    "--topic",
+                    "T2",
+                    "--path",
+                    str(tmp_path),
+                ]
+            )
+            == 0
+        )
+        capsys.readouterr()
+
+        # show again — version should be 2 and topic T2
+        rc = main(
+            ["knowledge", "show", "--type", "decision", "--id", "loop-1", "--path", str(tmp_path)]
+        )
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "topic: T2" in out
+        assert "version: 2" in out
+
+        # delete
+        assert (
+            main(
+                ["knowledge", "delete", "--type", "decision", "--id", "loop-1", "--path", str(tmp_path)]
+            )
+            == 0
+        )
+        capsys.readouterr()
+
+        # show after delete → 1
+        assert (
+            main(
+                ["knowledge", "show", "--type", "decision", "--id", "loop-1", "--path", str(tmp_path)]
+            )
+            == 1
+        )
+
+    def test_add_smoke_under_one_second(self, tmp_path: Path, capsys) -> None:
+        """NFR-503: a single `add` round-trip should take well under 1.0s."""
+        main(["init", "--path", str(tmp_path)])
+        capsys.readouterr()
+        start = _time_mod.monotonic()
+        rc = main(
+            [
+                "knowledge",
+                "add",
+                "--type",
+                "decision",
+                "--topic",
+                "perf",
+                "--content",
+                "x",
+                "--id",
+                "perf-1",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        elapsed = _time_mod.monotonic() - start
+        assert rc == 0
+        capsys.readouterr()
+        assert elapsed < 1.0, f"add took {elapsed:.3f}s (>= 1.0s)"
+
+    def test_cli_source_markers_use_cli_namespace(self) -> None:
+        """ADR-503: every CLI source marker must start with 'cli:'."""
+        for marker in (
+            CLI_SOURCE_KNOWLEDGE_ADD,
+            CLI_SOURCE_KNOWLEDGE_EDIT,
+            CLI_SOURCE_EXPERIENCE_ADD,
+        ):
+            assert marker.startswith("cli:")
