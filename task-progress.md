@@ -18,13 +18,13 @@
 
 ## Current Workflow State
 
-- Current Stage: `hf-design`（规格已批准，等待 design 阶段启动）
+- Current Stage: `hf-design`
 - Workflow Profile: `coding`
 - Execution Mode: `auto-mode`
 - Workspace Isolation: `in-place`
-- Current Active Task: F007 design（待启动）
-- Pending Reviews And Gates: F007 design review（design 草稿完成后派发）
-- Next Action Or Recommended Skill: `hf-design`
+- Current Active Task: F007 design 草稿已起草，待评审
+- Pending Reviews And Gates: F007 design review（待派发 reviewer subagent）
+- Next Action Or Recommended Skill: `hf-design-review`
 - Relevant Files:
   - `docs/features/F007-garage-packs-and-host-installer.md`（已批准规格，r2 head）
   - `docs/approvals/F007-spec-approval.md`（auto-mode approval record）
