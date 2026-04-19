@@ -25,7 +25,7 @@
 
 1. **Garage 不能"跟人走"**：`docs/soul/manifesto.md` 的核心承诺是"挂载 Garage 目录后，几秒后 Agent 就变成你的 Agent"。今天用户在自己的项目里执行 `garage init`，得到的只有空的 `.garage/` 目录树——**没有任何 skill 被安装到该项目的 Claude Code / Cursor / OpenCode 能识别的位置**，也就拿不到 HF workflow / 写博客 / UI 设计这些 Garage 已经写好的能力。承诺与实现之间存在缺口。
 2. **HF skills 与 Garage-bundled packs 边界不清**：当前 `.agents/skills/` 同时承担两件事——(a) 本仓库自己用的 AHE 节点，(b) 事实上是"Garage 自带、未来要分发给下游用户"的能力。这导致："我能不能改这条 skill"在 Garage 仓库内部没有清晰答案，下游用户项目要不要拷一份也没规则可循。用户在本 cycle 明确："当前这些 packs 下没有内容，后续会把 HF 系列 skills 放到 packs 中"——这条迁移路径需要先有 packs 目录契约和 init-时安装管道，再做内容搬迁。
-3. **宿主多样性已经发生**：今天 Garage 仓库 `host_type` 默认硬编码为 `claude-code`（见 `src/garage_os/cli.py:139` `DEFAULT_PLATFORM_CONFIG`、`:150` `DEFAULT_HOST_ADAPTER_CONFIG`），但用户期望覆盖 Claude Code、OpenCode、Cursor 至少三类宿主。这些工具的 skill / agent 目录约定各不相同：
+3. **宿主多样性已经发生**：今天 Garage 仓库 `host_type` 默认硬编码为 `claude-code`（见 `src/garage_os/cli.py` 顶层 `DEFAULT_PLATFORM_CONFIG.host_type` 与 `DEFAULT_HOST_ADAPTER_CONFIG.host_type` 字面赋值 `"claude-code"`），但用户期望覆盖 Claude Code、OpenCode、Cursor 至少三类宿主。这些工具的 skill / agent 目录约定各不相同：
    - Claude Code: `.claude/skills/<name>/SKILL.md`、`.claude/agents/<name>.md`、`.claude/commands/<name>.md`
    - OpenCode: `.opencode/skills/<name>/SKILL.md`、`.opencode/command/<name>.md`、`.opencode/agent/<name>.md`
    - Cursor: `.cursor/rules/*.mdc` 或 `.cursor/skills/<name>/SKILL.md`（取决于 Cursor 版本）+ `.cursor/commands/*.md`
@@ -121,7 +121,7 @@
 | 三个 first-class host adapter | `claude` / `opencode` / `cursor`，每个 adapter 实现 (a) `target_skill_path(skill_id) -> Path`、(b) `target_agent_path(agent_id) -> Path`（`None` 表示该宿主不支持 agent surface）、(c) 可选 `render(content) -> content`（默认透传） |
 | `.garage/config/host-installer.json` | 安装清单 schema 见 § 6 NFR 与 § 9 约束；含 `schema_version` / `installed_hosts` / `installed_packs` / `files[]` |
 | 内容指纹 | 每个 `files[]` entry 含 `content_hash` (SHA-256 of installed bytes)，用于幂等比较 |
-| 标记块 | 每个被安装的 SKILL.md / agent.md 在文件首末加 Garage 安装标记（HTML 注释 + 不破坏 SKILL.md front matter parsing），让宿主依然能正常解析 |
+| 标记块（Should，参 FR-708） | 每个被安装的 SKILL.md / agent.md 在文件首末加 Garage 安装标记（HTML 注释 + 不破坏 SKILL.md front matter parsing），让宿主依然能正常解析；本 cycle 不强求，缺失时改用 manifest 的 `content_hash` 做 "Garage-owned" 判定 |
 | 退出码语义 | 0 = 成功（包括"无 packs，无宿主目录写入"）；1 = 输入错误（未知 hosts）；2 = 文件冲突且未带 `--force` |
 | 文档 | `packs/README.md` + `docs/guides/garage-os-user-guide.md` 增 "Pack & Host Installer" 段 |
 
@@ -193,13 +193,14 @@
 ### FR-704 安装管道：`packs/` → 目标宿主目录
 
 - **优先级**: Must
-- **来源**: § 2.1 核心目标分层图、§ 3.2 关键场景 1 / 2 / 5
-- **需求陈述**: 当 `garage init` 解析出 `installed_hosts` 非空且 `packs/` 下存在至少 1 个 pack 时，系统必须把每个 pack 的 `skills/<name>/SKILL.md` 与每个 `agents/<name>.md` 按对应 host adapter 给出的目标路径物化到执行目录下。
+- **来源**: § 2.1 核心目标分层图、§ 3.2 关键场景 1 / 2 / 4 / 5
+- **需求陈述**: 当 `garage init` 解析出 `installed_hosts` 非空且 `packs/` 下存在至少 1 个 pack 时，系统必须把每个 pack 的 `skills/<name>/SKILL.md` 与每个 `agents/<name>.md` 按对应 host adapter 给出的目标路径物化到执行目录下；多次运行的宿主集合可以纯追加（不影响其它宿主既有安装产物）。
 - **验收标准**:
-  - Given `packs/garage/skills/garage-hello/SKILL.md` 存在且 `--hosts claude`，When 命令运行结束，Then `.claude/skills/garage-hello/SKILL.md` 必须存在且其原始 SKILL.md 主体（去除 Garage 安装标记块后）字节级等于源文件。
-  - Given `packs/garage/agents/code-reviewer.md` 存在且 `--hosts claude`，When 命令运行结束，Then `.claude/agents/code-reviewer.md` 必须存在；若 `--hosts cursor` 而 cursor adapter `target_agent_path` 返回 `None`，Then `.cursor/` 下必须**不**为该 agent 写文件。
-  - Given `packs/` 目录为空，When `--hosts claude`，Then 命令仍应退出码 0、`installed_hosts: ["claude"]`、`installed_packs: []`、`files: []`，stdout 含 `No packs found under packs/` 形式提示。
-  - Given 同名 skill 同时存在于多个 pack（如 `packs/garage/skills/foo` 与 `packs/coding/skills/foo`），Then 系统必须以确定性失败（退出码 2 + stderr 列出冲突 source/dest）而不是静默覆盖。
+  - Given 一份位于 `packs/<pack-id>/skills/<skill-id>/SKILL.md` 的 skill 与某 first-class 宿主，When 命令运行结束，Then 该宿主对应 skill 子目录下必须存在该 skill 文件，且其原始 SKILL.md 主体（去除 Garage 安装标记块后）字节级等于源文件。
+  - Given 一份位于 `packs/<pack-id>/agents/<agent-id>.md` 的 agent，When 选定宿主的 host adapter 声明该宿主支持 agent surface，Then 该宿主对应 agent 目录下必须存在该 agent 文件；若 host adapter 声明该宿主不支持 agent surface，Then 该宿主目录下必须**不**为该 agent 写文件。
+  - Given `packs/` 目录为空，When `--hosts <任一>`，Then 命令仍应退出码 0、`installed_hosts` 非空、`installed_packs: []`、`files: []`，stdout 含 `No packs found under packs/` 形式提示。
+  - Given 同名 skill 同时存在于多个 pack，Then 系统必须以确定性失败（退出码 2 + stderr 列出冲突 source/dest）而不是静默覆盖。
+  - Given 用户从只装某宿主升级为追加另一宿主，When 仅以新增宿主为参数再次运行 `garage init`，Then 既有宿主下 Garage-owned 文件零变更，新增宿主下文件按本 FR 物化，`installed_hosts` 累加为两个宿主的稳定排序结果。
 
 ### FR-705 安装清单：`.garage/config/host-installer.json`
 
@@ -211,26 +212,35 @@
   - Given 该文件被读取并解析，When 校验，Then `schema_version == 1`、`installed_at` 为 ISO-8601 时间戳、`content_hash` 必须是 SHA-256 hex 形式。
   - Given 用户连续 2 次以相同 `--hosts` 运行 `garage init` 且其间未编辑 packs/目标目录，Then 第 2 次写入的 `files[]` 集合必须与第 1 次按 `(src, dst)` 等价（content_hash 不变）。
 
-### FR-706 幂等再运行 / Extend Mode
+### FR-706a 幂等再运行（未修改文件）
 
 - **优先级**: Must
-- **来源**: § 3.2 关键场景 3 / 4、OpenSpec init 的 Extend Mode 模式
-- **需求陈述**: 当 `garage init` 在已存在 `.garage/config/host-installer.json` 的仓库再次运行时，系统必须 (a) 不破坏既有 `.garage/` 内容，(b) 对此前已安装的 host 文件按 content_hash 区分"未被本地修改"与"已被本地修改"两种情况，(c) 对未被本地修改的文件直接覆盖更新，(d) 对已被本地修改的文件默认跳过并 stderr 警告，仅当 `--force` 时覆盖。
+- **来源**: § 3.2 关键场景 3、OpenSpec init 的 Extend Mode 模式
+- **需求陈述**: 当 `garage init` 在已存在 `.garage/config/host-installer.json` 的仓库再次运行时，系统必须不破坏既有 `.garage/` 内容；对此前由本工具安装且本地内容 SHA-256 与 manifest 中 `content_hash` 一致（即用户未修改）的目标文件，必须按当前 packs 源版本直接覆盖更新（哪怕字节相同也接受 no-op 写入语义，但应满足 NFR-702 的"无变化时不刷 mtime"约束）。
 - **验收标准**:
-  - Given 上次安装产生了 `.claude/skills/foo/SKILL.md`，且用户未修改它，When 再次运行 `garage init --hosts claude`，Then 文件被重新写入（content_hash 与清单一致），stdout 不出现警告。
-  - Given 用户修改了 `.claude/skills/foo/SKILL.md`，When 再次运行 `garage init --hosts claude`（无 `--force`），Then 文件**不被覆盖**，stderr 出现 `Skipped <path> (locally modified, pass --force to overwrite)` 形式提示，退出码 0。
-  - Given 同上场景，When 加 `--force`，Then 文件被覆盖，stderr 出现 `Overwrote locally modified file <path>` 形式提示，退出码 0。
-  - Given 用户从只装 `claude` 升级为 `claude,cursor`，When 运行 `garage init --hosts cursor`（仅追加），Then `.claude/` 下既有文件零变更，`.cursor/` 下文件按 FR-704 物化，`installed_hosts` 累加为 `["claude", "cursor"]`。
+  - Given 上次安装产生了一份 Garage-owned skill 文件，且其本地 SHA-256 等于 manifest 记录的 `content_hash`，When 再次运行 `garage init --hosts <same-list>`，Then 该文件被认定为"未修改"并按当前 packs 源覆盖更新，stdout 不出现警告。
+  - Given 同上但 packs 源未变，When 检查目标文件 `mtime`，Then `mtime` 不被刷新（与 NFR-702 一致）。
+  - Given 上次安装产生了一份 Garage-owned skill 文件且 packs 源版本已改变，When 再次运行，Then 目标文件被覆盖为新源内容，且 manifest 中该 entry 的 `content_hash` 同步更新。
+
+### FR-706b 已被本地修改文件的保护与 `--force`
+
+- **优先级**: Must
+- **来源**: § 3.2 关键场景 3、`docs/soul/user-pact.md` "数据归你"
+- **需求陈述**: 当 `garage init` 再次运行时，对此前由本工具安装但本地内容 SHA-256 已与 manifest 中 `content_hash` 不一致（即用户已编辑）的目标文件，系统必须默认跳过覆盖并向 stderr 打印一行 `Skipped <path> (locally modified, pass --force to overwrite)` 形式提示；仅当用户显式传入 `--force` 时才允许覆盖，并向 stderr 打印 `Overwrote locally modified file <path>` 形式提示。
+- **验收标准**:
+  - Given 用户修改了某 Garage-owned 目标文件，When 再次运行 `garage init --hosts <same-list>`（无 `--force`），Then 文件**不被覆盖**，stderr 出现上述 `Skipped ... locally modified` 形式 marker，退出码 0。
+  - Given 同上场景，When 改加 `--force`，Then 文件被覆盖，stderr 出现 `Overwrote locally modified file ...` 形式 marker，退出码 0。
+  - Given 上次安装由 Garage 完成、用户随后用同名手写文件覆盖了目标位置（无 manifest 重写），Then 该文件按 "已被本地修改" 路径处理（与 FR-708 标记块缺失时的回退一致）。
 
 ### FR-707 Host Adapter 注册表与扩展点
 
 - **优先级**: Must
 - **来源**: § 4.1 三个 first-class host adapter、`docs/soul/design-principles.md` § 1 宿主无关原则
-- **需求陈述**: 系统必须维护一个显式 host adapter 注册表，至少包含 `claude` / `opencode` / `cursor` 三项；每个 adapter 必须实现 (a) `target_skill_path(skill_id) -> Path`、(b) `target_agent_path(agent_id) -> Optional[Path]`、(c) 可选 `render(content) -> content`（默认透传）。注册表驱动 `--hosts all` 与未知宿主拒绝行为。
+- **需求陈述**: 系统必须维护一个显式 host adapter 注册表，至少包含 `claude` / `opencode` / `cursor` 三项；每个 adapter 必须暴露 (a) "给定 skill id 计算该宿主下的 skill 目标路径" 与 (b) "给定 agent id 计算该宿主下的 agent 目标路径，或声明该宿主不支持 agent surface" 这两类查询能力；可选支持 "在写入前对内容做无副作用的透传渲染" 用于将来按宿主追加/裁剪元数据。注册表驱动 `--hosts all` 的展开与未知宿主的拒绝行为。具体函数签名 / 类与对象划分留给 design。
 - **验收标准**:
   - Given 注册表当前包含 `[claude, opencode, cursor]`，When 执行 `garage init --hosts all`，Then `installed_hosts` 必须正好为这 3 项的稳定排序结果。
-  - Given 任意一个 adapter 的 `target_agent_path(agent_id)` 返回 `None`，Then 安装管道必须跳过该 agent 在该宿主下的物化，不报错、不在 `files[]` 写入对应记录。
-  - Given 用户调用 `target_skill_path("hf-specify")`（claude adapter），Then 返回值必须是相对于项目根的 `Path(".claude/skills/hf-specify/SKILL.md")`（具体值在 design 阶段固化，但 spec 层要求其值在 `packs/` 与本 spec 中**不**出现宿主特定路径硬编码）。
+  - Given 任意一个 adapter 声明该宿主不支持 agent surface，Then 安装管道必须跳过该 agent 在该宿主下的物化，不报错、不在 `files[]` 写入对应记录。
+  - Given 任意 adapter 给出的 skill 目标路径，Then 该路径必须是相对于项目根（cwd）的相对路径，且其前缀对应该宿主原生约定的 skill 子目录（具体字面值由 design 决定）；`packs/` 内任何源文件与本 spec 正文均**不得**出现该字面值或其它宿主特定路径硬编码（与 NFR-701 一致）。
 
 ### FR-708 安装标记块
 
@@ -239,7 +249,7 @@
 - **需求陈述**: 当系统把一个 SKILL.md / agent.md 文件物化到宿主目录时，应当在文件首部和/或尾部追加 Garage 安装标记块（HTML 注释形式或宿主可接受的元数据形式），让后续运行可以识别"该文件来自 Garage 安装、可安全更新"。标记块必须不破坏宿主原生的 skill / agent 解析。
 - **验收标准**:
   - Given 一个由 Garage 安装的 `.claude/skills/foo/SKILL.md`，When Claude Code 加载该 skill，Then 标记块的存在不应导致 SKILL.md front matter (`name` / `description`) 解析失败。
-  - Given 用户手写一个 `.claude/skills/foo/SKILL.md`（没有标记块），When 用户运行 `garage init --hosts claude`，且 packs 内**也**有同名 skill，Then 系统必须按 FR-706 的 "已被本地修改" 路径处理（默认跳过 + 警告）。
+  - Given 用户手写一个 `.claude/skills/foo/SKILL.md`（没有标记块），When 用户运行 `garage init --hosts claude`，且 packs 内**也**有同名 skill，Then 系统必须按 FR-706b 的 "已被本地修改" 路径处理（默认跳过 + 警告）。
 
 ### FR-709 退出码与 stderr/stdout 文案稳定常量
 
@@ -291,7 +301,7 @@
 
 - **优先级**: Must
 - **来源**: § 2.2 成功标准 6
-- **需求陈述**: 本 cycle 引入的所有变更必须在 `uv run pytest tests/ -q` 下保持既有测试 100% 通过；新增测试覆盖至少 (a) FR-702/703/704/705/706 的核心 acceptance、(b) NFR-701 grep 检查、(c) host adapter 注册表的扩展点 round-trip。
+- **需求陈述**: 本 cycle 引入的所有变更必须在 `uv run pytest tests/ -q` 下保持既有测试 100% 通过；新增测试覆盖至少 (a) FR-702/703/704/705/706a/706b 的核心 acceptance、(b) NFR-701 grep 检查、(c) host adapter 注册表的扩展点 round-trip。
 - **验收标准**:
   - Given F006 基线 ≥496 passed，When F007 实现完成，Then `uv run pytest tests/ -q` 整体计数 ≥ 旧基线 + 新增；旧用例 0 退绿。
   - Given F007 新增了 host installer 模块，When `uv run pytest tests/host_installer/ -q`（或等价目录），Then 至少 10 个新增用例覆盖以上验收。
