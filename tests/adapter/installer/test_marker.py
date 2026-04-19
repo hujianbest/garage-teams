@@ -18,7 +18,6 @@ from garage_os.adapter.installer.marker import (
     inject,
 )
 
-
 SKILL_SOURCE_OK = """---
 name: garage-hello
 description: A test skill

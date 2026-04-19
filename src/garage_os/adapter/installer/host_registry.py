@@ -14,7 +14,7 @@ Design choice (ADR-D7-1):
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 class UnknownHostError(ValueError):
@@ -45,7 +45,7 @@ class HostInstallAdapter(Protocol):
     host_id: str
 
     def target_skill_path(self, skill_id: str) -> Path: ...
-    def target_agent_path(self, agent_id: str) -> Optional[Path]: ...
+    def target_agent_path(self, agent_id: str) -> Path | None: ...
     def render(self, content: str) -> str: ...
 
 

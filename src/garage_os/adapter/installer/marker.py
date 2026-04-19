@@ -30,8 +30,7 @@ Implementation note:
 
 from __future__ import annotations
 
-from typing import Literal, Optional
-
+from typing import Literal
 
 SourceKind = Literal["skill", "agent"]
 
@@ -75,13 +74,13 @@ def inject(content: str, pack_id: str, source_kind: SourceKind) -> str:
     return f"---\n{new_head}\n---\n{body}"
 
 
-def extract_marker(content: str) -> Optional[dict[str, str]]:
+def extract_marker(content: str) -> dict[str, str] | None:
     """Return the installed_by/installed_pack fields if present, else None."""
     head, _body, has_frontmatter = _split_frontmatter(content)
     if not has_frontmatter:
         return None
-    by_value: Optional[str] = None
-    pack_value: Optional[str] = None
+    by_value: str | None = None
+    pack_value: str | None = None
     for line in head.splitlines():
         stripped = line.strip()
         if stripped.startswith("installed_by:"):

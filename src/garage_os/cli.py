@@ -80,17 +80,20 @@ CLI_SOURCE_KNOWLEDGE_LINK = "cli:knowledge-link"
 # F007 § 6 FR-709 / NFR-704: stable stdout / stderr markers for the
 # `garage init --hosts ...` host installer path. Mirrors the F005
 # `KNOWLEDGE_*_FMT` pattern so downstream Agents / tests can grep-match.
+#
+# Format-string ownership map (consolidated per F007 hf-code-review F-2):
+# - INSTALLED_FMT, ERR_PACK_INVALID_FMT, ERR_MARKER_FAILED_FMT,
+#   ERR_HOST_FILE_FAILED_FMT are CLI-emitted and live here.
+# - ERR_UNKNOWN_HOST_FMT lives in
+#   garage_os.adapter.installer.host_registry (built into UnknownHostError);
+#   the CLI re-prints the exception message verbatim.
+# - WARN_LOCALLY_MODIFIED_FMT, WARN_OVERWRITE_FORCED_FMT, MSG_NO_PACKS_FMT
+#   live in garage_os.adapter.installer.pipeline (pipeline emits them
+#   directly to stderr/stdout during install).
 INSTALLED_FMT = (
     "Installed {n_skills} skills, {n_agents} agents into hosts: {hosts}"
 )
-ERR_UNKNOWN_HOST_FMT = (
-    "Unknown host: {host}. Supported hosts: {supported}"
-)
-# WARN_LOCALLY_MODIFIED_FMT and WARN_OVERWRITE_FORCED_FMT are owned by
-# garage_os.adapter.installer.pipeline and re-exported here for grep
-# discoverability — they're emitted directly by the pipeline, not the CLI.
 ERR_PACK_INVALID_FMT = "Invalid pack: {detail}"
-ERR_PACK_MISMATCH_FMT = "Pack manifest mismatch: {detail}"
 ERR_MARKER_FAILED_FMT = "SKILL.md marker injection failed: {detail}"
 ERR_HOST_FILE_FAILED_FMT = "Failed to write host file: {detail}"
 

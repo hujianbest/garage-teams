@@ -13,7 +13,6 @@ Note: OpenCode historically pluralizes ``skills/`` but uses singular
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 
 class OpenCodeInstallAdapter:
@@ -22,7 +21,7 @@ class OpenCodeInstallAdapter:
     def target_skill_path(self, skill_id: str) -> Path:
         return Path(".opencode/skills") / skill_id / "SKILL.md"
 
-    def target_agent_path(self, agent_id: str) -> Optional[Path]:
+    def target_agent_path(self, agent_id: str) -> Path | None:
         return Path(".opencode/agent") / f"{agent_id}.md"
 
     def render(self, content: str) -> str:

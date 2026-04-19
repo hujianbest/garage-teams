@@ -14,6 +14,7 @@ Acceptance:
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -143,9 +144,6 @@ class TestErrorHandling:
 # ---------------------------------------------------------------------------
 # F007 test-review carry-forward F-3: format regex assertions
 # ---------------------------------------------------------------------------
-
-
-import re
 
 
 class TestFieldFormats:

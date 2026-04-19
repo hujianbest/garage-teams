@@ -60,7 +60,7 @@ class TestSelectionShortcuts:
         result = prompt_hosts(["claude", "cursor", "opencode"], stdin=fake_in)
         assert result == ["claude"]
 
-    def test_capital_N_means_skip_only_this_host(
+    def test_capital_N_means_skip_only_this_host(  # noqa: N802 — test name intentionally uses capital N as the literal user input under test
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         # Capital 'N' is the prompt's default-no, NOT a shortcut: keep asking.

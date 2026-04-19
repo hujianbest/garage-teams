@@ -24,8 +24,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
-
 
 PACK_MANIFEST_FILENAME = "pack.json"
 SKILLS_SUBDIR = "skills"
@@ -106,7 +104,7 @@ def _load_pack(pack_root: Path) -> Pack:
             f"Invalid JSON in {manifest_path}: {exc}"
         ) from exc
 
-    declared_id: Optional[str] = manifest.get("pack_id")
+    declared_id: str | None = manifest.get("pack_id")
     if declared_id != pack_root.name:
         raise InvalidPackError(
             f"pack.json pack_id={declared_id!r} does not match directory name "

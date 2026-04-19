@@ -21,11 +21,12 @@ from __future__ import annotations
 
 import hashlib
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import IO, Iterable, Optional
+from typing import IO
 
 from garage_os.adapter.installer.host_registry import (
     HostInstallAdapter,
@@ -50,7 +51,6 @@ from garage_os.adapter.installer.pack_discovery import (
     PackManifestMismatchError,
     discover_packs,
 )
-
 
 # Stable stderr/stdout markers; CLI layer (cli.py) imports these or matches on prefix.
 WARN_LOCALLY_MODIFIED_FMT = "Skipped {path} (locally modified, pass --force to overwrite)"
@@ -96,8 +96,8 @@ def install_packs(
     hosts: list[str],
     *,
     force: bool = False,
-    stderr: Optional[IO[str]] = None,
-    stdout: Optional[IO[str]] = None,
+    stderr: IO[str] | None = None,
+    stdout: IO[str] | None = None,
 ) -> InstallSummary:
     """Install all packs under ``packs_root`` into the requested ``hosts``.
 
@@ -151,14 +151,16 @@ def install_packs(
         return InstallSummary(n_skills=0, n_agents=0, hosts=sorted(set(hosts)))
 
     # Phase 3-4: decide + apply.
-    existing = read_manifest(workspace_root / ".garage")
-    existing_index: dict[tuple[str, str], ManifestFileEntry] = (
-        {(e.src, e.dst): e for e in existing.files} if existing else {}
+    prior_manifest = read_manifest(workspace_root / ".garage")
+    prior_entries_index: dict[tuple[str, str], ManifestFileEntry] = (
+        {(e.src, e.dst): e for e in prior_manifest.files}
+        if prior_manifest is not None
+        else {}
     )
 
     new_entries: list[ManifestFileEntry] = []
-    n_skills = 0
-    n_agents = 0
+    n_skills_written = 0
+    n_agents_written = 0
 
     for target in targets:
         rendered = inject(
@@ -171,10 +173,14 @@ def install_packs(
         rendered_bytes = rendered.encode("utf-8")
         rendered_hash = hashlib.sha256(rendered_bytes).hexdigest()
 
+        prior_entry: ManifestFileEntry | None = prior_entries_index.get(
+            (target.src_rel, target.dst_rel)
+        )
+
         action = _decide_action(
             target=target,
             rendered_hash=rendered_hash,
-            existing_entry=existing_index.get((target.src_rel, target.dst_rel)),
+            existing_entry=prior_entry,
             force=force,
         )
 
@@ -183,15 +189,12 @@ def install_packs(
                 WARN_LOCALLY_MODIFIED_FMT.format(path=target.dst_rel),
                 file=err,
             )
-            # Carry over the existing entry unchanged so it survives this run,
-            # if there is one. Untracked dst (no existing_entry) is also a skip.
-            existing = existing_index.get((target.src_rel, target.dst_rel))
-            if existing is not None:
-                new_entries.append(existing)
-            if target.source_kind == "skill":
-                n_skills += 1
-            else:
-                n_agents += 1
+            # Carry over the prior manifest entry (if any) so it survives;
+            # untracked dst (no prior_entry) leaves nothing to carry. The
+            # SKIP path does NOT count toward the "Installed N" stdout marker
+            # so the summary stays consistent with what was actually written.
+            if prior_entry is not None:
+                new_entries.append(prior_entry)
             continue
 
         if action == WriteAction.OVERWRITE_FORCED:
@@ -218,9 +221,9 @@ def install_packs(
             )
         )
         if target.source_kind == "skill":
-            n_skills += 1
+            n_skills_written += 1
         else:
-            n_agents += 1
+            n_agents_written += 1
 
     # Phase 5: manifest. Merge with prior entries for hosts NOT in this run
     # so extend mode is additive rather than destructive.
@@ -235,8 +238,8 @@ def install_packs(
     write_manifest(workspace_root / ".garage", merged)
 
     return InstallSummary(
-        n_skills=n_skills,
-        n_agents=n_agents,
+        n_skills=n_skills_written,
+        n_agents=n_agents_written,
         hosts=sorted(set(hosts) | set(merged.installed_hosts)),
     )
 
@@ -255,15 +258,17 @@ def _resolve_targets(
     out: list[_Target] = []
     for pack in packs:
         for skill_id in pack.skills:
-            src_abs = pack.skill_source_path(skill_id)
+            skill_src_abs = pack.skill_source_path(skill_id)
             for host_id, adapter in adapters.items():
-                dst_rel = adapter.target_skill_path(skill_id)
+                skill_dst_path: Path = adapter.target_skill_path(skill_id)
                 out.append(
                     _Target(
-                        src_abs=src_abs,
-                        dst_abs=workspace_root / dst_rel,
-                        src_rel=_to_posix(src_abs.relative_to(workspace_root)),
-                        dst_rel=_to_posix(dst_rel),
+                        src_abs=skill_src_abs,
+                        dst_abs=workspace_root / skill_dst_path,
+                        src_rel=_to_posix(
+                            skill_src_abs.relative_to(workspace_root)
+                        ),
+                        dst_rel=_to_posix(skill_dst_path),
                         host=host_id,
                         pack_id=pack.pack_id,
                         source_kind="skill",
@@ -271,17 +276,19 @@ def _resolve_targets(
                     )
                 )
         for agent_id in pack.agents:
-            src_abs = pack.agent_source_path(agent_id)
+            agent_src_abs = pack.agent_source_path(agent_id)
             for host_id, adapter in adapters.items():
-                dst_rel = adapter.target_agent_path(agent_id)
-                if dst_rel is None:
+                agent_dst_path: Path | None = adapter.target_agent_path(agent_id)
+                if agent_dst_path is None:
                     continue  # cursor: no agent surface
                 out.append(
                     _Target(
-                        src_abs=src_abs,
-                        dst_abs=workspace_root / dst_rel,
-                        src_rel=_to_posix(src_abs.relative_to(workspace_root)),
-                        dst_rel=_to_posix(dst_rel),
+                        src_abs=agent_src_abs,
+                        dst_abs=workspace_root / agent_dst_path,
+                        src_rel=_to_posix(
+                            agent_src_abs.relative_to(workspace_root)
+                        ),
+                        dst_rel=_to_posix(agent_dst_path),
                         host=host_id,
                         pack_id=pack.pack_id,
                         source_kind="agent",
@@ -309,7 +316,7 @@ def _check_conflicts(targets: list[_Target]) -> None:
 def _decide_action(
     target: _Target,
     rendered_hash: str,
-    existing_entry: Optional[ManifestFileEntry],
+    existing_entry: ManifestFileEntry | None,
     force: bool,
 ) -> WriteAction:
     """D7 §10.2 decision table."""

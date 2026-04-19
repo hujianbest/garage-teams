@@ -13,7 +13,6 @@ from pathlib import Path
 import pytest
 
 from garage_os.adapter.installer.manifest import (
-    MANIFEST_FILENAME,
     read_manifest,
 )
 from garage_os.adapter.installer.pipeline import (
@@ -340,3 +339,35 @@ class TestDecisionTableEdgeRows:
         assert "name: garage-hello" in text
         captured = capsys.readouterr()
         assert "Overwrote" in captured.err
+
+
+class TestConflictAgentDimension:
+    """F007 hf-code-review F007-CR-5 carry-forward: agent-name conflicts too."""
+
+    def test_conflict_same_agent_two_packs(self, tmp_path: Path) -> None:
+        packs = tmp_path / "packs"
+        for pack_id in ("packs_x", "packs_y"):
+            pack_dir = packs / pack_id
+            agents_dir = pack_dir / "agents"
+            agents_dir.mkdir(parents=True)
+            (pack_dir / "pack.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "pack_id": pack_id,
+                        "version": "0.1.0",
+                        "description": "fixture",
+                        "skills": [],
+                        "agents": ["dup"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (agents_dir / "dup.md").write_text(
+                "# dup agent\n", encoding="utf-8"
+            )
+        with pytest.raises(ConflictingSkillError) as exc_info:
+            install_packs(tmp_path, packs, ["claude"], force=False)
+        msg = str(exc_info.value)
+        assert "packs_x" in msg
+        assert "packs_y" in msg

@@ -21,8 +21,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
-from typing import Any, Optional
-
+from typing import Any
 
 MANIFEST_SCHEMA_VERSION = 1
 MANIFEST_FILENAME = "host-installer.json"
@@ -78,7 +77,7 @@ def write_manifest(garage_dir: Path, manifest: Manifest) -> Path:
     return target
 
 
-def read_manifest(garage_dir: Path) -> Optional[Manifest]:
+def read_manifest(garage_dir: Path) -> Manifest | None:
     """Load manifest from ``garage_dir/config/host-installer.json``, or None.
 
     Returns None if the file does not exist (i.e. first-time install).

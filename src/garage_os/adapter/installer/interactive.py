@@ -17,8 +17,7 @@ Stdlib-only by design (NFR-101 forbids new TUI deps).
 from __future__ import annotations
 
 import sys
-from typing import IO, Optional
-
+from typing import IO
 
 PROMPT_TEMPLATE = (
     "Install Garage packs into {host}? "
@@ -33,8 +32,8 @@ NON_INTERACTIVE_NOTICE = (
 def prompt_hosts(
     available_hosts: list[str],
     *,
-    stdin: Optional[IO[str]] = None,
-    stderr: Optional[IO[str]] = None,
+    stdin: IO[str] | None = None,
+    stderr: IO[str] | None = None,
 ) -> list[str]:
     """Ask the user which hosts to install Garage packs into.
 
