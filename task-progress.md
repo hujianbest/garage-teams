@@ -15,13 +15,13 @@
 
 ## Current Workflow State
 
-- Current Stage: `hf-tasks`（草稿已落盘）→ 准备派发 `hf-tasks-review`
+- Current Stage: `任务真人确认`（auto-mode approval 已写入）→ 准备进入 `hf-test-driven-dev`
 - Workflow Profile: `full`
 - Execution Mode: `auto`
-- Workspace Isolation: `in-place`
-- Current Active Task: F004 task review
-- Pending Reviews And Gates: `hf-tasks-review`
-- Next Action Or Recommended Skill: `hf-tasks-review`
+- Workspace Isolation: `in-place`（F004 任务范围窄、touched files 不冲突；不升级到 worktree-required）
+- Current Active Task: T1 (PublicationIdentityGenerator + publisher 入口校验前置)
+- Pending Reviews And Gates: T1 完成后 `hf-test-review` → `hf-code-review` → `hf-traceability-review` → `hf-regression-gate` → `hf-completion-gate`
+- Next Action Or Recommended Skill: `hf-test-driven-dev`
 - Task Board Path: `docs/tasks/2026-04-19-garage-memory-v1-1-tasks.md`
 - Relevant Files:
   - `docs/features/F004-garage-memory-v1-1-publication-identity-and-confirmation-semantics.md`（F004 spec draft）
@@ -44,4 +44,4 @@
 
 ## Next Step
 
-派发 `hf-tasks-review` reviewer subagent 评审 `docs/tasks/2026-04-19-garage-memory-v1-1-tasks.md`。
+进入 `hf-test-driven-dev` 实现 T1：在 `src/garage_os/memory/publisher.py` 中新增 `PublicationIdentityGenerator` helper class + 把 `_validate_conflict_strategy` 提到 `publish_candidate` 入口。按 task 测试设计种子，先写 5 个 fail-first 测试 → 确认失败 → 最小实现 → verify green。
