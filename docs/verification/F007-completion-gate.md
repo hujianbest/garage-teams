@@ -89,3 +89,7 @@ Profile = `coding` → full upstream evidence matrix required (test-review + cod
 ## Next Action
 
 `hf-finalize`
+
+## Post-gate Erratum (caught & fixed during hf-finalize)
+
+`hf-finalize` 阶段重跑 `pytest tests/ -q` 时发现 `f678ad9` (regression gate commit) 意外回退了 `src/garage_os/cli.py`（详见 `F007-regression-gate.md` § Post-gate Erratum）。修复并入 closeout commit。修复后 `pytest tests/ -q` → 586 passed；本 completion gate 结论"通过"在修复后**仍然成立**。

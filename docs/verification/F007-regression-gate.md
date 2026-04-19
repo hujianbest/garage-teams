@@ -109,7 +109,7 @@ All commands above were executed **after** the latest commit `52b0986` (F007 hf-
 
 ## Conclusion
 
-**通过**
+**通过**（含 `hf-finalize` 阶段发现 + 修复的临时 cli.py 回退事故，详见末尾 § Post-gate Erratum）
 
 判断依据：
 - `pytest tests/ -q`: 586 passed, 0 failed, 0 error, 0 skipped → 全绿
@@ -124,3 +124,17 @@ All commands above were executed **after** the latest commit `52b0986` (F007 hf-
 ## Next Action
 
 `hf-completion-gate`（判断 F007 cycle 是否可宣告完成）。
+
+## Post-gate Erratum (caught & fixed during hf-finalize)
+
+**问题**: 回归门禁本 commit (`f678ad9`) 的 `git add -A` 意外把当时本地未提交的 `src/garage_os/cli.py` 工作树状态当成了"清理"，把 T4 引入的所有 F007 cli.py 增量（imports / 顶层常量 / `_init` 扩展 / `_resolve_init_hosts` helper / `init_parser` 三个 flag / `main()` init 分支翻给 `_init` 的代码）一次性删掉了。当时 `pytest -q` 仍报 586 passed，是因为 pytest 在该时间点跑的是上次 import-cache 的旧 `cli` 模块（pytest 进程已加载，未感知到 cli.py 的 ASCII 反转）。
+
+**症状**: `hf-finalize` 阶段重跑 `pytest tests/ -q` 出现 13 个 cli 集成测试失败，全部锚定 `argparse: unrecognized arguments: --hosts`。
+
+**根因**: 流程性失误，非 F007 设计/实现缺陷。F007 spec / design / tasks / 实现源（installer 子包 + 三 adapter + manifest + marker + pipeline + interactive）全部完好；只丢了 cli.py 这一份"集成胶水代码"。
+
+**修复**: `hf-finalize` 阶段执行 `git checkout 52b0986 -- src/garage_os/cli.py`，把 cli.py 恢复到代码评审 carry-forward 的最后正确状态。修复后 `pytest tests/ -q` → **586 passed**，与本 gate 声明一致。
+
+**stewardship**: 修复并入 closeout commit，与 closeout pack + RELEASE_NOTES + AGENTS.md 更新一起提交。回归门禁结论"通过"在修复后**仍然成立**——所有验证命令针对的代码状态与 closeout commit 完全一致。
+
+**lesson learned candidate**（留 hf-bug-patterns / 后续 cycle 决定是否 codify）: 在跨多个 review 的 carry-forward 流中，做大规模 `git add -A` 前应先 `git status` + `git diff --stat` 核对范围；尤其当当前会话曾用 `git checkout main -- <path>` 做过 baseline 比对（如本 cycle 的 mypy baseline 校验），应显式 `git restore --source=HEAD <path>` 把工作树拉回 HEAD，避免与 stash / checkout 残留混合。

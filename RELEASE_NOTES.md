@@ -4,6 +4,77 @@
 
 ---
 
+## F007 — Garage Packs 与宿主安装器（让 garage init 把内置 skills/agents 安装到 Claude Code / OpenCode / Cursor）
+
+- 状态: ✅ 已完成（2026-04-19）
+- Workflow Profile: `coding`
+- Execution Mode: `auto-mode`
+- Branch / PR: `cursor/f007-packs-host-installer-fa86` / [#18](https://github.com/hujianbest/garage-agent/pull/18)
+- 关联文档:
+  - 规格 `docs/features/F007-garage-packs-and-host-installer.md`
+  - 设计 `docs/designs/2026-04-19-garage-packs-and-host-installer-design.md`（r2）
+  - 任务计划 `docs/tasks/2026-04-19-garage-packs-and-host-installer-tasks.md`
+  - completion gate `docs/verification/F007-completion-gate.md`
+  - regression gate `docs/verification/F007-regression-gate.md`
+  - 完整 review 链路：`docs/reviews/{spec(r1+r2),design(r1+r2),tasks,test,code,traceability}-review-F007-*.md`
+  - finalize closeout `docs/verification/F007-finalize-closeout-pack.md`
+
+### 用户可见变化
+
+- **新建 `packs/` 目录契约**（兑现 F001 `CON-002` 的 `packs/coding/skills/` 约束）：仓库根新建 `packs/<pack-id>/` 目录树，含 `pack.json`（`schema_version`/`pack_id`/`version`/`description`/`skills[]`/`agents[]`）、`README.md`、`skills/<id>/SKILL.md`、`agents/<id>.md`。本 cycle 落 1 个占位 pack `packs/garage/`（含 1 sample skill `garage-hello` + 1 sample agent `garage-sample-agent`），验证容器与端到端管道；`.agents/skills/` 30 个 HF skills 的实际搬迁延后到 F008+。
+- **`garage init` 加 `--hosts <list>` / `--yes` / `--force` 三个 flag**，把 `packs/` 内容物化到 cwd 下的宿主原生目录：
+  - `garage init --hosts all` → 装到三个 first-class 宿主 `claude` / `opencode` / `cursor`
+  - `garage init --hosts claude,cursor` → 仅指定宿主
+  - `garage init --hosts none` / `garage init --yes` → 跳过宿主安装（仅 .garage/ 创建，等价 F002 行为）
+  - 不带任何 flag + TTY → 交互式 `[y/N/a=yes-to-all/q=stop]` 询问
+  - 不带任何 flag + non-TTY → 退化为 `--hosts none` + stderr 提示
+- **三家宿主路径映射**（来源：OpenSpec `docs/supported-tools.md` + 各家官方文档）：
+  - Claude Code: `.claude/skills/<name>/SKILL.md` + `.claude/agents/<name>.md`
+  - OpenCode: `.opencode/skills/<name>/SKILL.md` + `.opencode/agent/<name>.md`（注意 agent 单数）
+  - Cursor: `.cursor/skills/<name>/SKILL.md`（无原生 agent surface，自动跳过）
+- **YAML front matter 注入安装标记**（ADR-D7-2）：每个被安装的 SKILL.md / agent.md 在 front matter 中追加 `installed_by: garage` + `installed_pack: <pack-id>`；agent.md 无 front matter 时自动插入最小 front matter（容错路径）。注入幂等：再次安装不会重复堆叠字段。
+- **Extend Mode + 幂等再运行**（FR-706a + FR-706b）：再次 `garage init` 自动比对 SHA-256：
+  - 未被本地修改的目标文件 → 按当前 packs 源覆盖更新（NFR-702: mtime 不刷新，无字节变化）
+  - **已被本地修改的目标文件 → 默认跳过 + stderr `Skipped <path> (locally modified, pass --force to overwrite)`；只有 `--force` 才覆盖**
+  - 新增宿主 → 既有宿主目录零变更，仅追加新宿主；`installed_hosts` 累加
+- **安装清单 `.garage/config/host-installer.json`**（schema_version=1，受 VersionManager 管控）：每次成功安装写入 `installed_hosts[]` / `installed_packs[]` / `files[]`；每个 file entry 含 `(src, dst, host, pack_id, content_hash)`，让任何 Agent 仅凭该文件就能回答 "本仓库装过哪些 host、哪些 pack、哪些文件来自 Garage" 三个问题。
+- **退出码三段式**：0 = 成功（含「无 packs，仅创建 .garage/」）；1 = 输入错误 / pack.json 非法 / SKILL.md 缺 front matter / OS IO 错误；2 = 同名 skill 跨 pack 冲突。
+- **同名 skill 跨 pack 冲突保护**（FR-704 #4）：当未来 F008 把 HF skills 搬到 `packs/coding/` 后又有 pack 复用同名，安装管道会以退出码 2 + stderr 列出冲突 source/dest 而非静默覆盖。
+
+### 数据与契约影响
+
+- **零 schema 变更于既有 contracts**：`HostAdapterProtocol` (F001) / `KnowledgeStore` (F003) / `ExperienceIndex` / `SessionManager` 全部不动。
+- **新增 schema**：`.garage/config/host-installer.json` `schema_version=1`，由 `VersionManager` 通过 `detect_version` path-based 自动识别（不需要显式 register API），`MANIFEST_SCHEMA_VERSION` 常量在 `src/garage_os/adapter/installer/manifest.py` 顶部 + `test_version_manager.py::test_manifest_constant_pinned_to_one` sentinel 测试守护未来 schema bump 必须是显式行为。
+- **新增子包**：`src/garage_os/adapter/installer/`（11 个源文件 + 9 个测试模块），与 F001 `claude_code_adapter.py` 同包但接口独立（`HostInstallAdapter` Protocol vs `HostAdapterProtocol`，参见 ADR-D7-1）。
+- **零依赖变更**：`pyproject.toml` 在本 cycle `git diff main..HEAD` 为空。NFR-101 显式禁止新增 TUI 依赖，交互 prompt 用 stdlib `input()` 实现。
+- **新增 CLI 模块顶层常量**（`src/garage_os/cli.py`）：4 个 stdout/stderr marker (`INSTALLED_FMT` / `ERR_PACK_INVALID_FMT` / `ERR_MARKER_FAILED_FMT` / `ERR_HOST_FILE_FAILED_FMT`) + 与 `host_registry` (UnknownHostError message) / `pipeline` (`WARN_LOCALLY_MODIFIED_FMT` / `WARN_OVERWRITE_FORCED_FMT` / `MSG_NO_PACKS_FMT`) 的 ownership 边界已在 docstring 显式标注。
+- **新增 documentation contracts**：
+  - `packs/README.md`、`packs/<pack-id>/README.md`（双层 README 强制）
+  - `docs/guides/garage-os-user-guide.md` 增 "Pack & Host Installer" 段
+  - `AGENTS.md` 增 `## Packs & Host Installer` 入口指针段 + 模块表 `adapter` 行更新
+
+### 验证证据
+
+- `pytest tests/ -q` → **586 passed in ~26s**（F006 baseline 496 → +90 个 F007 新增测试，零回归）
+  - T2 22 + T3 47 + T4 14 + T5 4 + 测试评审 carry-forward 5 + 代码评审 carry-forward 2
+- `mypy src/garage_os/adapter/installer/` → 0 errors（11 source files）
+- `mypy src/garage_os/cli.py` → 1 error pre-existing on main (`_memory_review` line 562 / line 667 post-F007)，**F007 引入 0 new mypy errors**（用 `git checkout main` 验证）
+- `ruff check src/garage_os/adapter/installer/ tests/adapter/installer/` → 0 errors（35 fixable + 2 carry-forward `noqa` / 单行 import 已闭合）
+- E2E manual smoke：在 `/tmp/f007-smoke/` 跑 `garage init --hosts all` → 三宿主目录全部生成 + manifest 正确 + 第二次运行 mtime 不变（NFR-702 实证；evidence 在 `/opt/cursor/artifacts/f007_manual_smoke_init_all_hosts.log`）
+- 完整质量链：spec-review r1（需修改）→ r2（通过）→ design-review r1（需修改）→ r2（通过）→ tasks-review（通过 5 minor carry-forward 闭合）→ test-review（通过 5 minor carry-forward 闭合，9 个新增用例）→ code-review（通过 1 important + 5 minor carry-forward 闭合）→ traceability-review（通过 3 项 hf-finalize 闭合）→ regression-gate（通过）→ completion-gate（通过）→ finalize（workflow closeout）
+
+### 已知限制 / 后续工作
+
+- **F008 候选 — 把 `.agents/skills/` 30 个 HF skills 搬迁到 `packs/coding/skills/`**：F007 已把容器、注册表、安装管道、conflict 检测、测试矩阵全部铺好；搬迁本身是机械动作，不需要 spec/design 改动。
+- **F008 候选 — `garage uninstall --hosts <list>` + `garage update --hosts <list>`**：F007 显式 deferred 的安装逆向操作 + 拉新流程。manifest schema 已为这两条留好 entry point（`files[].content_hash` 可识别 Garage-owned 文件 → uninstall；`schema_version` 可标识 packs 版本 → update）。
+- **单独候选 — 全局安装到 `~/.claude/skills/...`**（OpenSpec issue #752 模式）：solo creator 跨多客户仓库的需求；与 Garage workspace-first 信念有 trade-off，应单独 spec 化。
+- **F008+ 候选 — 新增宿主**（Codex / Gemini CLI / Windsurf / Copilot 等）：F007 已确立 first-class adapter 注册模式；新增宿主成本 = 1 个 adapter 子模块 + `HOST_REGISTRY` 字面表 1 行 + 1 套测试；spec / design 改动最小。
+- **Cursor `.cursor/skills/` 在某些用户的 Cursor 版本可能不识别**：本 cycle 选用是因为 OpenSpec 已验证可行 + 与 Anthropic SKILL.md 同构 + 不污染 always-loaded `.cursor/rules/`；若用户反馈不识别可在 F008+ 增 `.cursor/rules/` fallback。
+- **Pre-existing baseline mypy + ruff 警告**：1 个 `_memory_review` 历史 mypy error（F004 vintage）+ ~47 个 ruff stylistic warnings（F002/F003/F004 vintage）— 全部超出 F007 范围，由独立 cycle 治理。F007 新引入的代码已 0 mypy + 0 ruff error。
+- **未做 live host-tool runtime 检验**：F007 是文件系统级安装（spec § 4.2 明确 boundary）；用户在 Claude Code / OpenCode / Cursor 真正"加载并调用"安装的 SKILL.md 的端到端体验不在本 cycle 验证范围。
+
+---
+
 ## F006 — Garage Recall & Knowledge Graph（主动召回 + 知识图最小可用形态）
 
 - 状态: ✅ 已完成（2026-04-19）

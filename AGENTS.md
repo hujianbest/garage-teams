@@ -32,8 +32,24 @@
 - 运行时数据存储: .garage/
 - 平台配置: .garage/config/platform.json
 - 宿主适配器配置: .garage/config/host-adapter.json
+- **Pack 安装清单（F007）**: `.garage/config/host-installer.json`（schema_version=1，`garage init --hosts ...` 写入；记录已安装宿主集合 + Garage-owned 文件清单 + content_hash，作为幂等再运行凭证）
 - 平台契约: .garage/contracts/
 - 技术栈: Python 3.11+ (Poetry)
+
+## Packs & Host Installer (F007)
+
+Garage 自带的可分发 skills + agents 沉淀在仓库 `packs/<pack-id>/` 下；`garage init --hosts ...` 把它们物化到下游项目里 Claude Code / OpenCode / Cursor 三家宿主原生目录。
+
+入口指针（FR-710 5 分钟冷读链）：
+
+| 文档 | 角色 |
+|---|---|
+| `packs/README.md` | 顶层契约：pack 目录结构、`pack.json` schema、与宿主关系、不变量 |
+| `packs/<pack-id>/README.md` | 每个 pack 的概述 + skill/agent 清单（强制） |
+| `docs/guides/garage-os-user-guide.md` "Pack & Host Installer" 段 | 端到端用法（交互/非交互/extend mode、退出码、宿主路径表、风险） |
+| `docs/features/F007-garage-packs-and-host-installer.md` | 已批准规格 |
+
+代码入口：`src/garage_os/adapter/installer/`（与 F001 `host_adapter.py` 同包但接口独立，详见 design ADR-D7-1）。三个 first-class host adapter 在 `src/garage_os/adapter/installer/hosts/{claude,opencode,cursor}.py`。
 
 ### Garage OS 开发者参考
 
@@ -47,7 +63,7 @@ Garage OS 源码位于 `src/garage_os/`，由 7 个核心模块组成：
 | **storage** | `src/garage_os/storage/` | 文件存储基础设施：`FileStorage`（带文件锁的读写）、`AtomicWriter`（原子写入）、`FrontMatterParser`（YAML front matter 解析） |
 | **runtime** | `src/garage_os/runtime/` | 运行时核心：`SessionManager`（会话生命周期）、`StateMachine`（状态机）、`SkillExecutor`（技能执行）、`ErrorHandler`（错误处理与重试）、`ArtifactBoardSync`（制品同步） |
 | **knowledge** | `src/garage_os/knowledge/` | 知识管理：`KnowledgeStore`（知识条目 CRUD，markdown + front matter 存储）、`ExperienceIndex`（经验记录与索引）、`KnowledgeIntegration`（知识查询集成） |
-| **adapter** | `src/garage_os/adapter/` | 宿主适配层：`HostAdapterProtocol`（宿主无关协议，定义 invoke_skill/read_file/write_file/get_repository_state 四个核心操作）、`ClaudeCodeAdapter`（Claude Code 实现） |
+| **adapter** | `src/garage_os/adapter/` | 宿主适配层：`HostAdapterProtocol`（运行时执行协议）、`ClaudeCodeAdapter`（运行时执行实现）；**`adapter/installer/` 子包（F007）**：`HostInstallAdapter` Protocol（安装期路径映射，与运行时 protocol 独立）、`HOST_REGISTRY` 三宿主、`pipeline.install_packs` 端到端 |
 | **tools** | `src/garage_os/tools/` | 工具网关：`ToolRegistry`（工具注册与发现）、`ToolGateway`（工具调用记录与 mock 执行） |
 | **platform** | `src/garage_os/platform/` | 平台契约管理：`VersionManager`（版本检测、兼容性检查、schema 迁移） |
 
