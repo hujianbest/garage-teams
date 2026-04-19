@@ -61,6 +61,26 @@ ERR_EDIT_REQUIRES_FIELD = (
 CLI_SOURCE_KNOWLEDGE_ADD = "cli:knowledge-add"
 CLI_SOURCE_KNOWLEDGE_EDIT = "cli:knowledge-edit"
 CLI_SOURCE_EXPERIENCE_ADD = "cli:experience-add"
+# F006 § FR-607 / ADR-503 延伸: handler `_knowledge_link` 写入 entry 时强制
+# 覆写 source_artifact 为该值，让审计层面"手工建图动作"与"add/edit/publisher
+# 路径"完全可分。
+CLI_SOURCE_KNOWLEDGE_LINK = "cli:knowledge-link"
+
+# F006 § 9.5 / NFR-604: stable stdout / stderr markers for the recall + graph
+# CLI surface (`garage recommend`, `garage knowledge link`, `garage knowledge
+# graph`).
+RECOMMEND_NO_RESULTS_FMT = (
+    "No matching knowledge or experience for query: '{query}'"
+)
+KNOWLEDGE_LINKED_FMT = "Linked '{src}' -> '{dst}' ({kind})"
+KNOWLEDGE_LINK_ALREADY_FMT = "Already linked '{src}' -> '{dst}' ({kind})"
+ERR_LINK_FROM_AMBIGUOUS_FMT = (
+    "Knowledge entry id '{eid}' is ambiguous; found in types {types}. "
+    "Rename one of the entries to disambiguate."
+)
+GRAPH_OUTGOING_HEADER = "Outgoing edges:"
+GRAPH_INCOMING_HEADER = "Incoming edges:"
+GRAPH_EDGE_NONE = "  (none)"
 
 from garage_os.knowledge.experience_index import ExperienceIndex
 from garage_os.knowledge.knowledge_store import KnowledgeStore
@@ -984,6 +1004,284 @@ def _experience_delete(garage_root: Path, *, rid: str) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# F006 Recall & Knowledge Graph CLI
+# ---------------------------------------------------------------------------
+
+
+def _resolve_knowledge_entry_unique(
+    knowledge_store: "KnowledgeStore",
+    eid: str,
+) -> tuple[Optional[KnowledgeEntry], list[str]]:
+    """Locate a knowledge entry by id across all 3 type directories.
+
+    Returns ``(entry, types_hit)`` where:
+
+    - ``types_hit == []``  → not found anywhere; ``entry`` is None
+    - ``types_hit == ["<one>"]`` → unique hit; ``entry`` is the matched entry
+    - ``len(types_hit) > 1`` → ambiguous (user has cross-type duplicate IDs);
+      ``entry`` is the first hit (caller should NOT use it; treat as error per
+      FR-605 / ADR-603)
+
+    Iteration order follows the ``KnowledgeType`` enum order (decision →
+    pattern → solution) so that ambiguous reports list types deterministically.
+    """
+    types_hit: list[str] = []
+    first_hit: Optional[KnowledgeEntry] = None
+    for ktype in KnowledgeType:
+        entry = knowledge_store.retrieve(ktype, eid)
+        if entry is not None:
+            types_hit.append(ktype.value)
+            if first_hit is None:
+                first_hit = entry
+    return first_hit, types_hit
+
+
+def _recommend_experience(
+    records: list,
+    context: dict,
+) -> list[dict]:
+    """Score experience records against a query-shaped context (FR-602).
+
+    Returns items in the same shape as
+    :py:meth:`RecommendationService.recommend` so the two halves can be merged
+    by the CLI handler. Score=0 entries are dropped. Weights are spec-anchored
+    (see F006 §6 FR-602): domain / problem_domain hits = 0.8, task_type /
+    tech_stack / key_patterns hits = 0.6, lessons_learned text hits = 0.4.
+
+    This helper deliberately lives in cli.py instead of
+    :py:mod:`garage_os.memory.recommendation_service` to keep CON-605 intact
+    (the ``recommend()`` algorithm and `garage run` path remain unchanged).
+    """
+    domain = (context.get("domain") or "").lower()
+    problem_domain = (context.get("problem_domain") or "").lower()
+    tag_tokens = [str(tag).lower() for tag in context.get("tags", []) if tag]
+
+    results: list[dict] = []
+    for record in records:
+        score = 0.0
+        reasons: list[str] = []
+
+        if domain and domain == (record.domain or "").lower():
+            score += 0.8
+            reasons.append(f"domain:{record.domain}")
+
+        if problem_domain and problem_domain == (record.problem_domain or "").lower():
+            score += 0.8
+            reasons.append(f"problem_domain:{record.problem_domain}")
+
+        task_type_lower = (record.task_type or "").lower()
+        for token in tag_tokens:
+            if token and token in task_type_lower:
+                score += 0.6
+                reasons.append(f"task_type:{record.task_type}")
+                break  # at most one task_type reason per record
+
+        tech_lower = [t.lower() for t in (record.tech_stack or []) if t]
+        for token in tag_tokens:
+            for tech in tech_lower:
+                if token == tech:
+                    score += 0.6
+                    reasons.append(f"tech:{tech}")
+                    break
+
+        patterns_lower = [p.lower() for p in (record.key_patterns or []) if p]
+        for token in tag_tokens:
+            for pat in patterns_lower:
+                if token == pat:
+                    score += 0.6
+                    reasons.append(f"pattern:{pat}")
+                    break
+
+        lessons_text = " ".join(record.lessons_learned or []).lower()
+        for token in tag_tokens:
+            if token and token in lessons_text:
+                score += 0.4
+                reasons.append(f"lesson-text:{token}")
+
+        if score <= 0:
+            continue
+
+        title = (
+            record.lessons_learned[0]
+            if record.lessons_learned
+            else record.task_type
+        )
+        results.append(
+            {
+                "entry_id": record.record_id,
+                "entry_type": "experience",
+                "title": title,
+                "score": score,
+                "match_reasons": reasons,
+                "source_session": record.session_id or None,
+            }
+        )
+    return results
+
+
+def _print_recommendation_block(item: dict) -> None:
+    """Print one recommendation result block in the canonical CLI format."""
+    type_label = item["entry_type"].upper()
+    title = item.get("title") or ""
+    print(f"[{type_label}] {title}")
+    print(f"  ID: {item['entry_id']}")
+    print(f"  Score: {item['score']:.2f}")
+    reasons = item.get("match_reasons") or []
+    print(f"  Match: {', '.join(reasons) if reasons else '(none)'}")
+    source_session = item.get("source_session")
+    if source_session:
+        print(f"  Source: {source_session}")
+    print("")
+
+
+def _recommend(
+    garage_root: Path,
+    *,
+    query: str,
+    tags: Optional[list[str]],
+    domain: Optional[str],
+    top: int,
+) -> int:
+    """Implement ``garage recommend <query>`` (FR-601 / FR-602 / FR-603)."""
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    storage = FileStorage(garage_dir)
+    knowledge_store = KnowledgeStore(storage)
+    experience_index = ExperienceIndex(storage)
+
+    builder = RecommendationContextBuilder()
+    context = builder.build_from_query(query, tags=tags, domain=domain)
+
+    service = RecommendationService(knowledge_store, experience_index)
+    knowledge_results = service.recommend(context)
+    experience_results = _recommend_experience(
+        experience_index.list_records(), context
+    )
+
+    merged = list(knowledge_results) + list(experience_results)
+    merged.sort(key=lambda item: item["score"], reverse=True)
+    if top > 0:
+        merged = merged[:top]
+
+    if not merged:
+        print(RECOMMEND_NO_RESULTS_FMT.format(query=query))
+        return 0
+
+    for item in merged:
+        _print_recommendation_block(item)
+    return 0
+
+
+def _knowledge_link(
+    garage_root: Path,
+    *,
+    src: str,
+    dst: str,
+    kind: str,
+) -> int:
+    """Implement ``garage knowledge link`` (FR-604 / FR-605 / FR-607)."""
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    storage = FileStorage(garage_dir)
+    knowledge_store = KnowledgeStore(storage)
+
+    entry, types_hit = _resolve_knowledge_entry_unique(knowledge_store, src)
+    if not types_hit:
+        print(KNOWLEDGE_NOT_FOUND_FMT.format(eid=src), file=sys.stderr)
+        return 1
+    if len(types_hit) > 1:
+        print(
+            ERR_LINK_FROM_AMBIGUOUS_FMT.format(eid=src, types=types_hit),
+            file=sys.stderr,
+        )
+        return 1
+    assert entry is not None  # types_hit length == 1
+
+    if kind == "related-task":
+        target_field = entry.related_tasks
+    else:
+        target_field = entry.related_decisions
+
+    already_linked = dst in target_field
+    if not already_linked:
+        target_field.append(dst)
+
+    # FR-607: always overwrite source_artifact even on a no-op re-link so that
+    # audit grep for "cli:knowledge-link" picks up every user-initiated link
+    # action, not just the first one.
+    entry.source_artifact = CLI_SOURCE_KNOWLEDGE_LINK
+    knowledge_store.update(entry)  # version+=1 (CON-603)
+
+    if already_linked:
+        print(KNOWLEDGE_LINK_ALREADY_FMT.format(src=src, dst=dst, kind=kind))
+    else:
+        print(KNOWLEDGE_LINKED_FMT.format(src=src, dst=dst, kind=kind))
+    return 0
+
+
+def _knowledge_graph(garage_root: Path, *, eid: str) -> int:
+    """Implement ``garage knowledge graph --id`` (FR-606)."""
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    storage = FileStorage(garage_dir)
+    knowledge_store = KnowledgeStore(storage)
+
+    entry, types_hit = _resolve_knowledge_entry_unique(knowledge_store, eid)
+    if not types_hit:
+        print(KNOWLEDGE_NOT_FOUND_FMT.format(eid=eid), file=sys.stderr)
+        return 1
+    if len(types_hit) > 1:
+        print(
+            ERR_LINK_FROM_AMBIGUOUS_FMT.format(eid=eid, types=types_hit),
+            file=sys.stderr,
+        )
+        return 1
+    assert entry is not None
+
+    print(f"[{entry.type.value.upper()}] {entry.topic}")
+    print(f"ID: {entry.id}")
+
+    print(GRAPH_OUTGOING_HEADER)
+    out_count = 0
+    for target in entry.related_decisions:
+        print(f"  -> {target} (related-decision)")
+        out_count += 1
+    for target in entry.related_tasks:
+        print(f"  -> {target} (related-task)")
+        out_count += 1
+    if out_count == 0:
+        print(GRAPH_EDGE_NONE)
+
+    # Incoming edges: O(N) full-library scan, see ADR / NFR-603. KnowledgeStore
+    # already swallows corrupt entries inside list_entries() (see
+    # knowledge_store.py _rebuild_index try/except), so we don't add another
+    # try/except here.
+    print(GRAPH_INCOMING_HEADER)
+    in_count = 0
+    for other in knowledge_store.list_entries():
+        if other.id == entry.id:
+            continue
+        if eid in other.related_decisions:
+            print(f"  <- {other.id} (related-decision)")
+            in_count += 1
+        if eid in other.related_tasks:
+            print(f"  <- {other.id} (related-task)")
+            in_count += 1
+    if in_count == 0:
+        print(GRAPH_EDGE_NONE)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build and return the argument parser."""
     # Create parent parser for common arguments
@@ -1020,6 +1318,37 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument(
         "--timeout", type=int, default=300,
         help="Timeout in seconds (default: 300)",
+    )
+
+    # F006: recommend (top-level; cross-domain active recall)
+    recommend_parser = subparsers.add_parser(
+        "recommend",
+        help="Pull ranked recall over knowledge + experience for a query",
+        parents=[path_parser],
+    )
+    recommend_parser.add_argument(
+        "query",
+        help="Free-text query; whitespace-split into tokens for matching",
+    )
+    recommend_parser.add_argument(
+        "--tag",
+        dest="recommend_tags",
+        action="append",
+        default=None,
+        help="Additional tag filter (repeatable)",
+    )
+    recommend_parser.add_argument(
+        "--domain",
+        dest="recommend_domain",
+        default=None,
+        help="Optional domain filter (e.g. platform)",
+    )
+    recommend_parser.add_argument(
+        "--top",
+        dest="recommend_top",
+        type=int,
+        default=10,
+        help="Maximum number of results to return (default: 10)",
     )
 
     # knowledge
@@ -1124,6 +1453,44 @@ def build_parser() -> argparse.ArgumentParser:
     )
     delete_parser.add_argument(
         "--id", dest="entry_id", required=True, help="Entry id"
+    )
+
+    # F006: knowledge link / graph (knowledge graph maintenance)
+    link_parser = knowledge_subparsers.add_parser(
+        "link",
+        help="Link a knowledge entry to another id (related-decision / related-task)",
+        parents=[path_parser],
+    )
+    link_parser.add_argument(
+        "--from",
+        dest="link_src",
+        required=True,
+        help="Source entry id (auto-resolved across all knowledge types)",
+    )
+    link_parser.add_argument(
+        "--to",
+        dest="link_dst",
+        required=True,
+        help="Target id (any string; not validated for existence)",
+    )
+    link_parser.add_argument(
+        "--kind",
+        dest="link_kind",
+        choices=["related-decision", "related-task"],
+        default="related-decision",
+        help="Edge kind (default: related-decision)",
+    )
+
+    graph_parser = knowledge_subparsers.add_parser(
+        "graph",
+        help="Show 1-hop neighborhood (outgoing + incoming edges) for an entry",
+        parents=[path_parser],
+    )
+    graph_parser.add_argument(
+        "--id",
+        dest="graph_id",
+        required=True,
+        help="Entry id (auto-resolved across all knowledge types)",
     )
 
     # F005: experience add / show / delete (CLI authoring path)
@@ -1271,6 +1638,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         root = args.path if args.path else _find_garage_root()
         return _run(root, args.skill_name, timeout=args.timeout)
 
+    if args.command == "recommend":
+        root = args.path if args.path else _find_garage_root()
+        return _recommend(
+            root,
+            query=args.query,
+            tags=args.recommend_tags,
+            domain=args.recommend_domain,
+            top=args.recommend_top,
+        )
+
     if args.command == "knowledge":
         root = args.path if args.path else _find_garage_root()
         if args.knowledge_command == "search":
@@ -1312,9 +1689,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 knowledge_type=args.entry_type,
                 eid=args.entry_id,
             )
+        if args.knowledge_command == "link":
+            return _knowledge_link(
+                root,
+                src=args.link_src,
+                dst=args.link_dst,
+                kind=args.link_kind,
+            )
+        if args.knowledge_command == "graph":
+            return _knowledge_graph(root, eid=args.graph_id)
         print(
             "Knowledge command requires one of: "
-            "search, list, add, edit, show, delete",
+            "search, list, add, edit, show, delete, link, graph",
             file=sys.stderr,
         )
         return 1

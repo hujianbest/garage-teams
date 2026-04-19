@@ -41,6 +41,48 @@ class RecommendationContextBuilder:
             "repo_state": repo_state,
         }
 
+    def build_from_query(
+        self,
+        query: str,
+        tags: list[str] | None = None,
+        domain: str | None = None,
+    ) -> dict[str, Any]:
+        """Build a context from a user `garage recommend` query (F006 FR-601).
+
+        Non-breaking complement to :py:meth:`build`. The original ``build``
+        signature, behavior, and call sites (`garage run` flow, F003 / F004
+        skill-execution path) are intentionally unchanged (see F006 CON-602 /
+        CON-605).
+
+        Maps the query string into a context dict shaped identically to what
+        :py:meth:`RecommendationService.recommend` already consumes:
+
+        - ``query`` is split on whitespace into tokens; tokens become the
+          ``tags`` field (where the existing ``recommend()`` scoring already
+          checks tag membership).
+        - ``skill_name`` is set to ``tokens[0]`` (or empty string when the
+          query is blank) so the existing tag/skill scoring path also fires.
+        - ``--tag`` overrides from the CLI are appended to the tag list.
+        - ``--domain`` populates ``domain``.
+        - ``session_topic`` carries the raw query for later display / debugging.
+
+        ``problem_domain`` is intentionally left None — the user is querying
+        ad-hoc, not from inside an active session.
+        """
+        tokens = [t for t in (query or "").split() if t]
+        merged_tags: list[str] = list(tokens)
+        if tags:
+            merged_tags.extend(tags)
+        return {
+            "skill_name": tokens[0] if tokens else "",
+            "domain": domain,
+            "problem_domain": None,
+            "tags": merged_tags,
+            "session_topic": query,
+            "artifact_paths": [],
+            "repo_state": {},
+        }
+
 
 class RecommendationService:
     """Return ranked published knowledge / experience recommendations."""

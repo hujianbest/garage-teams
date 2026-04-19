@@ -2111,3 +2111,755 @@ class TestKnowledgeAuthoringCrossCutting:
             CLI_SOURCE_EXPERIENCE_ADD,
         ):
             assert marker.startswith("cli:")
+
+
+# ---------------------------------------------------------------------------
+# F006 — Recall & Knowledge Graph
+# ---------------------------------------------------------------------------
+
+from garage_os.cli import (  # noqa: E402
+    CLI_SOURCE_KNOWLEDGE_LINK,
+    ERR_LINK_FROM_AMBIGUOUS_FMT,
+    GRAPH_EDGE_NONE,
+    GRAPH_INCOMING_HEADER,
+    GRAPH_OUTGOING_HEADER,
+    KNOWLEDGE_LINKED_FMT,
+    KNOWLEDGE_LINK_ALREADY_FMT,
+    RECOMMEND_NO_RESULTS_FMT,
+    _recommend_experience,
+    _resolve_knowledge_entry_unique,
+)
+from garage_os.memory.recommendation_service import RecommendationContextBuilder  # noqa: E402
+
+
+def _add_knowledge(
+    tmp_path: Path,
+    *,
+    type_: str,
+    eid: str,
+    topic: str = "topic",
+    content: str = "content",
+    tags: str | None = None,
+) -> None:
+    """Test helper: add a knowledge entry via the CLI add path."""
+    argv = [
+        "knowledge",
+        "add",
+        "--type",
+        type_,
+        "--topic",
+        topic,
+        "--content",
+        content,
+        "--id",
+        eid,
+        "--path",
+        str(tmp_path),
+    ]
+    if tags is not None:
+        argv.extend(["--tags", tags])
+    rc = main(argv)
+    assert rc == 0, f"add failed for ({type_}, {eid})"
+
+
+class TestResolveKnowledgeEntryUnique:
+    """T1 / FR-605 helper layer."""
+
+    def test_resolve_unique_hit(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(tmp_path, type_="decision", eid="A")
+        capsys.readouterr()
+        storage = FileStorage(tmp_path / ".garage")
+        store = KnowledgeStore(storage)
+        entry, types = _resolve_knowledge_entry_unique(store, "A")
+        assert types == ["decision"]
+        assert entry is not None
+        assert entry.id == "A"
+
+    def test_resolve_not_found(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        capsys.readouterr()
+        storage = FileStorage(tmp_path / ".garage")
+        store = KnowledgeStore(storage)
+        entry, types = _resolve_knowledge_entry_unique(store, "missing")
+        assert types == []
+        assert entry is None
+
+    def test_resolve_ambiguous(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(tmp_path, type_="decision", eid="X")
+        _add_knowledge(tmp_path, type_="pattern", eid="X")
+        capsys.readouterr()
+        storage = FileStorage(tmp_path / ".garage")
+        store = KnowledgeStore(storage)
+        entry, types = _resolve_knowledge_entry_unique(store, "X")
+        assert len(types) >= 2
+        assert "decision" in types
+        assert "pattern" in types
+        # First hit follows KnowledgeType enum order (decision first)
+        assert entry is not None
+        assert entry.type.value == "decision"
+
+
+class TestRecommendExperienceHelper:
+    """T1 / FR-602 helper layer (pure function, no FS dependency)."""
+
+    def _make_record(self, **overrides):
+        from garage_os.types import ExperienceRecord
+        from datetime import datetime as _dt
+
+        defaults = dict(
+            record_id="exp-1",
+            task_type="spike",
+            skill_ids=["x"],
+            tech_stack=["sqlite"],
+            domain="platform",
+            problem_domain="storage",
+            outcome="success",
+            duration_seconds=10,
+            complexity="low",
+            session_id="sess-1",
+            artifacts=["cli:experience-add"],
+            key_patterns=["indexing"],
+            lessons_learned=["Tried SQLite indexing"],
+            pitfalls=[],
+            recommendations=[],
+            created_at=_dt(2026, 1, 1),
+            updated_at=_dt(2026, 1, 1),
+        )
+        defaults.update(overrides)
+        return ExperienceRecord(**defaults)
+
+    def test_domain_match(self) -> None:
+        record = self._make_record()
+        results = _recommend_experience(
+            [record],
+            {"domain": "platform", "tags": []},
+        )
+        assert len(results) == 1
+        assert results[0]["score"] >= 0.8
+        assert any(r.startswith("domain:") for r in results[0]["match_reasons"])
+
+    def test_problem_domain_match(self) -> None:
+        record = self._make_record()
+        results = _recommend_experience(
+            [record],
+            {"problem_domain": "storage", "tags": []},
+        )
+        assert results
+        assert any(
+            r.startswith("problem_domain:") for r in results[0]["match_reasons"]
+        )
+
+    def test_task_type_via_tag_token(self) -> None:
+        record = self._make_record(task_type="bugfix")
+        results = _recommend_experience(
+            [record],
+            {"tags": ["bug"]},
+        )
+        assert results
+        assert any(r.startswith("task_type:") for r in results[0]["match_reasons"])
+
+    def test_tech_stack_via_tag_token(self) -> None:
+        record = self._make_record()
+        results = _recommend_experience(
+            [record],
+            {"tags": ["sqlite"]},
+        )
+        assert results
+        assert any(r.startswith("tech:") for r in results[0]["match_reasons"])
+
+    def test_key_patterns_via_tag_token(self) -> None:
+        record = self._make_record()
+        results = _recommend_experience(
+            [record],
+            {"tags": ["indexing"]},
+        )
+        assert results
+        assert any(r.startswith("pattern:") for r in results[0]["match_reasons"])
+
+    def test_lesson_text_match(self) -> None:
+        record = self._make_record()
+        results = _recommend_experience(
+            [record],
+            {"tags": ["sqlite"]},
+        )
+        # token "sqlite" hits both tech_stack (0.6) and lesson-text (0.4)
+        reasons = results[0]["match_reasons"]
+        assert any(r.startswith("lesson-text:") for r in reasons)
+
+    def test_no_match_excluded(self) -> None:
+        record = self._make_record(domain="other")
+        results = _recommend_experience(
+            [record],
+            {"tags": ["wholly-unrelated"]},
+        )
+        assert results == []
+
+    def test_returned_shape_matches_recommendation_service(self) -> None:
+        record = self._make_record()
+        results = _recommend_experience(
+            [record],
+            {"domain": "platform", "tags": []},
+        )
+        item = results[0]
+        for key in ("entry_id", "entry_type", "title", "score", "match_reasons", "source_session"):
+            assert key in item
+        assert item["entry_type"] == "experience"
+        assert item["entry_id"] == "exp-1"
+        assert item["source_session"] == "sess-1"
+
+    def test_title_falls_back_to_task_type(self) -> None:
+        record = self._make_record(lessons_learned=[])
+        results = _recommend_experience(
+            [record],
+            {"domain": "platform", "tags": []},
+        )
+        assert results[0]["title"] == "spike"
+
+
+class TestRecommend:
+    """T2 / FR-601 / FR-602 / FR-603 (handler + sub-parser)."""
+
+    def test_recommend_knowledge_only_happy(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(
+            tmp_path,
+            type_="decision",
+            eid="d1",
+            topic="auth jwt expiry",
+            tags="auth",
+        )
+        capsys.readouterr()
+        rc = main(["recommend", "auth", "--path", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "[DECISION]" in out
+        assert "ID: d1" in out
+        assert "Score:" in out
+        assert "Match:" in out
+        assert "tag:auth" in out
+
+    def test_recommend_experience_only(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        main(
+            [
+                "experience",
+                "add",
+                "--task-type",
+                "spike",
+                "--skill",
+                "x",
+                "--domain",
+                "platform",
+                "--outcome",
+                "success",
+                "--duration",
+                "10",
+                "--complexity",
+                "low",
+                "--summary",
+                "Tried SQLite indexing",
+                "--id",
+                "exp-1",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        capsys.readouterr()
+        rc = main(["recommend", "indexing", "--domain", "platform", "--path", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "[EXPERIENCE]" in out
+        assert "ID: exp-1" in out
+        assert "Match:" in out
+
+    def test_recommend_mixed_sorted_by_score(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(
+            tmp_path,
+            type_="decision",
+            eid="d1",
+            topic="auth jwt",
+            tags="auth",
+        )
+        main(
+            [
+                "experience",
+                "add",
+                "--task-type",
+                "auth",
+                "--skill",
+                "x",
+                "--domain",
+                "platform",
+                "--outcome",
+                "success",
+                "--duration",
+                "10",
+                "--complexity",
+                "low",
+                "--summary",
+                "auth flow",
+                "--id",
+                "exp-auth",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        capsys.readouterr()
+        rc = main(["recommend", "auth", "--path", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        # Both halves should appear
+        assert "[DECISION]" in out
+        assert "[EXPERIENCE]" in out
+
+    def test_recommend_top_limits_results(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        for i in range(3):
+            _add_knowledge(
+                tmp_path,
+                type_="decision",
+                eid=f"d{i}",
+                topic="auth",
+                tags="auth",
+            )
+        capsys.readouterr()
+        rc = main(["recommend", "auth", "--top", "2", "--path", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert out.count("[DECISION]") == 2
+
+    def test_recommend_tag_and_domain_passed_through(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(
+            tmp_path, type_="decision", eid="d1", topic="api rest", tags="api,rest"
+        )
+        capsys.readouterr()
+        rc = main(
+            [
+                "recommend",
+                "rate",
+                "--tag",
+                "api",
+                "--tag",
+                "rest",
+                "--domain",
+                "platform",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "[DECISION]" in out
+        assert "tag:api" in out
+        assert "tag:rest" in out
+
+    def test_recommend_zero_results_on_empty_garage(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        main(["init", "--path", str(tmp_path)])
+        capsys.readouterr()
+        rc = main(["recommend", "anything", "--path", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert RECOMMEND_NO_RESULTS_FMT.format(query="anything") in out
+
+    def test_recommend_zero_results_with_entries_but_no_match(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        main(["init", "--path", str(tmp_path)])
+        for i in range(3):
+            _add_knowledge(
+                tmp_path,
+                type_="decision",
+                eid=f"d{i}",
+                topic="storage",
+                tags="storage",
+            )
+        capsys.readouterr()
+        rc = main(["recommend", "completely-unrelated", "--path", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert RECOMMEND_NO_RESULTS_FMT.format(query="completely-unrelated") in out
+
+    def test_recommend_no_garage_dir(self, tmp_path: Path, capsys) -> None:
+        rc = main(["recommend", "anything", "--path", str(tmp_path)])
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "No .garage/" in err
+
+    def test_build_from_query_shape(self) -> None:
+        builder = RecommendationContextBuilder()
+        ctx = builder.build_from_query("auth jwt expiry", tags=["api"], domain="platform")
+        assert ctx["session_topic"] == "auth jwt expiry"
+        assert ctx["domain"] == "platform"
+        assert ctx["problem_domain"] is None
+        assert "auth" in ctx["tags"]
+        assert "jwt" in ctx["tags"]
+        assert "expiry" in ctx["tags"]
+        assert "api" in ctx["tags"]
+        assert ctx["skill_name"] == "auth"
+        # Existing build() method must remain callable + unchanged
+        ctx2 = builder.build("some-skill", params={"domain": "x"})
+        assert ctx2["skill_name"] == "some-skill"
+        assert ctx2["domain"] == "x"
+
+
+class TestKnowledgeLink:
+    """T3 / FR-604 / FR-605 / FR-607."""
+
+    def test_link_happy_appends_and_bumps_version(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(tmp_path, type_="decision", eid="A")
+        _add_knowledge(tmp_path, type_="decision", eid="B")
+        capsys.readouterr()
+        rc = main(
+            [
+                "knowledge",
+                "link",
+                "--from",
+                "A",
+                "--to",
+                "B",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert KNOWLEDGE_LINKED_FMT.format(src="A", dst="B", kind="related-decision") in out
+        # Disk
+        storage = FileStorage(tmp_path / ".garage")
+        store = KnowledgeStore(storage)
+        entry = store.retrieve(KnowledgeType.DECISION, "A")
+        assert entry is not None
+        assert entry.related_decisions == ["B"]
+        assert entry.version == 2  # CON-603: v1.1 invariant carried into link
+        assert entry.source_artifact == CLI_SOURCE_KNOWLEDGE_LINK
+
+    def test_link_repeated_is_idempotent_in_field(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(tmp_path, type_="decision", eid="A")
+        capsys.readouterr()
+        argv = ["knowledge", "link", "--from", "A", "--to", "B", "--path", str(tmp_path)]
+        rc1 = main(argv)
+        assert rc1 == 0
+        capsys.readouterr()
+        rc2 = main(argv)
+        assert rc2 == 0
+        out = capsys.readouterr().out
+        assert KNOWLEDGE_LINK_ALREADY_FMT.format(src="A", dst="B", kind="related-decision") in out
+        # Field still deduped
+        storage = FileStorage(tmp_path / ".garage")
+        store = KnowledgeStore(storage)
+        entry = store.retrieve(KnowledgeType.DECISION, "A")
+        assert entry is not None
+        assert entry.related_decisions == ["B"]
+        # source_artifact stays cli:knowledge-link on re-link (overwrite even on no-op)
+        assert entry.source_artifact == CLI_SOURCE_KNOWLEDGE_LINK
+        # version bumped twice (init add -> v1, link -> v2, re-link -> v3) — by CON-603
+        assert entry.version == 3
+
+    def test_link_related_task_writes_separate_field(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(tmp_path, type_="decision", eid="A")
+        capsys.readouterr()
+        rc = main(
+            [
+                "knowledge",
+                "link",
+                "--from",
+                "A",
+                "--to",
+                "T005",
+                "--kind",
+                "related-task",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 0
+        storage = FileStorage(tmp_path / ".garage")
+        store = KnowledgeStore(storage)
+        entry = store.retrieve(KnowledgeType.DECISION, "A")
+        assert entry is not None
+        assert entry.related_tasks == ["T005"]
+        assert entry.related_decisions == []
+
+    def test_link_from_not_found(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        capsys.readouterr()
+        rc = main(
+            [
+                "knowledge",
+                "link",
+                "--from",
+                "missing",
+                "--to",
+                "Y",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "Knowledge entry 'missing' not found" in err
+
+    def test_link_to_unvalidated_external_id(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """FR-604: --to is accepted as any string (e.g. external task IDs)."""
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(tmp_path, type_="decision", eid="A")
+        capsys.readouterr()
+        rc = main(
+            [
+                "knowledge",
+                "link",
+                "--from",
+                "A",
+                "--to",
+                "anything-goes-12345",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 0
+
+    def test_link_ambiguous_from_id(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(tmp_path, type_="decision", eid="X")
+        _add_knowledge(tmp_path, type_="pattern", eid="X")
+        capsys.readouterr()
+        rc = main(
+            [
+                "knowledge",
+                "link",
+                "--from",
+                "X",
+                "--to",
+                "Y",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "ambiguous" in err.lower()
+        assert "decision" in err
+        assert "pattern" in err
+        # Disk: neither entry mutated
+        storage = FileStorage(tmp_path / ".garage")
+        store = KnowledgeStore(storage)
+        entry_d = store.retrieve(KnowledgeType.DECISION, "X")
+        entry_p = store.retrieve(KnowledgeType.PATTERN, "X")
+        assert entry_d is not None and entry_d.related_decisions == []
+        assert entry_p is not None and entry_p.related_decisions == []
+
+    def test_link_does_not_pollute_publisher_metadata(
+        self, tmp_path: Path
+    ) -> None:
+        """FR-607: link overrides source_artifact but keeps publisher metadata."""
+        main(["init", "--path", str(tmp_path)])
+        garage_dir = tmp_path / ".garage"
+        storage = FileStorage(garage_dir)
+        store = KnowledgeStore(storage)
+        from garage_os.types import KnowledgeEntry as _KE
+        from datetime import datetime as _dt
+
+        publisher_entry = _KE(
+            id="P",
+            type=KnowledgeType.DECISION,
+            topic="from publisher",
+            date=_dt(2026, 1, 1),
+            tags=[],
+            content="body",
+            status="active",
+            version=1,
+            source_artifact="published_by:F003",
+            published_from_candidate="cand-x",
+        )
+        store.store(publisher_entry)
+
+        rc = main(
+            [
+                "knowledge",
+                "link",
+                "--from",
+                "P",
+                "--to",
+                "Q",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert rc == 0
+        entry = store.retrieve(KnowledgeType.DECISION, "P")
+        assert entry is not None
+        assert entry.related_decisions == ["Q"]
+        assert entry.source_artifact == CLI_SOURCE_KNOWLEDGE_LINK
+        assert entry.published_from_candidate == "cand-x"  # publisher metadata preserved
+
+
+class TestKnowledgeGraph:
+    """T4 / FR-606."""
+
+    def test_graph_node_with_outgoing_and_incoming(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(tmp_path, type_="decision", eid="A", topic="topic-A")
+        _add_knowledge(tmp_path, type_="decision", eid="B", topic="topic-B")
+        _add_knowledge(tmp_path, type_="pattern", eid="C", topic="topic-C")
+        # A -> B; B -> C
+        main(["knowledge", "link", "--from", "A", "--to", "B", "--path", str(tmp_path)])
+        main(["knowledge", "link", "--from", "B", "--to", "C", "--path", str(tmp_path)])
+        capsys.readouterr()
+
+        rc = main(["knowledge", "graph", "--id", "B", "--path", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "[DECISION] topic-B" in out
+        assert "ID: B" in out
+        assert GRAPH_OUTGOING_HEADER in out
+        assert "-> C (related-decision)" in out
+        assert GRAPH_INCOMING_HEADER in out
+        assert "<- A (related-decision)" in out
+
+    def test_graph_isolated_node_shows_none(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(tmp_path, type_="decision", eid="iso", topic="alone")
+        capsys.readouterr()
+        rc = main(["knowledge", "graph", "--id", "iso", "--path", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert GRAPH_OUTGOING_HEADER in out
+        assert GRAPH_INCOMING_HEADER in out
+        # Both edge sections should report (none)
+        assert out.count(GRAPH_EDGE_NONE) == 2
+
+    def test_graph_not_found(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        capsys.readouterr()
+        rc = main(["knowledge", "graph", "--id", "missing", "--path", str(tmp_path)])
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "Knowledge entry 'missing' not found" in err
+
+    def test_graph_ambiguous_id(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(tmp_path, type_="decision", eid="X")
+        _add_knowledge(tmp_path, type_="pattern", eid="X")
+        capsys.readouterr()
+        rc = main(["knowledge", "graph", "--id", "X", "--path", str(tmp_path)])
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "ambiguous" in err.lower()
+
+    def test_graph_mixed_edge_kinds(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path)])
+        _add_knowledge(tmp_path, type_="decision", eid="A")
+        _add_knowledge(tmp_path, type_="decision", eid="B")
+        # A -> B (related-decision) AND A -> T005 (related-task)
+        main(["knowledge", "link", "--from", "A", "--to", "B", "--path", str(tmp_path)])
+        main(
+            [
+                "knowledge",
+                "link",
+                "--from",
+                "A",
+                "--to",
+                "T005",
+                "--kind",
+                "related-task",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        capsys.readouterr()
+        rc = main(["knowledge", "graph", "--id", "A", "--path", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "-> B (related-decision)" in out
+        assert "-> T005 (related-task)" in out
+
+
+class TestRecallAndGraphCrossCutting:
+    """T5 cross-cutting: help self-description, smoke perf, source-marker namespace."""
+
+    def test_top_level_help_lists_recommend(self, capsys) -> None:
+        with pytest.raises(SystemExit) as exc:
+            main(["--help"])
+        assert exc.value.code == 0
+        out = capsys.readouterr().out
+        assert "recommend" in out
+
+    def test_knowledge_help_lists_all_8_subcommands(self, capsys) -> None:
+        """FR-608: F005 6 + F006 2 = 8 subcommands must all appear."""
+        with pytest.raises(SystemExit) as exc:
+            main(["knowledge", "--help"])
+        assert exc.value.code == 0
+        out = capsys.readouterr().out
+        for sub in ("search", "list", "add", "edit", "show", "delete", "link", "graph"):
+            assert sub in out
+
+    def test_recommend_help_lists_all_args(self, capsys) -> None:
+        with pytest.raises(SystemExit) as exc:
+            main(["recommend", "--help"])
+        assert exc.value.code == 0
+        out = capsys.readouterr().out
+        for arg in ("query", "--tag", "--domain", "--top"):
+            assert arg in out
+
+    def test_link_help_lists_all_args(self, capsys) -> None:
+        with pytest.raises(SystemExit) as exc:
+            main(["knowledge", "link", "--help"])
+        assert exc.value.code == 0
+        out = capsys.readouterr().out
+        for arg in ("--from", "--to", "--kind"):
+            assert arg in out
+
+    def test_graph_help_lists_all_args(self, capsys) -> None:
+        with pytest.raises(SystemExit) as exc:
+            main(["knowledge", "graph", "--help"])
+        assert exc.value.code == 0
+        out = capsys.readouterr().out
+        assert "--id" in out
+
+    def test_link_source_marker_uses_cli_namespace(self) -> None:
+        """FR-607 / ADR-503 延伸: cli:knowledge-link 必须以 cli: 开头."""
+        assert CLI_SOURCE_KNOWLEDGE_LINK.startswith("cli:")
+
+    def test_recommend_smoke_under_one_and_a_half_seconds(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """NFR-603: a single recommend round-trip must finish well under 1.5s."""
+        main(["init", "--path", str(tmp_path)])
+        for i in range(10):
+            _add_knowledge(
+                tmp_path,
+                type_="decision",
+                eid=f"d{i}",
+                topic="auth jwt",
+                tags="auth",
+            )
+        capsys.readouterr()
+        start = _time_mod.monotonic()
+        rc = main(["recommend", "auth", "--path", str(tmp_path)])
+        elapsed = _time_mod.monotonic() - start
+        assert rc == 0
+        capsys.readouterr()
+        assert elapsed < 1.5, f"recommend took {elapsed:.3f}s (>= 1.5s)"
