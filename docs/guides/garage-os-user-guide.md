@@ -298,6 +298,31 @@ exp_index.store(record)
 
 ---
 
+## Memory review — abandon paths
+
+`garage memory review` 提供两条不同的 "abandon" 路径，命名相似但**语义有别**。理解它们对审计候选状态、事后回溯发布行为很关键。
+
+| 用户输入 | 何时使用 | publisher 是否被调用 | confirmation 字段 | stdout 标识符 | 候选最终状态 |
+|---------|---------|---------------------|------------------|---------------|-------------|
+| `garage memory review <bid> --candidate-id c --action abandon` | **主动放弃**：你看完候选后直接判断"这条不值得发布"，与冲突无关 | 否（CLI 在调 publisher 前就早返回） | `resolution=abandon`、`conflict_strategy=null` | `Candidate '<cid>' abandoned without publication attempt` | `abandoned` |
+| `garage memory review <bid> --candidate-id c --action accept --strategy abandon` | **遇冲突放弃**：你本来想发布，但 publisher 检测到与已发布知识有真实冲突，你选择"这次冲突时放弃"，下次同样冲突仍可重试 | 是（publisher 返回 `conflict_strategy=abandon` 早返回） | `resolution=accept`、`conflict_strategy=abandon` | `Candidate '<cid>' abandoned due to conflict with published knowledge` | `abandoned` |
+
+两条路径都把候选置为 `abandoned`，但 confirmation 文件与 stdout 标识符**互不重叠**，可被独立 grep / 解析：
+
+```bash
+grep "abandoned without publication attempt" .garage/memory/confirmations/*.json
+grep "abandoned due to conflict" .garage/memory/confirmations/*.json
+```
+
+如果 `--action accept --strategy abandon` 时 publisher **没有**检测到任何真实冲突，行为退化为正常 accept publish（候选 → `published`，confirmation `resolution=accept`、`conflict_strategy=null`），与 v1 完全一致。
+
+### 一句话怎么选
+
+- 想说"这条候选我不要了"→ `--action abandon`
+- 想说"这条候选只在冲突时放弃，我下次还想试"→ `--action accept --strategy abandon`
+
+---
+
 ## 配置说明
 
 ### 平台配置（`.garage/config/platform.json`）

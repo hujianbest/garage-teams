@@ -15,14 +15,21 @@
 
 ## Current Workflow State
 
-- Current Stage: `任务真人确认`（auto-mode approval 已写入）→ 准备进入 `hf-test-driven-dev`
+- Current Stage: `hf-test-driven-dev`（T1~T5 全部 done）→ 准备派发 `hf-test-review`
 - Workflow Profile: `full`
 - Execution Mode: `auto`
-- Workspace Isolation: `in-place`（F004 任务范围窄、touched files 不冲突；不升级到 worktree-required）
-- Current Active Task: T1 (PublicationIdentityGenerator + publisher 入口校验前置)
-- Pending Reviews And Gates: T1 完成后 `hf-test-review` → `hf-code-review` → `hf-traceability-review` → `hf-regression-gate` → `hf-completion-gate`
-- Next Action Or Recommended Skill: `hf-test-driven-dev`
+- Workspace Isolation: `in-place`
+- Current Active Task: T5 done（cycle 内最后一个 task）
+- Task Status:
+  - T1 ✅ done（5 tests, all green; handoff `F004-T1-implementation-handoff.md`）
+  - T2 ✅ done（6 tests + KnowledgeStore bug fix; handoff `F004-T2-implementation-handoff.md`）
+  - T3 ✅ done（6 tests; handoff implicit in commit `feat(F004 T3 T4 T5)`）
+  - T4 ✅ done（6 tests; handoff implicit in commit）
+  - T5 ✅ done（3 docs lint tests + 2 doc sections; handoff `F004-T5-implementation-handoff.md`）
+- Pending Reviews And Gates: `hf-test-review` → `hf-code-review` → `hf-traceability-review` → `hf-regression-gate` → `hf-completion-gate` → `hf-finalize`
+- Next Action Or Recommended Skill: `hf-test-review`
 - Task Board Path: `docs/tasks/2026-04-19-garage-memory-v1-1-tasks.md`
+- 全 suite 状态: `pytest tests/ -q` → **410 passed in ~25s**（F003 baseline 384 → +26 F004 新增 = 410，零回归）
 - Relevant Files:
   - `docs/features/F004-garage-memory-v1-1-publication-identity-and-confirmation-semantics.md`（F004 spec draft）
   - `docs/features/F003-garage-memory-auto-extraction.md`（前一 cycle spec，作为对照）
@@ -44,4 +51,4 @@
 
 ## Next Step
 
-进入 `hf-test-driven-dev` 实现 T1：在 `src/garage_os/memory/publisher.py` 中新增 `PublicationIdentityGenerator` helper class + 把 `_validate_conflict_strategy` 提到 `publish_candidate` 入口。按 task 测试设计种子，先写 5 个 fail-first 测试 → 确认失败 → 最小实现 → verify green。
+派发 `hf-test-review` reviewer subagent 评审 F004 T1~T5 的 26 个新增测试。

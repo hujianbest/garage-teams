@@ -197,13 +197,28 @@ class SessionManager:
 
         return True
 
+    # F004 § 11.4: stable filename for the per-session extraction error file.
+    MEMORY_EXTRACTION_ERROR_FILENAME = "memory-extraction-error.json"
+
     def _trigger_memory_extraction(
         self,
         session_id: str,
         extraction_orchestrator: Optional[object] = None,
     ) -> None:
-        """Run archive-time memory extraction when the feature is enabled."""
+        """Run archive-time memory extraction in three guarded phases.
+
+        F004 FR-404 / § 10.4 / ADR-404: any failure in orchestrator
+        instantiation, enablement check, or extraction itself must
+        - never block archive_session (still returns True)
+        - persist a machine-readable summary to
+          ``sessions/archived/<session_id>/memory-extraction-error.json``
+          with a phase tag so downstream readers can locate the breakage
+        - keep the original ``logger.warning`` as a stderr safety net so
+          that operators reading logs do not lose the context.
+        """
         orchestrator = extraction_orchestrator
+
+        # Phase 1: orchestrator instantiation.
         if orchestrator is None:
             if (
                 CandidateStore is None
@@ -211,13 +226,23 @@ class SessionManager:
                 or MemoryExtractionOrchestrator is None
             ):
                 return
+            try:
+                orchestrator = MemoryExtractionOrchestrator(
+                    self._storage,
+                    CandidateStore(self._storage),
+                    ExtractionConfig(),
+                )
+            except Exception as exc:
+                self._persist_extraction_error(session_id, "orchestrator_init", exc)
+                return
 
-            orchestrator = MemoryExtractionOrchestrator(
-                self._storage,
-                CandidateStore(self._storage),
-                ExtractionConfig(),
-            )
-        if not orchestrator.is_extraction_enabled():
+        # Phase 2: enablement check.
+        try:
+            enabled = orchestrator.is_extraction_enabled()
+        except Exception as exc:
+            self._persist_extraction_error(session_id, "enablement_check", exc)
+            return
+        if not enabled:
             return
 
         archived_session_path = f"sessions/archived/{session_id}/session.json"
@@ -225,15 +250,51 @@ class SessionManager:
         if archived_session is None:
             return
 
+        # Phase 3: extraction proper.
         try:
             orchestrator.extract_for_archived_session(archived_session)
-        except Exception as exc:  # pragma: no cover - defensive best-effort path
-            logger.warning(
-                "Memory extraction failed for archived session %s: %s",
-                session_id,
-                exc,
-                exc_info=True,
+        except Exception as exc:
+            self._persist_extraction_error(session_id, "extraction", exc)
+
+    def _persist_extraction_error(
+        self, session_id: str, phase: str, exc: BaseException
+    ) -> None:
+        """Persist a single latest-error JSON for the session-side trigger path.
+
+        F004 § 11.4 schema: ``schema_version`` / ``session_id`` / ``phase`` /
+        ``error_type`` / ``error_message`` / ``triggered_at``. Each new failure
+        for the same session overwrites the previous file (latest-error
+        semantics; archive-time extraction only fires once per session).
+
+        ``logger.warning`` is intentionally kept as a stderr-side breadcrumb
+        so that operators tailing logs still see the failure even when the
+        file write itself succeeds silently.
+        """
+        error_path = (
+            f"sessions/archived/{session_id}/{self.MEMORY_EXTRACTION_ERROR_FILENAME}"
+        )
+        try:
+            self._storage.write_json(
+                error_path,
+                {
+                    "schema_version": "1",
+                    "session_id": session_id,
+                    "phase": phase,
+                    "error_type": type(exc).__name__,
+                    "error_message": str(exc),
+                    "triggered_at": datetime.now().isoformat(),
+                },
             )
+        except Exception:  # pragma: no cover - defensive: never mask the
+            # original extraction failure with a write-time failure.
+            pass
+        logger.warning(
+            "Memory extraction failed for archived session %s (phase=%s): %s",
+            session_id,
+            phase,
+            exc,
+            exc_info=True,
+        )
 
     def list_active_sessions(self) -> list[SessionMetadata]:
         """List all active sessions.

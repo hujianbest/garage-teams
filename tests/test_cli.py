@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Optional
 from unittest.mock import patch, MagicMock
 
 from garage_os.cli import main
@@ -749,6 +750,272 @@ Existing decision body.
         assert candidate_store.retrieve_candidate("candidate-001")["status"] == "abandoned"
         published = list((garage_dir / "knowledge" / "decisions").glob("*.md"))
         assert published == []
+
+
+class TestMemoryReviewAbandonDualPaths:
+    """F004 T3: CLI abandon dual-path differentiation (FR-403a + FR-403b + ADR-403).
+
+    Locks differentiation between:
+    - ``--action=abandon``                       -> intentionally drop candidate
+    - ``--action=accept --strategy=abandon``     -> abandon because of conflict
+    """
+
+    def _seed_candidate(
+        self,
+        tmp_path: Path,
+        candidate_id: str = "candidate-001",
+        title: str = "Dual-path abandon candidate",
+        tags: Optional[list[str]] = None,
+    ):
+        from garage_os.memory.candidate_store import CandidateStore
+
+        garage_dir = tmp_path / ".garage"
+        storage = FileStorage(garage_dir)
+        candidate_store = CandidateStore(storage)
+        candidate_store.store_candidate(
+            {
+                "schema_version": "1",
+                "candidate_id": candidate_id,
+                "candidate_type": "decision",
+                "session_id": "session-001",
+                "source_artifacts": ["docs/designs/example.md"],
+                "source_evidence_anchors": [
+                    {"kind": "artifact_excerpt", "ref": "docs/designs/example.md#decision"}
+                ],
+                "match_reasons": ["artifact:docs/designs/example.md"],
+                "status": "pending_review",
+                "priority_score": 0.9,
+                "title": title,
+                "summary": "Summary",
+                "content": "Body",
+                "tags": tags or ["memory", "abandon"],
+            }
+        )
+        candidate_store.store_batch(
+            {
+                "batch_id": "batch-001",
+                "session_id": "session-001",
+                "status": "pending_review",
+                "trigger": "session_archived",
+                "candidate_ids": [candidate_id],
+                "truncated_count": 0,
+                "evaluation_summary": "evaluated_with_candidates",
+                "created_at": "2026-04-18T10:00:00",
+                "metadata": {},
+            }
+        )
+        return candidate_store, garage_dir, storage
+
+    def _seed_existing_published_entry_with_same_title(
+        self,
+        garage_dir: Path,
+        title: str,
+        tags: list[str],
+    ) -> str:
+        """Plant a v1-published KnowledgeEntry with a different id but same
+        title/tags so ConflictDetector surfaces it as a real similar entry
+        (and is not stripped by F004 self-conflict short-circuit)."""
+        from datetime import datetime
+        from garage_os.knowledge.knowledge_store import KnowledgeStore
+        from garage_os.types import KnowledgeEntry, KnowledgeType
+
+        storage = FileStorage(garage_dir)
+        knowledge_store = KnowledgeStore(storage)
+        existing_id = "existing-conflict-target"
+        knowledge_store.store(
+            KnowledgeEntry(
+                id=existing_id,
+                type=KnowledgeType.DECISION,
+                topic=title,
+                date=datetime.now(),
+                tags=list(tags),
+                content="Pre-existing entry to force a real conflict.",
+            )
+        )
+        return existing_id
+
+    def test_memory_review_abandon_writes_resolution_abandon_with_null_strategy(
+        self,
+        tmp_path: Path,
+        capsys,
+    ) -> None:
+        """--action=abandon path -> confirmation resolution=abandon, conflict_strategy=null (FR-403a verify 1)."""
+        main(["init", "--path", str(tmp_path)])
+        candidate_store, garage_dir, _ = self._seed_candidate(tmp_path)
+
+        result = main(
+            [
+                "memory",
+                "review",
+                "batch-001",
+                "--action",
+                "abandon",
+                "--candidate-id",
+                "candidate-001",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert result == 0
+        confirmation = candidate_store.retrieve_confirmation("batch-001")
+        assert confirmation is not None
+        assert confirmation["resolution"] == "abandon"
+        assert confirmation.get("conflict_strategy") in (None,)
+
+    def test_memory_review_accept_with_strategy_abandon_writes_resolution_accept(
+        self,
+        tmp_path: Path,
+        capsys,
+    ) -> None:
+        """--action=accept --strategy=abandon + real conflict -> resolution=accept,
+        conflict_strategy=abandon (FR-403a verify 2)."""
+        main(["init", "--path", str(tmp_path)])
+        candidate_store, garage_dir, _ = self._seed_candidate(tmp_path)
+        self._seed_existing_published_entry_with_same_title(
+            garage_dir,
+            title="Dual-path abandon candidate",
+            tags=["memory", "abandon"],
+        )
+
+        result = main(
+            [
+                "memory",
+                "review",
+                "batch-001",
+                "--action",
+                "accept",
+                "--candidate-id",
+                "candidate-001",
+                "--strategy",
+                "abandon",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert result == 0
+        confirmation = candidate_store.retrieve_confirmation("batch-001")
+        assert confirmation is not None
+        assert confirmation["resolution"] == "accept"
+        assert confirmation.get("conflict_strategy") == "abandon"
+        assert (
+            candidate_store.retrieve_candidate("candidate-001")["status"] == "abandoned"
+        )
+
+    def test_memory_review_accept_with_abandon_strategy_no_conflict_falls_through_to_publish(
+        self,
+        tmp_path: Path,
+        capsys,
+    ) -> None:
+        """--action=accept --strategy=abandon + no conflict -> normal publish (FR-403a verify 3)."""
+        main(["init", "--path", str(tmp_path)])
+        candidate_store, garage_dir, _ = self._seed_candidate(tmp_path)
+
+        result = main(
+            [
+                "memory",
+                "review",
+                "batch-001",
+                "--action",
+                "accept",
+                "--candidate-id",
+                "candidate-001",
+                "--strategy",
+                "abandon",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+        assert result == 0
+        confirmation = candidate_store.retrieve_confirmation("batch-001")
+        assert confirmation is not None
+        assert confirmation["resolution"] == "accept"
+        # Strategy was passed but no conflict matched -> behavior matches v1 normal accept.
+        assert (
+            candidate_store.retrieve_candidate("candidate-001")["status"] == "published"
+        )
+
+    def test_memory_review_abandon_outputs_no_pub_marker(
+        self,
+        tmp_path: Path,
+        capsys,
+    ) -> None:
+        """--action=abandon stdout must contain ABANDONED_NO_PUB marker (FR-403b verify 1)."""
+        from garage_os.cli import MEMORY_REVIEW_ABANDONED_NO_PUB
+
+        main(["init", "--path", str(tmp_path)])
+        self._seed_candidate(tmp_path)
+
+        main(
+            [
+                "memory",
+                "review",
+                "batch-001",
+                "--action",
+                "abandon",
+                "--candidate-id",
+                "candidate-001",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+
+        captured = capsys.readouterr()
+        expected = MEMORY_REVIEW_ABANDONED_NO_PUB.format(cid="candidate-001")
+        assert expected in captured.out, (
+            f"expected stdout to contain '{expected}'; got: {captured.out}"
+        )
+
+    def test_memory_review_conflict_abandon_outputs_conflict_marker(
+        self,
+        tmp_path: Path,
+        capsys,
+    ) -> None:
+        """--action=accept --strategy=abandon + real conflict stdout must contain ABANDONED_CONFLICT marker
+        (FR-403b verify 2)."""
+        from garage_os.cli import MEMORY_REVIEW_ABANDONED_CONFLICT
+
+        main(["init", "--path", str(tmp_path)])
+        _, garage_dir, _ = self._seed_candidate(tmp_path)
+        self._seed_existing_published_entry_with_same_title(
+            garage_dir,
+            title="Dual-path abandon candidate",
+            tags=["memory", "abandon"],
+        )
+
+        main(
+            [
+                "memory",
+                "review",
+                "batch-001",
+                "--action",
+                "accept",
+                "--candidate-id",
+                "candidate-001",
+                "--strategy",
+                "abandon",
+                "--path",
+                str(tmp_path),
+            ]
+        )
+
+        captured = capsys.readouterr()
+        expected = MEMORY_REVIEW_ABANDONED_CONFLICT.format(cid="candidate-001")
+        assert expected in captured.out, (
+            f"expected stdout to contain '{expected}'; got: {captured.out}"
+        )
+
+    def test_memory_review_two_abandon_markers_do_not_overlap(self) -> None:
+        """The two stdout markers must be independently grep-able (FR-403b verify 3)."""
+        from garage_os.cli import (
+            MEMORY_REVIEW_ABANDONED_CONFLICT,
+            MEMORY_REVIEW_ABANDONED_NO_PUB,
+        )
+
+        no_pub = MEMORY_REVIEW_ABANDONED_NO_PUB.format(cid="x")
+        conflict = MEMORY_REVIEW_ABANDONED_CONFLICT.format(cid="x")
+        # Neither rendered marker should be a substring of the other.
+        assert no_pub not in conflict
+        assert conflict not in no_pub
 
 
 class TestKnowledgeCommand:

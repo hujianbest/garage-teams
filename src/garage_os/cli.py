@@ -7,6 +7,19 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from garage_os.adapter.claude_code_adapter import ClaudeCodeAdapter
+
+# F004 § 11.5: stable stdout markers for the two CLI abandon paths so users
+# (and downstream agents) can grep the audit log to differentiate intent.
+# - NO_PUB:    --action=abandon, dropped before any publication attempt.
+# - CONFLICT:  --action=accept --strategy=abandon, dropped because publisher
+#              detected a real conflict with already-published knowledge.
+MEMORY_REVIEW_ABANDONED_NO_PUB = (
+    "Candidate '{cid}' abandoned without publication attempt"
+)
+MEMORY_REVIEW_ABANDONED_CONFLICT = (
+    "Candidate '{cid}' abandoned due to conflict with published knowledge"
+)
+
 from garage_os.knowledge.experience_index import ExperienceIndex
 from garage_os.knowledge.knowledge_store import KnowledgeStore
 from garage_os.memory.candidate_store import CandidateStore
@@ -511,19 +524,35 @@ def _memory_review(
             edited_fields=edited_fields,
             conflict_strategy=strategy,
         )
+        # F004 FR-403a / § 10.3: derive the candidate's new status from the
+        # publisher result so that --action=accept --strategy=abandon ends
+        # up in the same "abandoned" terminal state when (and only when) a
+        # real conflict was detected and aborted publication.
+        publisher_strategy = publish_result.get("conflict_strategy")
         new_status = {
             "accept": "published",
             "edit_accept": "published",
             "reject": "rejected",
             "abandon": "abandoned",
         }[action]
-        if action in {"accept", "edit_accept"} and strategy == "abandon":
+        if action in {"accept", "edit_accept"} and publisher_strategy == "abandon":
             new_status = "abandoned"
         candidate_store.update_candidate(candidate_id, {"status": new_status})
-        print(
-            f"Candidate '{candidate_id}' action '{action}' applied; "
-            f"published_id={publish_result['published_id']}"
-        )
+        # F004 FR-403b / § 11.5: emit a stable, distinct marker for each of
+        # the two abandon flows so downstream readers can distinguish them
+        # without parsing the confirmation file.
+        if action == "abandon":
+            print(MEMORY_REVIEW_ABANDONED_NO_PUB.format(cid=candidate_id))
+        elif (
+            action in {"accept", "edit_accept"}
+            and publisher_strategy == "abandon"
+        ):
+            print(MEMORY_REVIEW_ABANDONED_CONFLICT.format(cid=candidate_id))
+        else:
+            print(
+                f"Candidate '{candidate_id}' action '{action}' applied; "
+                f"published_id={publish_result['published_id']}"
+            )
         return 0
 
     print(f"Candidate Batch: {batch['batch_id']}")
