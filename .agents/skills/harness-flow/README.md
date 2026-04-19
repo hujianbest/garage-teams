@@ -11,6 +11,7 @@ HarnessFlow is a skill pack for AI agents that brings structure, quality discipl
 This repository currently focuses on the HarnessFlow coding workflow pack. The current pack covers:
 
 - public entry and workflow discovery
+- upstream product discovery authoring and review
 - runtime routing and recovery
 - spec, design, and task authoring
 - task-by-task test-driven implementation
@@ -67,6 +68,13 @@ Every HF skill makes its methodology explicit in its own `SKILL.md`. At the pack
 | `using-hf-workflow` | Front Controller Pattern, Evidence-Based Dispatch, Separation of Concerns |
 | `hf-workflow-router` | Finite State Machine Routing, Evidence-Based Decision Making, Escalation Pattern |
 
+### Upstream discovery
+
+| Skill | Core methodology |
+|-------|------------------|
+| `hf-product-discovery` | Problem Framing, Hypothesis-Driven Discovery, Opportunity / Wedge Mapping, Assumption Surfacing |
+| `hf-discovery-review` | Structured Walkthrough, Checklist-Based Review, Separation of Author/Reviewer Roles, Evidence-Based Verdict |
+
 ### Authoring
 
 | Skill | Core methodology |
@@ -75,6 +83,8 @@ Every HF skill makes its methodology explicit in its own `SKILL.md`. At the pack
 | `hf-spec-review` | Structured Walkthrough, Checklist-Based Review, Separation of Author/Reviewer Roles, Evidence-Based Verdict |
 | `hf-design` | ADR, C4 Model, Risk-Driven Architecture, YAGNI + Complexity Matching, ARC42 |
 | `hf-design-review` | ATAM, Structured Walkthrough, Separation of Author/Reviewer Roles, Traceability to Spec |
+| `hf-ui-design` | Information Architecture, Atomic Design, Design System / Design Tokens, Nielsen Heuristics, WCAG 2.2 AA, Interaction State Inventory, ADR |
+| `hf-ui-review` | ATAM (adapted to UI), Nielsen Heuristic Evaluation, Structured Walkthrough, Separation of Author/Reviewer Roles, Traceability to Spec |
 | `hf-tasks` | WBS, INVEST Criteria, Dependency Graph + Critical Path, Definition of Done |
 | `hf-tasks-review` | INVEST Validation, Dependency Graph Validation, Traceability Matrix, Structured Walkthrough |
 
@@ -178,6 +188,7 @@ Use HarnessFlow to implement the current active task.
 | You say | What HarnessFlow should do |
 |---------|----------------------------|
 | `Use HarnessFlow and continue this repo from the current artifacts.` | Start from `using-hf-workflow` or `hf-workflow-router` and recover the correct next node from on-disk state. |
+| `Use HarnessFlow to figure out whether a product direction is worth pursuing before writing a spec.` | Bias toward `hf-product-discovery`, or hand off to `hf-workflow-router` if the current stage is still unclear. |
 | `Use HarnessFlow to write or revise the spec for rate limiting on the notifications API.` | Bias toward `hf-specify`, or hand off to `hf-workflow-router` if the current stage is still unclear. |
 | `Use HarnessFlow to review this design draft against the approved spec.` | Direct-invoke `hf-design-review` only if this is truly review-only and the design artifact is ready. |
 | `Use HarnessFlow to implement the current active task with TDD and fresh evidence.` | Move toward `hf-test-driven-dev` if a single active task is locked and upstream approvals are in place. |
@@ -268,11 +279,13 @@ A typical full flow looks like this:
 
 ```text
 using-hf-workflow
+  -> hf-product-discovery
+  -> hf-discovery-review
   -> hf-workflow-router
   -> hf-specify
   -> hf-spec-review
-  -> hf-design
-  -> hf-design-review
+  -> hf-design  (|| hf-ui-design if the spec declares a UI surface)
+  -> hf-design-review  (|| hf-ui-review)
   -> hf-tasks
   -> hf-tasks-review
   -> hf-test-driven-dev
@@ -283,6 +296,8 @@ using-hf-workflow
   -> hf-completion-gate
   -> hf-finalize
 ```
+
+When the spec declares a UI surface, the router activates `hf-ui-design` as a **conditional peer inside the design stage**. `hf-design` covers architecture, modules, API contracts, data models, and backend NFRs; `hf-ui-design` covers information architecture, user flows, interaction states, visual tokens, Atomic component mapping, and frontend a11y / i18n / responsive concerns. Both drafts go through their own independent review, and a joint `设计真人确认` is only opened after both `hf-design-review` and `hf-ui-review` return `通过`. See `skills/hf-workflow-router/references/ui-surface-activation.md` for the activation rules and Design Execution Modes (`parallel` / `architecture-first` / `ui-first`).
 
 The router can also branch into `hf-hotfix` and `hf-increment` when the request is really a defect recovery or a scope change rather than normal forward progress.
 
