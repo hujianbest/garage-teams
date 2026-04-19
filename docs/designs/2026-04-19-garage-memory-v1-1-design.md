@@ -1,7 +1,8 @@
 # D004: Garage Memory v1.1 — 发布身份解耦与确认语义收敛 设计
 
-- 状态: 草稿
+- 状态: 已批准（auto-mode approval；见 `docs/approvals/F004-design-approval.md`）
 - 日期: 2026-04-19
+- Revision: r1（按 design-review r1 finding 定向修订；详见 `docs/reviews/design-review-F004-memory-v1-1.md`）
 - 关联规格: `docs/features/F004-garage-memory-v1-1-publication-identity-and-confirmation-semantics.md`
 - 关联批准记录: `docs/approvals/F004-spec-approval.md`
 - 关联前序设计: `docs/designs/2026-04-18-garage-memory-auto-extraction-design.md`（D003）
@@ -53,14 +54,14 @@ F003 已经把 Garage Memory pipeline 完整跑通（候选层 → 用户确认 
 
 | 规格需求 | 设计承接 | 主要落点 |
 |----------|----------|----------|
-| `FR-401` 重复发布版本链 | 引入 `PublicationIdentityGenerator` + `KnowledgePublisher.publish_candidate` 改 `store-or-update` | publisher.py（新增 helper class + 方法） |
+| `FR-401` 重复发布版本链 | 引入 `PublicationIdentityGenerator` + `KnowledgePublisher.publish_candidate` 改 `store-or-update` + §10.1 supersede 链 carry-over + §10.1.1 self-conflict 短路 | publisher.py（新增 helper class + 方法 + carry-over + 短路） |
 | `FR-402` 入口校验前置 | `publish_candidate` 第一段（在所有早返回 / 业务分支前）校验 `conflict_strategy` | publisher.py 入口 |
 | `FR-403a` confirmation 持久差异化 | CLI `cli.py` 改 confirmation `resolution` 字段写入逻辑（abandon 路径写 `abandon`，accept-with-abandon 写 `accept` + `conflict_strategy=abandon`） | cli.py memory review handler |
 | `FR-403b` CLI 输出稳定标识符 | CLI `cli.py` 增 stdout 输出常量 `MEMORY_REVIEW_OUTPUT_*` | cli.py |
 | `FR-403c` 用户文档差异化说明 | `docs/guides/garage-os-user-guide.md` 新增 "Memory review abandon paths" 段 | 用户指南 |
 | `FR-404` session 触发证据 | `SessionManager._trigger_memory_extraction` 重构为 `_trigger_memory_extraction_safely`，分 3 个 phase 写 `memory-extraction-error.json` | session_manager.py |
 | `FR-405` 兼容性 | 不修改任何已批准 contract；145 个 memory tests + 384 个 full suite 全绿 | 全模块 |
-| `NFR-401` 发布身份可冷读 | `PublicationIdentityGenerator.derive_id(candidate_id, payload, knowledge_type)` 用决定性算法（默认 = `f"k-{candidate_id}"` 不变 + version 由 store/update 链路驱动），开发者文档显式说明 | publisher.py + 开发者指南 |
+| `NFR-401` 发布身份可冷读 | `PublicationIdentityGenerator.derive_knowledge_id(candidate_id, knowledge_type)` / `derive_experience_id(candidate_id)` 用决定性算法（默认 = 直接返回 `candidate_id`，与 F003 v1 行为一致 + version 由 store/update 链路驱动），开发者文档显式说明 | publisher.py + 开发者指南 |
 | `NFR-402` 不退化性能 | 重复发布路径多 1 次 `KnowledgeStore.retrieve()` + 1 次 `ExperienceIndex.retrieve()`；二者都是 O(1) hash 查询（前者依赖 in-memory index，后者依赖中心索引 JSON） | publisher.py |
 | `IFR-401/402` 复用现有 update | publisher 路径中显式调 `knowledge_store.update(entry)` / `experience_index.update(record)` | publisher.py |
 | `CON-401` workspace-first | 所有新 JSON 写在 `.garage/sessions/archived/<id>/` | session_manager.py |
@@ -85,7 +86,7 @@ F003 已经把 Garage Memory pipeline 完整跑通（候选层 → 用户确认 
 
 | 方案 | 核心思路 |
 |------|---------|
-| **A1** publisher 层 ID 生成器 + `retrieve → store-or-update` | 引入 `PublicationIdentityGenerator.derive_id(...)`；publisher 在 store 前先 `KnowledgeStore.retrieve(type, id)`；存在则 `update`，否则 `store` |
+| **A1** publisher 层 ID 生成器 + `retrieve → store-or-update` | 引入 `PublicationIdentityGenerator.derive_knowledge_id` / `derive_experience_id`；publisher 在 store 前先 `KnowledgeStore.retrieve(type, id)` 或 `ExperienceIndex.retrieve(id)`；存在则 `update`，否则 `store` |
 | **A2** `KnowledgeStore` 内部 upsert | 在 `KnowledgeStore` 增 `upsert(entry)` 方法，内部判断存在性；publisher 调用方一行变更 |
 
 ### 5.2 FR-402 入口校验
@@ -113,7 +114,7 @@ F003 已经把 Garage Memory pipeline 完整跑通（候选层 → 用户确认 
 
 | 方案 | 核心思路 | 优点 | 主要代价 / 风险 | NFR / 约束适配 | 可逆性 |
 |------|----------|------|------------------|----------------|--------|
-| **A1** publisher 层 ID 生成器 + retrieve → store-or-update | 集中改在 publisher；不动 KnowledgeStore | publisher 层多 1 次 retrieve（在重复发布路径上）；KnowledgeStore in-memory index 已对此 O(1)，可忽略 | NFR-401 满足（生成规则在 publisher 文件可读）；NFR-402 满足（O(1) 索引查询）；FR-405 兼容（KnowledgeStore 接口不变）；CON-403 兼容（字段不变） | 高 |
+| **A1** publisher 层 ID 生成器 + retrieve → store-or-update | 集中改在 publisher；不动 KnowledgeStore | publisher 层多 1 次 retrieve（在重复发布路径上）；KnowledgeStore in-memory index 已对此 O(1)，可忽略；vs A2：保护 F001 KnowledgeStore 公开契约稳定性 + publisher 层职责单一（"管发布身份" vs KnowledgeStore "管知识存储"），SOC 清晰 | NFR-401 满足（生成规则在 publisher 文件可读）；NFR-402 满足（O(1) 索引查询）；FR-405 兼容（KnowledgeStore 接口不变）；CON-403 兼容（字段不变） | 高 |
 | **A2** KnowledgeStore 内部 upsert | 调用方一行；语义集中 | 触动 F001 已批准的 `KnowledgeStore` 公共契约；FR-405 兼容性需要扩展回归覆盖；index dirty 路径需重测；与 D003 已批准的 "publisher 层管发布身份"职责切分有偏差 | NFR-401/402 同等满足；CON-403/IFR-401 受影响（接口扩展） | 中 |
 | **B1** 入口私有方法 `_validate_strategy(...)` | 一处增加；冲突分支去重 | 几乎无 | 全部 NFR / CON 兼容；FR-402 4 条验收全部覆盖 | 高 |
 | **B2** 装饰器 | 通用；可扩到其它 publisher 方法 | 单点 API 用装饰器是过度抽象；增加调试栈深度 | 同 B1，但可读性下降 | 中 |
@@ -166,15 +167,16 @@ F003 已经把 Garage Memory pipeline 完整跑通（候选层 → 用户确认 
 │   ├─ retrieve candidate                                            │
 │   ├─ if action in non-publish set: early return                    │
 │   ├─ if experience_summary:                                        │
-│   │     identity = exp_id_generator.derive(candidate_id)           │
+│   │     identity = generator.derive_experience_id(candidate_id)    │
 │   │     existing = experience_index.retrieve(identity)             │
 │   │     if existing: experience_index.update(record)               │
 │   │     else: experience_index.store(record)                       │
 │   ├─ else:                                                         │
-│   │     identity = pub_id_generator.derive(candidate_id, type)     │
-│   │     existing = knowledge_store.retrieve(type, identity)        │
+│   │     identity = generator.derive_knowledge_id(candidate_id, t)  │
+│   │     existing = knowledge_store.retrieve(t, identity)           │
 │   │     if existing:                                               │
 │   │         entry.version = existing.version (will += 1 in update) │
+│   │         carry-over PRESERVED_FRONT_MATTER_KEYS (§11.2.1)       │
 │   │         knowledge_store.update(entry)                          │
 │   │     else: knowledge_store.store(entry)                         │
 │   └─ return result                                                 │
@@ -244,7 +246,7 @@ sequenceDiagram
     Note over U,KS: 第 1 次 accept c-001
     U->>CLI: garage memory review b1 --candidate-id c-001 --action accept
     CLI->>Pub: publish_candidate(c-001, accept, ...)
-    Pub->>Gen: derive_id(c-001, "decision")
+    Pub->>Gen: derive_knowledge_id(c-001, DECISION)
     Gen-->>Pub: "c-001"
     Pub->>KS: retrieve(DECISION, "c-001")
     KS-->>Pub: None
@@ -255,11 +257,12 @@ sequenceDiagram
     Note over U,KS: 第 2 次 edit_accept c-001（用户改 tag 后）
     U->>CLI: garage memory review b1 --candidate-id c-001 --action edit_accept --tags new
     CLI->>Pub: publish_candidate(c-001, edit_accept, ...)
-    Pub->>Gen: derive_id(c-001, "decision")
+    Pub->>Gen: derive_knowledge_id(c-001, DECISION)
     Gen-->>Pub: "c-001"
     Pub->>KS: retrieve(DECISION, "c-001")
-    KS-->>Pub: existing entry version=1
-    Pub->>KS: update(entry)  # update 内部 version+=1 = 2
+    KS-->>Pub: existing entry version=1 (含 front_matter["supersedes"] 历史)
+    Note over Pub: carry-over PRESERVED_FRONT_MATTER_KEYS (§11.2.1)
+    Pub->>KS: update(entry)  # update 内部 version+=1 = 2；front_matter["supersedes"] 保留
     KS-->>Pub: ok
     Pub-->>CLI: {published_id="c-001", knowledge_type=DECISION}
 ```
@@ -312,21 +315,47 @@ sequenceDiagram
 
 ## 10. 数据流、控制流与关键交互
 
-### 10.1 重复发布数据流（FR-401）
+### 10.1 重复发布数据流（FR-401 + FR-405 supersede 不变量）
 
 ```
 candidate (c-001, type=decision)
   → publisher.publish_candidate(c-001, accept, conf_ref=cf-001)
-    → derive_id(c-001) = "c-001"
+    → identity = pub_id_generator.derive_knowledge_id(c-001, DECISION) = "c-001"
     → knowledge_store.retrieve(DECISION, "c-001")
-      → existing? 
+      → existing?
         no → knowledge_store.store(entry version=1)
-        yes → entry.version = existing.version  # 让 update 路径 += 1
-              entry.related_decisions = existing.related_decisions  # 不丢失冲突 supersede 链
-              knowledge_store.update(entry)  # version=2
+        yes →
+          # FR-405 兼容性兜底：v1 已发布数据的 supersede 链与关联关系不能在 v1.1 重复发布后丢失
+          entry.version = existing.version          # KnowledgeStore.update 内部会 +=1
+          entry.related_decisions = _merge_unique(  # 保留 v1 supersede 链 + 本轮新增 strategy=supersede 关系
+              existing.related_decisions,
+              entry.related_decisions,
+          )
+          # carry-over front_matter 中 dataclass 字段以外的"演进语义"键
+          for key in PRESERVED_FRONT_MATTER_KEYS:    # 见 §11.2.1
+              if key in existing.front_matter and key not in entry.front_matter:
+                  entry.front_matter[key] = list(existing.front_matter[key])
+          # 若本轮新增 supersedes，与历史 supersedes 合并去重；否则保留历史
+          existing_supersedes = list(existing.front_matter.get("supersedes", []))
+          new_supersedes = list(entry.front_matter.get("supersedes", []))
+          merged_supersedes = _merge_unique(existing_supersedes, new_supersedes)
+          if merged_supersedes:
+              entry.front_matter["supersedes"] = merged_supersedes
+          # related_decisions 已在 dataclass 字段中保留，store 会重新写 front_matter["related_decisions"]
+          knowledge_store.update(entry)              # 文件名稳定；version=2
 ```
 
 `KnowledgeStore.update()` 实现已经是 `entry.version += 1` 然后 `_remove_from_index → store`，复用 incremental index 路径，无 race。
+
+**为什么需要显式 carry-over `front_matter["supersedes"]`**：`KnowledgeStore.store()` 内部调用 `_entry_to_front_matter(entry)` 完全**从 entry 字段重建 front_matter**（参见 `knowledge_store.py:_entry_to_front_matter`），不读旧磁盘文件。`supersedes` 是 publisher 在 strategy=supersede 路径上写入的"额外演进语义键"，不在 `KnowledgeEntry` dataclass 字段中；如果 publisher 不在 update 前手动 carry-over，重复发布会**静默清空** v1 已发布的 supersede 链，违反 FR-405 兼容性。
+
+**`_merge_unique(a, b)` 语义**：保留 a 顺序，把 b 中不在 a 的元素追加在末尾；用于不丢失 v1 历史 + 不丢失本轮新增。
+
+### 10.1.1 self-conflict 短路（FR-401 + FR-402 协同）
+
+重复 `accept` / `edit_accept` 同一 candidate 时，`ConflictDetector.detect(title, tags)` 会按 title / tags 反查 knowledge store；v1 已发布的 entry 其 `id == candidate_id` 也会被命中，构成 **self-conflict false-positive**。如果不处理，CLI / publisher 会要求用户传 `--strategy=...`，与"重复 accept 自动走 update 链"的设计意图冲突。
+
+**publisher 短路约束**：在判定 `if similar_entries: ... require strategy ...` 之前，必须先把 `similar_entries` 中等于 `pub_id_generator.derive_knowledge_id(candidate_id, knowledge_type)` 的元素**剔除**。剔除后若 `similar_entries` 为空，按"无冲突"路径继续（仍走 §10.1 的 store-or-update 决策）；剔除后若仍非空，按现有 FR-304 / FR-402 行为要求 strategy。
 
 ### 10.2 入口校验控制流（FR-402）
 
@@ -414,14 +443,43 @@ class PublicationIdentityGenerator:
 
 ### 11.2 KnowledgePublisher.publish_candidate（v1.1 增量契约）
 
-入口校验：
+入口校验（FR-402）：
 - `conflict_strategy is None` → 不校验
 - `conflict_strategy in VALID_CONFLICT_STRATEGIES` → 通过
 - 其它 → `raise ValueError("Allowed: ['abandon', 'coexist', 'supersede']")`
 
-store-or-update 决策：
-- 路径 A（experience_summary）：`existing = experience_index.retrieve(identity)`；存在则 `update`，否则 `store`
-- 路径 B（其它三类）：`existing = knowledge_store.retrieve(type, identity)`；存在则把 `entry.version = existing.version` 再 `update`，否则 `store`
+self-conflict 短路（FR-401 + §10.1.1）：
+- 在判定 `similar_entries` 是否要求 `strategy` 之前，从 `similar_entries` 剔除等于 `pub_id_generator.derive_knowledge_id(candidate_id, knowledge_type)` 的元素
+- 剔除后 `similar_entries` 为空 → 按"无冲突"路径继续，调用 §10.1 store-or-update 决策
+- 剔除后仍非空 → 走现有 FR-304 / FR-402 strategy 要求路径
+
+store-or-update 决策（FR-401）：
+- 路径 A（experience_summary）：
+  - `identity = pub_id_generator.derive_experience_id(candidate_id)`
+  - `existing = experience_index.retrieve(identity)`；存在则 `experience_index.update(record)`，否则 `experience_index.store(record)`
+- 路径 B（decision / pattern / solution）：
+  - `identity = pub_id_generator.derive_knowledge_id(candidate_id, knowledge_type)`
+  - `existing = knowledge_store.retrieve(knowledge_type, identity)`；
+  - 存在则按 §10.1 carry-over 列表 + supersede 合并后调用 `knowledge_store.update(entry)`；
+  - 不存在则 `knowledge_store.store(entry)`
+
+#### 11.2.1 PRESERVED_FRONT_MATTER_KEYS（FR-405 supersede 链兼容兜底）
+
+publisher 在 update 路径上必须从 `existing.front_matter` carry-over 以下键到新构造的 entry，避免重新构造 front_matter 时丢失"演进语义"：
+
+```python
+PRESERVED_FRONT_MATTER_KEYS = (
+    "supersedes",          # 由 strategy=supersede 路径写入；v1 已发布数据可能含此键
+    "related_decisions",   # 由 _entry_to_front_matter 自动从 dataclass 同步，但 update 路径上仍显式 carry-over 历史值，保证 _merge_unique 后顺序稳定
+)
+```
+
+不变量（v1.1 必须满足）：
+- 任意 `existing` entry 中存在 `front_matter["supersedes"] = ["k-X", "k-Y"]`，重复发布后新 entry 的 `front_matter["supersedes"]` 必须**至少包含**原集合（可加新元素）
+- 任意 `existing.related_decisions` 列表，重复发布后新 entry 的 `related_decisions` 必须**至少包含**原集合
+- `merged_supersedes` 与新 entry 是否在本轮 carry conflict_strategy=supersede 无关；只要 `existing.front_matter["supersedes"]` 不为空就必须保留
+
+未来如果设计层新增"演进语义键"（如 `superseded_by`、`merged_with`），应该追加进 `PRESERVED_FRONT_MATTER_KEYS` 而不是开新 carry-over 路径。
 
 返回值结构与 F003 v1 完全一致：
 ```python
@@ -516,6 +574,8 @@ def test_walking_skeleton_repeated_accept_increments_version(tmp_path):
 | FR-401 验收 1（重复 accept → version=2） | `tests/memory/test_publisher.py` | `test_repeated_accept_uses_update_increments_version` |
 | FR-401 验收 2（retrieve 返回 latest version） | `tests/memory/test_publisher.py` | `test_retrieve_after_repeated_accept_returns_latest_version` |
 | FR-401 验收 3（experience 路径 update） | `tests/memory/test_publisher.py` | `test_repeated_publish_experience_summary_updates_index` |
+| FR-401 + FR-405 supersede 链 carry-over（§10.1 / §11.2.1） | `tests/memory/test_publisher.py` | `test_repeated_publish_preserves_supersedes_chain_from_v1` + `test_repeated_publish_preserves_related_decisions_from_v1` |
+| FR-401 self-conflict 短路（§10.1.1） | `tests/memory/test_publisher.py` | `test_repeated_accept_short_circuits_self_conflict` |
 | FR-402 验收 1（garbage 入口拒绝） | `tests/memory/test_publisher.py` | `test_publish_candidate_rejects_garbage_strategy_at_entry` |
 | FR-402 验收 2（valid + 无冲突正常） | `tests/memory/test_publisher.py` | `test_publish_candidate_accepts_valid_strategy_without_conflict` |
 | FR-402 验收 3（None + 无冲突正常） | `tests/memory/test_publisher.py` | （已有覆盖） |
@@ -549,6 +609,7 @@ def test_walking_skeleton_repeated_accept_increments_version(tmp_path):
 | `_persist_extraction_error` 自身写盘失败 | 实践中 `FileStorage.write_json` 失败几率低；若失败则 logger.warning 仍生效 | 双层防护（文件 + logger），不再升级 |
 | `derive_knowledge_id` 输入异常 candidate_id（含特殊字符） | F003 已对 candidate_id 做 字符规范化（`candidate_store` 不变） | v1.1 不引入新规范化路径 |
 | `accept --strategy=abandon` 在不命中冲突路径上误退化为 abandon | publisher 当前实现：strategy 只在 `similar_entries` 非空时影响行为；v1.1 设计明确该路径下退化为正常 accept | FR-403a 验收第 3 条断言 |
+| 重复 accept self-conflict false-positive | v1 已发布的同名 entry 其 id == candidate_id；ConflictDetector.detect(title, tags) 会把它视作 similar entry；若不短路，CLI 会强制要求用户传 strategy，与 v1.1 "重复 accept 自动走 update 链" 设计意图冲突 | §10.1.1 publisher 在 require strategy 前剔除 `similar_entries` 中等于 `derive_knowledge_id(candidate_id, type)` 的元素；测试 `test_repeated_accept_short_circuits_self_conflict` 锁住 |
 
 ## 15. 任务规划准备度
 
@@ -561,8 +622,8 @@ def test_walking_skeleton_repeated_accept_increments_version(tmp_path):
 - 没有阻塞性开放问题
 
 建议 `hf-tasks` 拆解维度（**仅供参考，最终 task plan 由 hf-tasks 决定**）：
-- T1：`PublicationIdentityGenerator` + publisher 入口校验（FR-401 + FR-402 单元测试）
-- T2：publisher store-or-update 决策（FR-401 端到端）
+- T1：`PublicationIdentityGenerator` + publisher 入口校验（FR-401 NFR-401 + FR-402 单元测试）
+- T2：publisher store-or-update 决策 + supersede 链 carry-over (PRESERVED_FRONT_MATTER_KEYS) + self-conflict 短路（FR-401 端到端 + FR-405 supersede 不变量 + §10.1 / §10.1.1 / §11.2 / §11.2.1）
 - T3：CLI 双 abandon 路径文案 + confirmation 字段（FR-403a + FR-403b）
 - T4：`SessionManager._trigger_memory_extraction_safely` 三 phase 持久化（FR-404）
 - T5：用户指南 + 开发者指南文档段（FR-403c + NFR-401 + CON-404）
@@ -619,14 +680,15 @@ def test_walking_skeleton_repeated_accept_increments_version(tmp_path):
 
 非阻塞，可在 hf-tasks 阶段或 hf-test-driven-dev 阶段随手收敛：
 
-1. `update` 路径是否需要保留 `front_matter["supersedes"]` 历史？（D003 已设计的 supersede 关系需要在重复 update 时不丢失）→ design 已在 §10.1 显式 carry-over：`entry.related_decisions = existing.related_decisions`，但 `front_matter["supersedes"]` 字段需要在 publisher 层 carry-over，task T2 实现时必须覆盖该不变量。
+1. ~~`update` 路径是否需要保留 `front_matter["supersedes"]` 历史？~~ **已升格至 §10.1 数据流 + §11.2.1 PRESERVED_FRONT_MATTER_KEYS contract + §13.2 测试矩阵**（design-review r1 D5 finding 闭合）。F003 publisher 在 strategy=supersede 路径写入的 `front_matter["supersedes"]` / `front_matter["related_decisions"]` 现在被 publisher 在 update 路径上显式 carry-over，并在 §13.2 加入 `test_repeated_publish_preserves_supersedes_chain_from_v1` 与 `test_repeated_publish_preserves_related_decisions_from_v1` 锁住。
 2. `experience_index.update()` 当前实现只更新 `updated_at` 不带 version 字段（与 KnowledgeEntry 不同）；FR-401 验收第 3 条只要求"仍只有 1 条 record_id"，不要求 version 链——验收满足。但开发者文档需要说明 experience 路径的"version 语义弱于 knowledge"。
-3. CLI 输出文案的"中英文之一"约束（FR-403b）是否需要明确选英文以保证 grep 一致？→ 设计建议**英文常量**（避免编码 / 终端宽度问题），中文翻译可在 README / 用户指南中提供；task T3 实现时锁定英文。
+3. CLI 输出文案的"中英文之一"约束（FR-403b）：**采用英文常量**（避免编码 / 终端宽度问题），中文翻译可在 README / 用户指南中提供；task T3 实现时锁定 §11.5 给出的英文模板。
+4. ~~重复 accept self-conflict false-positive 是否需要 publisher 短路？~~ **已升格至 §10.1.1 publisher 短路约束 + §11.2 self-conflict 短路段 + §13.2 测试矩阵 + §14 失败模式表**（design-review r1 D6 finding 闭合）。
 
 无阻塞性开放问题。
 
 ---
 
-**文档状态**: 草稿，待 `hf-design-review`。
+**文档状态**: 已批准（auto-mode approval r1，见 §0 状态字段）。
 
-**下一步**: 派发 reviewer 执行 `hf-design-review`。
+**下一步**: 进入 `hf-tasks`，输入 = 本设计 + F004 spec + design-review r1 record + spec-review record。
