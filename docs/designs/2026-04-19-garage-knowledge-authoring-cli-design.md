@@ -1,7 +1,8 @@
 # D005: Garage Knowledge Authoring CLI 设计
 
-- 状态: 草稿
+- 状态: 已批准（auto-mode approval；见 `docs/approvals/F005-design-approval.md`）
 - 日期: 2026-04-19
+- Revision: r1（按 design-review 4 项 minor LLM-FIXABLE 直接收敛；详见 `docs/reviews/design-review-F005-knowledge-authoring-cli.md`）
 - 关联规格: `docs/features/F005-garage-knowledge-authoring-cli.md`（已批准）
 - 关联批准记录: `docs/approvals/F005-spec-approval.md`
 - 关联前序设计: `docs/designs/2026-04-19-garage-memory-v1-1-design.md`（D004）
@@ -65,7 +66,7 @@ F005 引入手工知识 / 经验入库的 CLI surface（`garage knowledge add|ed
 |----------|---------|---------|
 | `FR-501` knowledge add | 新增 subparser `knowledge add` + handler `_knowledge_add(...)` 调 `KnowledgeStore.store()` | `cli.py` |
 | `FR-502` `--from-file` / `--content` 互斥 | handler 入口校验 + ad-hoc error message | `cli.py` `_resolve_content()` |
-| `FR-503` knowledge edit | 新增 subparser + handler `_knowledge_edit(...)` 调 `KnowledgeStore.retrieve()` → 字段覆写 → `KnowledgeStore.update()` | `cli.py` |
+| `FR-503` knowledge edit | 新增 subparser + handler `_knowledge_edit(...)` 调 `KnowledgeStore.retrieve()` → 字段覆写（详见 §10.2.1 字段表）→ `KnowledgeStore.update()` | `cli.py` |
 | `FR-504` knowledge show | subparser + handler `_knowledge_show(...)` 调 `retrieve()` → pretty print | `cli.py` |
 | `FR-505` knowledge delete | subparser + handler `_knowledge_delete(...)` 调 `delete()` | `cli.py` |
 | `FR-506` experience add | subparser + handler `_experience_add(...)` 构造 `ExperienceRecord` 调 `ExperienceIndex.store()` | `cli.py` |
@@ -79,7 +80,7 @@ F005 引入手工知识 / 经验入库的 CLI surface（`garage knowledge add|ed
 | `NFR-503` 写路径 < 1.0s | 单次 `store/update` ≤ O(1) IO；引入 1 个 wall-clock smoke test | `tests/test_cli.py` |
 | `NFR-504` stdout 常量 | 模块顶层 `KNOWLEDGE_*_FMT` / `EXPERIENCE_*_FMT` 常量 | `cli.py` |
 | `NFR-505` 文档同步 | `docs/guides/garage-os-user-guide.md` 增 "Knowledge authoring (CLI)" 段；双 README CLI 命令表追加 | 用户指南 + README |
-| `CON-501` 顶级命令复用 | 新子命令挂在现有 `knowledge` / `experience` 父 subparser 下；`experience` 父 subparser 是新引入但仍是二级，不破坏 CON-501 | `cli.py` |
+| `CON-501` 顶级命令复用 | 新子命令挂在 `knowledge`（已有，扩展 `add/edit/show/delete` 4 个新子命令）与 `experience`（**本 cycle 新引入的二级父 subparser**，挂 `add/show/delete` 3 个子命令）下。`experience` 是二级命令，不引入任何**顶级**命令，CON-501 保持成立 | `cli.py` |
 | `CON-502` 不改 store/index API | 只调用现有公开方法 | `cli.py` |
 | `CON-503` 保持 `version+=1` | `edit` 走 `update()`，复用现有递增链路 | `cli.py` |
 | `CON-504` `source_artifact` 取值不冲突 | `cli:knowledge-add` / `cli:knowledge-edit` / `experience artifacts[0]="cli:experience-add"` 与 publisher 路径已用值不重叠 | `cli.py` |
@@ -173,23 +174,29 @@ F005 引入手工知识 / 经验入库的 CLI surface（`garage knowledge add|ed
 可逆性: 高（仅改 _generate_entry_id 实现；ID 字符串格式不变）
 ```
 
-## 8. ADR-503: experience source tagging 复用 `artifacts[0]` 而不增字段
+## 8. ADR-503: experience source tagging 用 `cli:` 前缀复用 `artifacts` 列表
 
 ```
 状态: 决定
 背景: FR-509 要求 experience 路径也有"手工 vs 自动"标记。ExperienceRecord 的
       dataclass 没有 source_artifact 字段，但有 artifacts: List[str]（默认空）。
-决策: CLI experience add 写 record.artifacts = ["cli:experience-add"]，与 publisher 路径
-      留空或写其他来源不冲突。
+      publisher 路径（src/garage_os/memory/publisher.py 现有实现）会在 artifacts
+      里写入候选源工件路径，并不"留空"——区分性必须靠 token 前缀，而不是 artifacts
+      是否为空。
+决策: CLI experience add 在 record.artifacts 头位写入字面 "cli:experience-add"；
+      区分性依赖 "cli:" 前缀作为命名空间约定（publisher 写入的工件路径不会以
+      "cli:" 开头）。
 候选:
-  - artifacts[0] 约定（采用）: 零 schema 变更，向后兼容
+  - "cli:" 前缀 + artifacts 头位（采用）: 零 schema 变更，与 publisher artifacts 语义共存
   - 新增 source_artifact 字段: 违反 § 2.3 非目标 "不引入新字段"
   - 不打 source 标记: 失去手工 vs 自动可观察性，违反 FR-509
 后果:
   + 零 schema 变更
-  + grep "cli:experience-add" .garage/experience/records/ 可一键过滤
-  - artifacts 语义被略微扩展（原本可能用于"产生的 artifact 路径列表"，现在头位用于 source）；通过开发者文档段澄清
-可逆性: 中（事后若引入独立 source 字段，需要数据迁移：把 artifacts[0] 移到新字段）
+  + grep '"cli:experience-add"' .garage/experience/records/ 可一键过滤手工记录
+  + 与 publisher 写入的 path-style artifact 元素并存而不互斥
+  - artifacts 语义被显式扩展为"工件路径列表 ∪ source-marker token 集合"，需要在
+    开发者文档段澄清；token 必须以 "cli:" 命名空间前缀打头（本 cycle 仅 "cli:experience-add"）
+可逆性: 中（事后若引入独立 source 字段，需要数据迁移：把 "cli:..." token 抽到新字段）
 ```
 
 ## 9. CLI Surface 详述
@@ -348,12 +355,30 @@ sequenceDiagram
         H-->>U: stderr NOT_FOUND_FMT, exit 1
     else
         H->>H: overlay explicit fields
+        H->>H: keep entry.date as-is (FR-503 "未传字段保持不变"; 见 §10.2.1)
         H->>H: set source_artifact = "cli:knowledge-edit"
-        H->>KS: update(entry)  # version+=1 inside
-        KS-->>H: checksum, new_version
-        H-->>U: stdout EDITED_FMT(eid, version), exit 0
+        H->>KS: update(entry)  # mutates entry.version += 1 in place
+        KS-->>H: checksum (str)
+        H-->>H: read entry.version (now N+1)
+        H-->>U: stdout EDITED_FMT(eid, entry.version), exit 0
     end
 ```
+
+### 10.2.1 `knowledge edit` 字段覆写规则
+
+| `KnowledgeEntry` 字段 | edit 时的处理 |
+|----------------------|---------------|
+| `id` | 永不改（定位 key） |
+| `type` | 永不改（定位 key；如要改类型 = 删后重建） |
+| `topic` | 仅当显式传 `--topic` 时覆写 |
+| `date` | **保持原值**（创建时间是历史事实，不被 edit 修改；版本递增体现在 `version` 字段） |
+| `tags` | 仅当显式传 `--tags` 时**整段覆盖**（OD-503） |
+| `content` | 仅当显式传 `--content` 或 `--from-file` 时覆写 |
+| `status` | 仅当显式传 `--status` 时覆写 |
+| `version` | 由 `KnowledgeStore.update()` 内部 `+=1`（CON-503 / FR-401 v1.1 不变量延伸） |
+| `related_decisions` / `related_tasks` / `source_session` / `source_evidence_anchor` / `confirmation_ref` / `published_from_candidate` | 保持原值（这些是 publisher 路径写入的元数据，CLI edit 不污染） |
+| `source_artifact` | 强制覆写为 `"cli:knowledge-edit"`（FR-509） |
+| `front_matter` | 由 `_entry_to_front_matter` 在 `update→store` 路径上从 dataclass 重建，extras 自动 carry over（F004 §11.2.1 reserved-key 优先级） |
 
 ### 10.3 `experience delete` 数据流
 
