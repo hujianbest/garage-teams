@@ -17,7 +17,6 @@ Public symbols are re-exported here so callers (CLI, tests) only need:
 
 from __future__ import annotations
 
-# T2 ships only the registry + adapters; T3 will add manifest/marker/pipeline.
 from garage_os.adapter.installer.host_registry import (
     HOST_REGISTRY,
     HostInstallAdapter,
@@ -26,12 +25,62 @@ from garage_os.adapter.installer.host_registry import (
     list_host_ids,
     resolve_hosts_arg,
 )
+from garage_os.adapter.installer.manifest import (
+    MANIFEST_SCHEMA_VERSION,
+    Manifest,
+    ManifestFileEntry,
+    read_manifest,
+    write_manifest,
+)
+from garage_os.adapter.installer.marker import (
+    MalformedFrontmatterError,
+    extract_marker,
+    inject,
+)
+from garage_os.adapter.installer.pack_discovery import (
+    InvalidPackError,
+    Pack,
+    PackManifestMismatchError,
+    discover_packs,
+)
+from garage_os.adapter.installer.pipeline import (
+    MSG_NO_PACKS_FMT,
+    WARN_LOCALLY_MODIFIED_FMT,
+    WARN_OVERWRITE_FORCED_FMT,
+    ConflictingSkillError,
+    InstallSummary,
+    install_packs,
+)
 
 __all__ = [
+    # Registry
     "HOST_REGISTRY",
     "HostInstallAdapter",
     "UnknownHostError",
     "get_adapter",
     "list_host_ids",
     "resolve_hosts_arg",
+    # Discovery
+    "Pack",
+    "InvalidPackError",
+    "PackManifestMismatchError",
+    "discover_packs",
+    # Marker
+    "MalformedFrontmatterError",
+    "extract_marker",
+    "inject",
+    # Manifest
+    "MANIFEST_SCHEMA_VERSION",
+    "Manifest",
+    "ManifestFileEntry",
+    "read_manifest",
+    "write_manifest",
+    # Pipeline
+    "ConflictingSkillError",
+    "InstallSummary",
+    "install_packs",
+    # Stable markers (also re-exported by pipeline)
+    "MSG_NO_PACKS_FMT",
+    "WARN_LOCALLY_MODIFIED_FMT",
+    "WARN_OVERWRITE_FORCED_FMT",
 ]
