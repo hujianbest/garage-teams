@@ -2,9 +2,9 @@
 
 ## Goal
 
-- Goal: F007 — Garage Packs 与宿主安装器（spec 草稿待评审）
+- Goal: F007 — Garage Packs 与宿主安装器（spec 已批准；待进入 hf-design）
 - Owner: hujianbest
-- Status: ▶ Active — 规格起草中
+- Status: ▶ Active — 规格已批准，等待 design 阶段启动
 - Last Updated: 2026-04-19
 
 ## Previous Milestones
@@ -18,15 +18,17 @@
 
 ## Current Workflow State
 
-- Current Stage: `hf-specify`
+- Current Stage: `hf-design`（规格已批准，等待 design 阶段启动）
 - Workflow Profile: `coding`
-- Execution Mode: `auto-mode`（用户在新 cycle 触发：先调研后起草）
+- Execution Mode: `auto-mode`
 - Workspace Isolation: `in-place`
-- Current Active Task: F007 spec 起草
-- Pending Reviews And Gates: F007 spec review（待派发 reviewer subagent）
-- Next Action Or Recommended Skill: `hf-spec-review`
+- Current Active Task: F007 design（待启动）
+- Pending Reviews And Gates: F007 design review（design 草稿完成后派发）
+- Next Action Or Recommended Skill: `hf-design`
 - Relevant Files:
-  - `docs/features/F007-garage-packs-and-host-installer.md`（本 cycle 规格草稿）
+  - `docs/features/F007-garage-packs-and-host-installer.md`（已批准规格，r2 head）
+  - `docs/approvals/F007-spec-approval.md`（auto-mode approval record）
+  - `docs/reviews/spec-review-F007-garage-packs-and-host-installer.md`（r1 + r2 review record）
   - `docs/principles/skill-anatomy.md`（pack 内 skill anatomy 对齐基线）
   - `docs/soul/manifesto.md`、`design-principles.md`（宿主无关原则约束）
   - 调研参考: OpenSpec `docs/supported-tools.md`（host id + skills/commands path pattern 模型）
@@ -38,9 +40,9 @@
 
 ## Next Step
 
-1. 派发独立 reviewer subagent 执行 `hf-spec-review`，评审 `docs/features/F007-garage-packs-and-host-installer.md`。
-2. 按 reviewer 结论：通过 → 进入 approval & `hf-design`；需修改 → 回到 `hf-specify` 修订。
-3. 本 cycle 实施前先解决 § 11 非阻塞开放问题（Cursor surface 选型、安装标记块形式、交互 prompt 实现、pack-id 收敛）。
+1. 启动 `hf-design`，输入 = 已批准的 F007 spec + F001 `HostAdapterProtocol` 不变契约 + F002 `garage init` 向后兼容承诺（CON-702）+ F005 stdout marker 风格基线。
+2. design 草稿完成后派发独立 reviewer subagent 执行 `hf-design-review`。
+3. design 阶段需消化 § 11 非阻塞性开放问题：Cursor surface 选型（`.cursor/skills/` vs `.cursor/rules/`）、安装标记块形式（HTML 注释 vs front matter）、交互 prompt 形式（stdlib `input()` 实现选型）、pack-id 收敛（单一 `garage` vs `coding/product-insights` 多 pack）。
 
 延后项（与 F007 解耦的后续候选）：
 

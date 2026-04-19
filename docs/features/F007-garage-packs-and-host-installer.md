@@ -1,6 +1,6 @@
 # F007: Garage Packs 与宿主安装器 — 让 `garage init` 把内置 skills/agents 安装到目标 AI 工具
 
-- 状态: 草稿
+- 状态: 已批准（auto-mode approval；见 `docs/approvals/F007-spec-approval.md`）
 - 主题: 在 `packs/` 沉淀 Garage 自带的 `skills/` 与 `agents/` 集合；让 `garage init` 在用户项目里按用户选择的宿主（Claude Code / OpenCode / Cursor 等）把它们安装/同步到对应的工具目录。
 - 日期: 2026-04-19
 - 关联:
