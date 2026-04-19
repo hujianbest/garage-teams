@@ -1,6 +1,6 @@
 # F006: Garage Recall & Knowledge Graph — 让用户主动召回知识、把孤立 entry 连成图
 
-- 状态: 草稿
+- 状态: 已批准（auto-mode approval；见 `docs/approvals/F006-spec-approval.md`）
 - 主题: 给 `garage` CLI 增加 3 个新子命令：`garage recommend <query>`（主动召回）、`garage knowledge link --from --to`（维护知识图边）、`garage knowledge graph --id`（1 跳邻居视图）；让 `manifesto.md` 承诺的"记得你上个月的架构决策"在产品层从被动 push 升级为主动 pull，并把 `KnowledgeEntry.related_decisions` / `related_tasks` 这两个 F001 起就存在但从未被使用的 schema 字段，第一次接通到用户面。
 - 日期: 2026-04-19
 - 关联:
