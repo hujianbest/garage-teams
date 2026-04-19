@@ -290,6 +290,55 @@ def test_entry_to_front_matter_conversion(knowledge_store, sample_decision):
     assert fm["source_session"] == "session-123"
 
 
+def test_extra_front_matter_keys_round_trip(knowledge_store, sample_decision):
+    """Extra keys on entry.front_matter must survive store -> retrieve -> store cycle.
+
+    F004 § 11.2.1 relies on this: KnowledgePublisher writes ``supersedes``
+    (and other evolution-semantic keys) into ``entry.front_matter`` outside
+    the dataclass field set. Before F004, ``_entry_to_front_matter`` only
+    wrote 14 reserved keys, silently dropping these extras. The fix merges
+    extras after rebuilding reserved keys from the dataclass.
+    """
+    sample_decision.front_matter["supersedes"] = ["k-old-1", "k-old-2"]
+    sample_decision.front_matter["custom_evolution"] = "v1.1-trial"
+    knowledge_store.store(sample_decision)
+
+    retrieved = knowledge_store.retrieve(KnowledgeType.DECISION, sample_decision.id)
+    assert retrieved is not None
+    assert retrieved.front_matter.get("supersedes") == ["k-old-1", "k-old-2"]
+    assert retrieved.front_matter.get("custom_evolution") == "v1.1-trial"
+
+    # Re-store after mutating an extra key; round trip again to confirm the
+    # extras are not silently dropped on subsequent writes either.
+    retrieved.front_matter["supersedes"] = ["k-old-1", "k-old-2", "k-new-3"]
+    knowledge_store.store(retrieved)
+    re_retrieved = knowledge_store.retrieve(KnowledgeType.DECISION, sample_decision.id)
+    assert re_retrieved is not None
+    assert re_retrieved.front_matter.get("supersedes") == [
+        "k-old-1",
+        "k-old-2",
+        "k-new-3",
+    ]
+
+
+def test_extra_front_matter_keys_do_not_overwrite_dataclass_keys(
+    knowledge_store, sample_decision
+):
+    """Reserved (dataclass-mapped) keys must always win over entry.front_matter.
+
+    Otherwise a caller stuffing ``front_matter['id']='X'`` could desync the
+    serialized id from the actual entry.id; F004 _entry_to_front_matter
+    asserts the reserved set wins.
+    """
+    sample_decision.front_matter["id"] = "front-matter-overrides-shouldnt-win"
+    sample_decision.front_matter["version"] = 999
+    knowledge_store.store(sample_decision)
+    retrieved = knowledge_store.retrieve(KnowledgeType.DECISION, sample_decision.id)
+    assert retrieved is not None
+    assert retrieved.id == sample_decision.id  # not "front-matter-overrides-shouldnt-win"
+    assert retrieved.version == sample_decision.version  # not 999
+
+
 def test_front_matter_to_entry_conversion(knowledge_store):
     """Test internal front matter to entry conversion."""
     fm = {

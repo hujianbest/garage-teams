@@ -289,6 +289,73 @@ platform ← (types, storage) — 独立于 runtime
 
 ---
 
+## Publisher 重复发布与 ID 生成规则（F004 v1.1）
+
+`KnowledgePublisher` 在 v1.1 引入了 `PublicationIdentityGenerator` helper class，把"发布身份生成"职责从 `KnowledgeStore` 解耦出来。这让同一 candidate 被反复 `accept` / `edit_accept` 时的行为可预测、可冷读。
+
+### 生成规则
+
+`PublicationIdentityGenerator` 暴露两个**纯函数**方法，调用同 input 任意次返回同 output（NFR-401 决定性）：
+
+| 方法 | 输入 | 输出 |
+|------|------|------|
+| `derive_knowledge_id(candidate_id, knowledge_type)` | candidate id + knowledge 类型 | v1.1 默认实现 = 直接返回 `candidate_id`（与 F003 v1 已发布数据完全兼容，无迁移） |
+| `derive_experience_id(candidate_id)` | candidate id | v1.1 默认实现 = 直接返回 `candidate_id` |
+
+如果未来 cycle 想切换到 namespaced id 或 hash 后缀，**只改 `derive_*` 实现**即可；调用方（CLI、orchestrator）签名不变。
+
+### 重复发布走 update 路径
+
+`KnowledgePublisher.publish_candidate` 在 store 前先调 `KnowledgeStore.retrieve(type, id)`：
+
+- 若不存在 → `KnowledgeStore.store(entry)`（version=1）
+- 若存在 → carry-over `related_decisions` 与 `PRESERVED_FRONT_MATTER_KEYS`（含 `supersedes`）→ `KnowledgeStore.update(entry)`（内部 `version+=1`）
+
+experience 路径同理：`ExperienceIndex.retrieve(record_id)` → 不存在 store / 存在 update。
+
+### 同名 candidate 不会触发 self-conflict
+
+`ConflictDetector.detect(title, tags)` 会按 title 和 tags 反查 knowledge store，这意味着同 candidate 第二次发布时它自己就会被识别为 "similar entry"。publisher 在判定 `if similar_entries` 之前**剔除**等于 `derive_knowledge_id(candidate_id, type)` 的元素，让 self-conflict 不再要求 `--strategy`。
+
+参见：`docs/features/F004-...md` FR-401、`docs/designs/2026-04-19-garage-memory-v1-1-design.md` § 11.1 / § 11.2 / § 11.2.1。
+
+---
+
+## Session memory-extraction-error.json schema（F004 v1.1）
+
+`SessionManager.archive_session(...)` 在归档完成后会以 best-effort 调用 memory extraction orchestrator。F004 之前，这条触发链路任何点失败只走 `logger.warning(...)`，没有文件级证据；F004 v1.1 在每个 phase 失败时持久化一份 latest-error JSON 到 `sessions/archived/<session_id>/memory-extraction-error.json`。
+
+### Schema (v1)
+
+```json
+{
+  "schema_version": "1",
+  "session_id": "<session id string>",
+  "phase": "orchestrator_init" | "enablement_check" | "extraction",
+  "error_type": "<Exception class name>",
+  "error_message": "<str(exc)>",
+  "triggered_at": "<ISO 8601 timestamp>"
+}
+```
+
+### 字段约束
+
+- `phase` 是封闭枚举，仅以下三值：
+  - `orchestrator_init`：`MemoryExtractionOrchestrator(...)` 实例化抛错
+  - `enablement_check`：`is_extraction_enabled()` 抛错
+  - `extraction`：`extract_for_archived_session(...)` 抛错（orchestrator 内部 batch-level 错误仍由 `evaluation_summary=extraction_failed` batch 文件承担，不在此重复写）
+- 同一 session 二次失败覆盖前次（latest-error 语义；archive-time 触发对每个 session 只发生一次）
+- 文件不存在 = 提取链路成功 或 `extraction_enabled=false`
+- 旧版本（F003 之前）归档目录无该文件可正常读取（向后兼容）
+
+### 与 logger.warning 的关系
+
+文件层 + stderr `logger.warning(...)` 是**双层防护**：操作员 tail 日志仍能看到错误；自动化 reader 可以直接读 JSON。两层不重复信息（log 含 phase + exc，文件含完整 schema）。
+
+参见：`docs/features/F004-...md` FR-404、`docs/designs/2026-04-19-garage-memory-v1-1-design.md` § 10.4 / § 11.3 / § 11.4。
+
+---
+
 ## 关键设计决策
 
 | 决策 | 选择 | 理由 |

@@ -337,6 +337,239 @@ def test_archive_session_skips_memory_when_extraction_disabled(
         assert list(batches_dir.glob("*.json")) == []
 
 
+class TestF004T4ExtractionErrorPersistence:
+    """F004 T4: SessionManager._trigger_memory_extraction_safely 3-phase persistence
+    (FR-404, design § 10.4 + § 11.3 + § 11.4 + ADR-404)."""
+
+    @staticmethod
+    def _enable_extraction(tmp_path: Path) -> None:
+        platform_config = tmp_path / "config" / "platform.json"
+        platform_config.parent.mkdir(parents=True, exist_ok=True)
+        platform_config.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "memory": {
+                        "extraction_enabled": True,
+                        "recommendation_enabled": False,
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _disable_extraction(tmp_path: Path) -> None:
+        platform_config = tmp_path / "config" / "platform.json"
+        platform_config.parent.mkdir(parents=True, exist_ok=True)
+        platform_config.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "memory": {
+                        "extraction_enabled": False,
+                        "recommendation_enabled": False,
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _seed_active_session_with_metadata(
+        tmp_path: Path, session_id: str
+    ) -> None:
+        active_session_file = (
+            tmp_path / "sessions" / "active" / session_id / "session.json"
+        )
+        data = json.loads(active_session_file.read_text(encoding="utf-8"))
+        data["context"]["metadata"] = {
+            "problem_domain": "memory_pipeline",
+            "tags": ["workspace-first"],
+        }
+        data["artifacts"] = [
+            {
+                "path": "docs/designs/2026-04-18-garage-memory-auto-extraction-design.md",
+                "status": "approved",
+            }
+        ]
+        active_session_file.write_text(json.dumps(data), encoding="utf-8")
+
+    @staticmethod
+    def _read_error_file(tmp_path: Path, session_id: str) -> dict:
+        error_path = (
+            tmp_path
+            / "sessions"
+            / "archived"
+            / session_id
+            / "memory-extraction-error.json"
+        )
+        assert error_path.exists(), (
+            f"expected memory-extraction-error.json at {error_path}; not found"
+        )
+        return json.loads(error_path.read_text(encoding="utf-8"))
+
+    def test_archive_session_persists_extraction_error_orchestrator_init(
+        self,
+        session_manager: SessionManager,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """phase=orchestrator_init failure must still archive session and persist error file."""
+        metadata = session_manager.create_session("test-pack", "Init-fail topic")
+        session_id = metadata.session_id
+        self._enable_extraction(tmp_path)
+        self._seed_active_session_with_metadata(tmp_path, session_id)
+
+        original_init = (
+            "garage_os.runtime.session_manager.MemoryExtractionOrchestrator.__init__"
+        )
+
+        def _boom_init(self, *args, **kwargs):
+            raise RuntimeError("orchestrator init exploded")
+
+        monkeypatch.setattr(original_init, _boom_init)
+
+        result = session_manager.archive_session(session_id)
+        assert result is True
+        err = self._read_error_file(tmp_path, session_id)
+        assert err["phase"] == "orchestrator_init"
+        assert err["error_type"] == "RuntimeError"
+        assert "orchestrator init exploded" in err["error_message"]
+        assert err["session_id"] == session_id
+
+    def test_archive_session_persists_extraction_error_enablement_check(
+        self,
+        session_manager: SessionManager,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """phase=enablement_check failure must persist error file."""
+        metadata = session_manager.create_session("test-pack", "Enable-fail topic")
+        session_id = metadata.session_id
+        self._enable_extraction(tmp_path)
+        self._seed_active_session_with_metadata(tmp_path, session_id)
+
+        def _boom_enabled(self):
+            raise RuntimeError("enablement check exploded")
+
+        monkeypatch.setattr(
+            "garage_os.runtime.session_manager.MemoryExtractionOrchestrator.is_extraction_enabled",
+            _boom_enabled,
+        )
+
+        result = session_manager.archive_session(session_id)
+        assert result is True
+        err = self._read_error_file(tmp_path, session_id)
+        assert err["phase"] == "enablement_check"
+        assert err["error_type"] == "RuntimeError"
+        assert "enablement check exploded" in err["error_message"]
+
+    def test_archive_session_persists_extraction_error_extraction(
+        self,
+        session_manager: SessionManager,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """phase=extraction failure must persist error file (still archives)."""
+        metadata = session_manager.create_session("test-pack", "Extract-fail topic")
+        session_id = metadata.session_id
+        self._enable_extraction(tmp_path)
+        self._seed_active_session_with_metadata(tmp_path, session_id)
+
+        def _boom(*args, **kwargs):
+            raise RuntimeError("extraction body exploded")
+
+        monkeypatch.setattr(
+            "garage_os.runtime.session_manager.MemoryExtractionOrchestrator.extract_for_archived_session",
+            _boom,
+        )
+
+        result = session_manager.archive_session(session_id)
+        assert result is True
+        err = self._read_error_file(tmp_path, session_id)
+        assert err["phase"] == "extraction"
+        assert err["error_type"] == "RuntimeError"
+        assert "extraction body exploded" in err["error_message"]
+
+    def test_archive_session_no_error_file_when_extraction_succeeds(
+        self,
+        session_manager: SessionManager,
+        tmp_path: Path,
+    ) -> None:
+        """Successful extraction must not leave a memory-extraction-error.json file."""
+        metadata = session_manager.create_session("test-pack", "Happy topic")
+        session_id = metadata.session_id
+        self._enable_extraction(tmp_path)
+        self._seed_active_session_with_metadata(tmp_path, session_id)
+
+        result = session_manager.archive_session(session_id)
+        assert result is True
+        err_path = (
+            tmp_path
+            / "sessions"
+            / "archived"
+            / session_id
+            / "memory-extraction-error.json"
+        )
+        assert not err_path.exists()
+
+    def test_archive_session_no_error_file_when_extraction_disabled(
+        self,
+        session_manager: SessionManager,
+        tmp_path: Path,
+    ) -> None:
+        """Extraction disabled must not leave a memory-extraction-error.json file."""
+        metadata = session_manager.create_session("test-pack", "Disabled-no-error topic")
+        session_id = metadata.session_id
+        self._disable_extraction(tmp_path)
+        self._seed_active_session_with_metadata(tmp_path, session_id)
+
+        result = session_manager.archive_session(session_id)
+        assert result is True
+        err_path = (
+            tmp_path
+            / "sessions"
+            / "archived"
+            / session_id
+            / "memory-extraction-error.json"
+        )
+        assert not err_path.exists()
+
+    def test_memory_extraction_error_json_has_full_schema(
+        self,
+        session_manager: SessionManager,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """memory-extraction-error.json must contain all 6 declared schema fields (§ 11.4)."""
+        metadata = session_manager.create_session("test-pack", "Schema topic")
+        session_id = metadata.session_id
+        self._enable_extraction(tmp_path)
+        self._seed_active_session_with_metadata(tmp_path, session_id)
+
+        def _boom(*args, **kwargs):
+            raise ValueError("schema-test bang")
+
+        monkeypatch.setattr(
+            "garage_os.runtime.session_manager.MemoryExtractionOrchestrator.extract_for_archived_session",
+            _boom,
+        )
+
+        session_manager.archive_session(session_id)
+        err = self._read_error_file(tmp_path, session_id)
+        for field in (
+            "schema_version",
+            "session_id",
+            "phase",
+            "error_type",
+            "error_message",
+            "triggered_at",
+        ):
+            assert field in err, f"missing field '{field}' in {err}"
+        assert err["schema_version"] == "1"
+
+
 def test_archive_nonexistent(session_manager: SessionManager):
     """Test archiving a nonexistent session returns False."""
     result = session_manager.archive_session("session-doesnotexist-001")

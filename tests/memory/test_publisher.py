@@ -7,6 +7,7 @@ import pytest
 from garage_os.knowledge.experience_index import ExperienceIndex
 from garage_os.knowledge.knowledge_store import KnowledgeStore
 from garage_os.storage.file_storage import FileStorage
+from garage_os.types import KnowledgeType
 
 
 @pytest.fixture
@@ -436,3 +437,386 @@ class TestKnowledgePublisher:
         assert reject_result["published_id"] is None
         assert defer_result["published_id"] is None
         assert knowledge_store.list_entries() == []
+
+
+class TestPublicationIdentityGenerator:
+    """F004 T1: PublicationIdentityGenerator deterministic ID derivation (NFR-401, ADR-401)."""
+
+    def test_publication_identity_generator_is_deterministic(self) -> None:
+        """Same inputs must yield same outputs across N calls (NFR-401)."""
+        from garage_os.memory.publisher import PublicationIdentityGenerator
+
+        generator = PublicationIdentityGenerator()
+        knowledge_results = {
+            generator.derive_knowledge_id("candidate-001", KnowledgeType.DECISION)
+            for _ in range(10)
+        }
+        experience_results = {
+            generator.derive_experience_id("candidate-002") for _ in range(10)
+        }
+        assert len(knowledge_results) == 1
+        assert len(experience_results) == 1
+
+    def test_publication_identity_default_returns_candidate_id(self) -> None:
+        """Default implementation must return candidate_id verbatim (ADR-401)."""
+        from garage_os.memory.publisher import PublicationIdentityGenerator
+
+        generator = PublicationIdentityGenerator()
+        assert (
+            generator.derive_knowledge_id("candidate-001", KnowledgeType.DECISION)
+            == "candidate-001"
+        )
+        assert (
+            generator.derive_knowledge_id("candidate-001", KnowledgeType.PATTERN)
+            == "candidate-001"
+        )
+        assert (
+            generator.derive_knowledge_id("candidate-001", KnowledgeType.SOLUTION)
+            == "candidate-001"
+        )
+        assert generator.derive_experience_id("candidate-002") == "candidate-002"
+
+
+class TestPublishCandidateEntryValidation:
+    """F004 T1: publish_candidate entry-level conflict_strategy validation (FR-402, ADR-402)."""
+
+    def test_publish_candidate_rejects_garbage_strategy_at_entry(
+        self,
+        publisher,
+        candidate_store,
+        decision_candidate,
+    ) -> None:
+        """Garbage strategy must raise at entry, even when no conflict exists (FR-402 verify 1)."""
+        candidate_store.store_candidate(decision_candidate)
+
+        with pytest.raises(ValueError) as excinfo:
+            publisher.publish_candidate(
+                candidate_id="candidate-001",
+                action="accept",
+                confirmation_ref=".garage/memory/confirmations/batch-001.json",
+                conflict_strategy="garbageX",
+            )
+        assert "Allowed: ['abandon', 'coexist', 'supersede']" in str(excinfo.value)
+
+    def test_publish_candidate_accepts_valid_strategy_without_conflict(
+        self,
+        publisher,
+        candidate_store,
+        decision_candidate,
+        knowledge_store,
+    ) -> None:
+        """Valid strategy without conflict must publish normally (FR-402 verify 2)."""
+        candidate_store.store_candidate(decision_candidate)
+
+        result = publisher.publish_candidate(
+            candidate_id="candidate-001",
+            action="accept",
+            confirmation_ref=".garage/memory/confirmations/batch-001.json",
+            conflict_strategy="coexist",
+        )
+        assert result["published_id"] is not None
+        assert knowledge_store.list_entries(), "expected entry to be published"
+
+    def test_publish_candidate_none_strategy_passes_when_no_conflict(
+        self,
+        publisher,
+        candidate_store,
+        decision_candidate,
+        knowledge_store,
+    ) -> None:
+        """None strategy must remain backward compatible when no conflict exists (FR-402 verify 3)."""
+        candidate_store.store_candidate(decision_candidate)
+
+        result = publisher.publish_candidate(
+            candidate_id="candidate-001",
+            action="accept",
+            confirmation_ref=".garage/memory/confirmations/batch-001.json",
+            conflict_strategy=None,
+        )
+        assert result["published_id"] is not None
+        assert knowledge_store.list_entries()
+
+
+class TestPublishCandidateRepublication:
+    """F004 T2: store-or-update + supersede chain carry-over + self-conflict short-circuit
+    (FR-401, FR-405, design §10.1, §10.1.1, §11.2, §11.2.1)."""
+
+    def test_repeated_accept_uses_update_increments_version(
+        self,
+        publisher,
+        candidate_store,
+        decision_candidate,
+        knowledge_store,
+    ) -> None:
+        """Same candidate accepted twice must yield one entry with version=2 (FR-401 verify 1)."""
+        candidate_store.store_candidate(decision_candidate)
+
+        first = publisher.publish_candidate(
+            candidate_id="candidate-001",
+            action="accept",
+            confirmation_ref=".garage/memory/confirmations/batch-001.json",
+        )
+        assert first["published_id"] == "candidate-001"
+        first_entry = knowledge_store.retrieve(KnowledgeType.DECISION, "candidate-001")
+        assert first_entry is not None
+        assert first_entry.version == 1
+
+        second = publisher.publish_candidate(
+            candidate_id="candidate-001",
+            action="edit_accept",
+            confirmation_ref=".garage/memory/confirmations/batch-002.json",
+            edited_fields={"title": "Updated", "content": "Updated body"},
+        )
+        assert second["published_id"] == "candidate-001"
+        all_entries = knowledge_store.list_entries(KnowledgeType.DECISION)
+        assert len(all_entries) == 1, "expected exactly one entry id after re-publication"
+        assert all_entries[0].id == "candidate-001"
+        assert all_entries[0].version == 2
+
+    def test_retrieve_after_repeated_accept_returns_latest_version(
+        self,
+        publisher,
+        candidate_store,
+        decision_candidate,
+        knowledge_store,
+    ) -> None:
+        """KnowledgeStore.retrieve must return the latest version after re-publication (FR-401 verify 2)."""
+        candidate_store.store_candidate(decision_candidate)
+
+        publisher.publish_candidate(
+            candidate_id="candidate-001",
+            action="accept",
+            confirmation_ref="cf-1",
+        )
+        publisher.publish_candidate(
+            candidate_id="candidate-001",
+            action="edit_accept",
+            confirmation_ref="cf-2",
+            edited_fields={"content": "Re-published content"},
+        )
+
+        latest = knowledge_store.retrieve(KnowledgeType.DECISION, "candidate-001")
+        assert latest is not None
+        assert latest.version == 2
+        assert latest.content == "Re-published content"
+
+    def test_repeated_publish_experience_summary_updates_index(
+        self,
+        publisher,
+        candidate_store,
+        experience_summary_candidate,
+        experience_index,
+    ) -> None:
+        """experience_summary candidate re-publication keeps a single record_id and writes
+        through ExperienceIndex.update path so updated_at progresses (FR-401 verify 3)."""
+        candidate_store.store_candidate(experience_summary_candidate)
+
+        first = publisher.publish_candidate(
+            candidate_id="candidate-002",
+            action="accept",
+            confirmation_ref="cf-exp-1",
+        )
+        assert first["published_id"] == "candidate-002"
+        first_record = experience_index.retrieve("candidate-002")
+        assert first_record is not None
+        first_updated_at = first_record.updated_at
+
+        second = publisher.publish_candidate(
+            candidate_id="candidate-002",
+            action="edit_accept",
+            confirmation_ref="cf-exp-2",
+            edited_fields={"summary": "Updated experience summary"},
+        )
+        assert second["published_id"] == "candidate-002"
+
+        records = experience_index.list_records()
+        assert len(records) == 1, "expected exactly one experience record after re-publication"
+        assert records[0].record_id == "candidate-002"
+        # After publish_candidate goes through ExperienceIndex.update path,
+        # updated_at must be at least as recent as the first publication.
+        assert records[0].updated_at >= first_updated_at
+
+    def test_repeated_publish_preserves_supersedes_chain_from_v1(
+        self,
+        publisher,
+        candidate_store,
+        decision_candidate,
+        knowledge_store,
+    ) -> None:
+        """v1 entry's front_matter['supersedes'] must survive v1.1 re-publication (FR-405 + §11.2.1)."""
+        candidate_store.store_candidate(decision_candidate)
+
+        v1_entry = publisher._to_knowledge_entry(  # noqa: SLF001 - test scaffolding
+            decision_candidate,
+            confirmation_ref="v1-cf",
+        )
+        v1_entry.front_matter["supersedes"] = ["k-X", "k-Y"]
+        knowledge_store.store(v1_entry)
+
+        publisher.publish_candidate(
+            candidate_id="candidate-001",
+            action="edit_accept",
+            confirmation_ref="cf-v1-1",
+            edited_fields={"content": "v1.1 update"},
+        )
+
+        republished = knowledge_store.retrieve(KnowledgeType.DECISION, "candidate-001")
+        assert republished is not None
+        assert republished.version == 2
+        carried = list(republished.front_matter.get("supersedes", []))
+        for required in ("k-X", "k-Y"):
+            assert required in carried, (
+                f"expected supersede '{required}' to survive v1.1 re-publication; got {carried}"
+            )
+
+    def test_repeated_publish_preserves_related_decisions_from_v1(
+        self,
+        publisher,
+        candidate_store,
+        decision_candidate,
+        knowledge_store,
+    ) -> None:
+        """v1 entry's related_decisions must survive v1.1 re-publication (FR-405 + §11.2.1)."""
+        candidate_store.store_candidate(decision_candidate)
+
+        v1_entry = publisher._to_knowledge_entry(  # noqa: SLF001
+            decision_candidate,
+            confirmation_ref="v1-cf",
+        )
+        v1_entry.related_decisions = ["k-Z"]
+        v1_entry.front_matter["related_decisions"] = ["k-Z"]
+        knowledge_store.store(v1_entry)
+
+        publisher.publish_candidate(
+            candidate_id="candidate-001",
+            action="edit_accept",
+            confirmation_ref="cf-v1-1",
+            edited_fields={"content": "v1.1 update"},
+        )
+
+        republished = knowledge_store.retrieve(KnowledgeType.DECISION, "candidate-001")
+        assert republished is not None
+        assert "k-Z" in republished.related_decisions
+
+    def test_repeated_publish_merges_v1_supersedes_with_new_supersede_target(
+        self,
+        publisher,
+        candidate_store,
+        decision_candidate,
+        knowledge_store,
+    ) -> None:
+        """v1 supersede chain + v1.1 explicit strategy=supersede must merge, not replace.
+
+        Locks the §11.2.1 _merge_unique semantics under the most adversarial
+        path: v1 already supersede-d ['k-X', 'k-Y']; v1.1 re-publish hits a
+        new conflict against 'existing-zzz' with strategy=supersede; the
+        result must contain ['k-X', 'k-Y', 'existing-zzz'] (any order, no
+        loss).
+        """
+        candidate_store.store_candidate(decision_candidate)
+
+        # Seed v1 entry whose front_matter['supersedes'] already carries a
+        # historical supersede chain. Use distinct title/tags so it does
+        # not surface as a similar entry on its own (only the conflict
+        # target below should match by title/tags).
+        v1_entry = publisher._to_knowledge_entry(  # noqa: SLF001
+            decision_candidate,
+            confirmation_ref="v1-cf",
+        )
+        v1_entry.front_matter["supersedes"] = ["k-X", "k-Y"]
+        knowledge_store.store(v1_entry)
+
+        # Plant a real conflict target (different id, same title+tags).
+        from datetime import datetime
+        from garage_os.types import KnowledgeEntry
+
+        other_target = KnowledgeEntry(
+            id="existing-zzz",
+            type=KnowledgeType.DECISION,
+            topic=decision_candidate["title"],
+            date=datetime.now(),
+            tags=list(decision_candidate["tags"]),
+            content="other entry forcing real conflict",
+        )
+        knowledge_store.store(other_target)
+
+        publisher.publish_candidate(
+            candidate_id="candidate-001",
+            action="edit_accept",
+            confirmation_ref="cf-v1-1",
+            edited_fields={"content": "v1.1 carry-merged"},
+            conflict_strategy="supersede",
+        )
+
+        republished = knowledge_store.retrieve(KnowledgeType.DECISION, "candidate-001")
+        assert republished is not None
+        carried = list(republished.front_matter.get("supersedes", []))
+        for required in ("k-X", "k-Y", "existing-zzz"):
+            assert required in carried, (
+                f"expected merged supersede '{required}'; got {carried}"
+            )
+
+    def test_repeated_publish_experience_summary_preserves_created_at(
+        self,
+        publisher,
+        candidate_store,
+        experience_summary_candidate,
+        experience_index,
+    ) -> None:
+        """Re-publication must preserve created_at while bumping updated_at
+        (publisher.py § F004 path A explicit carry-over)."""
+        candidate_store.store_candidate(experience_summary_candidate)
+
+        publisher.publish_candidate(
+            candidate_id="candidate-002",
+            action="accept",
+            confirmation_ref="cf-1",
+        )
+        first = experience_index.retrieve("candidate-002")
+        assert first is not None
+        original_created_at = first.created_at
+
+        publisher.publish_candidate(
+            candidate_id="candidate-002",
+            action="edit_accept",
+            confirmation_ref="cf-2",
+            edited_fields={"summary": "Updated"},
+        )
+        latest = experience_index.retrieve("candidate-002")
+        assert latest is not None
+        assert latest.created_at == original_created_at
+        assert latest.updated_at >= original_created_at
+
+    def test_repeated_accept_short_circuits_self_conflict(
+        self,
+        publisher,
+        candidate_store,
+        decision_candidate,
+        knowledge_store,
+    ) -> None:
+        """Re-accepting same candidate must not require --strategy (design §10.1.1).
+
+        ConflictDetector matches the v1 entry by title/tags, but publisher
+        must remove similar_entries elements equal to the new id before
+        requiring conflict_strategy.
+        """
+        candidate_store.store_candidate(decision_candidate)
+
+        publisher.publish_candidate(
+            candidate_id="candidate-001",
+            action="accept",
+            confirmation_ref="cf-1",
+        )
+
+        # Re-accept must not raise even without explicit conflict_strategy.
+        publisher.publish_candidate(
+            candidate_id="candidate-001",
+            action="edit_accept",
+            confirmation_ref="cf-2",
+            edited_fields={"content": "Self-conflict short-circuit body"},
+        )
+
+        latest = knowledge_store.retrieve(KnowledgeType.DECISION, "candidate-001")
+        assert latest is not None
+        assert latest.version == 2
+        assert latest.content == "Self-conflict short-circuit body"
