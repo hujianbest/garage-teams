@@ -17,13 +17,13 @@
 
 ## Current Workflow State
 
-- Current Stage: `hf-tasks`
+- Current Stage: `hf-test-driven-dev`
 - Workflow Profile: `standard`
 - Execution Mode: `auto`
 - Workspace Isolation: `in-place`
-- Current Active Task: 起草 F006 任务计划
-- Pending Reviews And Gates: tasks-review、test-review、code-review、traceability-review、regression-gate、completion-gate
-- Next Action Or Recommended Skill: `hf-tasks-review`
+- Current Active Task: T1 — `_resolve_knowledge_entry_unique` + `_recommend_experience` helpers
+- Pending Reviews And Gates: test-review、code-review、traceability-review、regression-gate、completion-gate
+- Next Action Or Recommended Skill: `hf-test-driven-dev`
 - Relevant Files:
   - `docs/features/F006-garage-recall-and-knowledge-graph.md`（待创建）
   - F003 `src/garage_os/memory/recommendation_service.py`（基础设施）

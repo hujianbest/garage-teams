@@ -1,6 +1,6 @@
 # T006: Garage Recall & Knowledge Graph 任务计划
 
-- 状态: 草稿
+- 状态: 已批准（auto-mode approval；见 `docs/approvals/F006-tasks-approval.md`）
 - 主题: F006 — Garage Recall & Knowledge Graph（主动召回 + 知识图最小可用形态）
 - 关联规格: `docs/features/F006-garage-recall-and-knowledge-graph.md`
 - 关联设计: `docs/designs/2026-04-19-garage-recall-and-knowledge-graph-design.md`
