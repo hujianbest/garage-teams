@@ -138,3 +138,41 @@ def test_readmes_list_f006_cli_subcommands() -> None:
             assert token in content, (
                 f"expected {readme.name} to list CLI command '{token}'; not found"
             )
+
+
+# F007 / FR-710: user guide must document the Pack & Host Installer.
+
+def test_user_guide_documents_pack_and_host_installer() -> None:
+    """User guide must contain a 'Pack & Host Installer' section (FR-710)."""
+    content = USER_GUIDE.read_text(encoding="utf-8")
+    for token in (
+        "Pack & Host Installer",
+        "garage init --hosts",
+        ".garage/config/host-installer.json",
+        "claude",
+        "opencode",
+        "cursor",
+        "--force",
+        "Skipped",
+        "locally modified",
+    ):
+        assert token in content, (
+            f"expected user guide to mention '{token}'; not found (F007 FR-710)"
+        )
+
+
+def test_packs_readme_documents_directory_contract() -> None:
+    """packs/README.md must explain the directory contract (FR-701 + design D7 §11.3)."""
+    packs_readme = REPO_ROOT / "packs" / "README.md"
+    assert packs_readme.is_file(), "packs/README.md missing (F007 FR-701)"
+    content = packs_readme.read_text(encoding="utf-8")
+    for token in (
+        "pack.json",
+        "schema_version",
+        "skills",
+        "agents",
+        "garage init",
+    ):
+        assert token in content, (
+            f"expected packs/README.md to mention '{token}'; not found"
+        )

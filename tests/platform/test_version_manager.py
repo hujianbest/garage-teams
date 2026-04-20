@@ -319,3 +319,58 @@ class TestHelpers:
             data, result = vm.load_with_compatibility(platform_json)
             assert result.status == CompatibilityStatus.COMPATIBLE
             assert data["platform_name"] == "Garage Agent OS"
+
+
+# ---------------------------------------------------------------------------
+# F007 CON-703: host-installer.json schema_version is recognized
+# ---------------------------------------------------------------------------
+
+
+class TestHostInstallerSchemaRegistered:
+    """F007 CON-703 + design D7 §11.2:
+
+    The install manifest at ``.garage/config/host-installer.json`` carries
+    ``schema_version=1`` and must be recognized by VersionManager so future
+    upgrades have a planned migration path.
+
+    Implementation note: VersionManager is path-based, not name-based; so
+    "registration" here means: a manifest written by
+    ``garage_os.adapter.installer.manifest.write_manifest`` produces a file
+    that VersionManager can detect & classify as COMPATIBLE.
+    """
+
+    def test_host_installer_schema_recognized(self, tmp_path: Path, vm: VersionManager) -> None:
+        from garage_os.adapter.installer.manifest import (
+            MANIFEST_SCHEMA_VERSION,
+            Manifest,
+            write_manifest,
+        )
+
+        garage_dir = tmp_path / ".garage"
+        manifest = Manifest(
+            schema_version=MANIFEST_SCHEMA_VERSION,
+            installed_hosts=["claude"],
+            installed_packs=["garage"],
+            installed_at="2026-04-19T12:00:00",
+            files=[],
+        )
+        write_manifest(garage_dir, manifest)
+
+        manifest_path = garage_dir / "config" / "host-installer.json"
+        assert manifest_path.is_file()
+
+        # detect_version must read schema_version=1 successfully.
+        version = vm.detect_version(manifest_path)
+        assert version.major == MANIFEST_SCHEMA_VERSION
+
+        # check_compatibility must classify as COMPATIBLE.
+        result = vm.check_compatibility(version)
+        assert result.status == CompatibilityStatus.COMPATIBLE
+
+    def test_manifest_constant_pinned_to_one(self) -> None:
+        # Sentinel: bumping MANIFEST_SCHEMA_VERSION must be a deliberate act.
+        # If this fails, also update VersionManager.SUPPORTED_VERSIONS and
+        # write a migration in _MIGRATION_REGISTRY (per CON-703).
+        from garage_os.adapter.installer.manifest import MANIFEST_SCHEMA_VERSION
+
+        assert MANIFEST_SCHEMA_VERSION == 1

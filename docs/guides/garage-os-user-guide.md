@@ -541,8 +541,143 @@ Incoming edges:
 
 ---
 
+## Pack & Host Installer
+
+Garage 自带的 skills 与 agents 沉淀在仓库的 `packs/<pack-id>/` 目录下（spec F007）。`garage init` 提供 host installer 把它们物化到下游项目里 Claude Code / OpenCode / Cursor 三家宿主原生识别的目录。
+
+> **重要**：下面提到的 `.claude/skills/...`、`.opencode/skills/...`、`.cursor/skills/...` 等路径**都是各宿主的原生约定**（OpenSpec `docs/supported-tools.md` 与各家官方文档已记录），Garage 只是把内容写到那里，没有自创任何路径。
+
+### 架构
+
+```
+源（Garage 仓库, 宿主无关）：
+    packs/<pack-id>/skills/<skill-name>/SKILL.md
+    packs/<pack-id>/agents/<agent-name>.md
+    packs/<pack-id>/pack.json
+    packs/<pack-id>/README.md
+
+动作（在用户项目目录执行 garage init）：
+    garage init --hosts claude,cursor,opencode
+    ├── .claude/skills/...    .claude/agents/...        (Claude Code)
+    ├── .opencode/skills/...  .opencode/agent/...       (OpenCode)
+    ├── .cursor/skills/...                              (Cursor — 仅 skill)
+    └── .garage/config/host-installer.json              (安装清单)
+```
+
+### 用法 1：交互式（默认）
+
+在自己项目根目录运行：
+
+```bash
+cd ~/projects/my-app
+garage init
+```
+
+不带 `--hosts` 也不带 `--yes` 时，CLI 在 TTY 下会问你每个 first-class 宿主：
+
+```
+Initialized Garage OS in /home/me/projects/my-app/.garage
+Install Garage packs into claude? [y/N, or 'a' = yes-to-all-remaining, 'q' = stop-here]: y
+Install Garage packs into cursor? [y/N, ...]:
+Install Garage packs into opencode? [y/N, ...]: y
+Installed 1 skills, 1 agents into hosts: claude, opencode
+```
+
+| 输入 | 含义 |
+|---|---|
+| `y` | 安装到当前宿主 |
+| 回车 / `n` / `N` | 跳过当前宿主，继续问下一个 |
+| `a` | 安装到当前宿主 + 之后所有宿主 |
+| `q` | 停止询问，只用已选择的宿主 |
+
+**non-TTY 退化**（CI / 脚本场景）：当 `stdin` 不是 TTY 且没传 `--hosts`、没传 `--yes`，CLI 会向 stderr 打印 `non-interactive shell detected; install no hosts (pass --hosts <list> to override)` 然后正常退出（`.garage/` 仍创建）。
+
+### 用法 2：非交互（CI / 脚本）
+
+```bash
+# 装到三个 first-class 宿主
+garage init --hosts all
+
+# 装到指定宿主
+garage init --hosts claude,cursor
+
+# 显式不装任何宿主（仅创建 .garage/，等同于 F002 行为）
+garage init --hosts none
+# 或
+garage init --yes
+```
+
+### 用法 3：再次运行（Extend Mode + 幂等）
+
+`garage init` 是幂等的。再次运行：
+
+- 已安装且**未被本地修改**的目标文件 → 重新写入相同内容（mtime 不变，详见 NFR-702）
+- 已安装但**用户编辑过**的目标文件 → 默认跳过，stderr 输出 `Skipped <path> (locally modified, pass --force to overwrite)`；只有 `--force` 才会覆盖
+- 新增宿主（如之前只装 claude，今天加 cursor）→ 既有宿主目录零变更，新增宿主追加；`installed_hosts` 累加
+
+```bash
+# 升级到 v2 packs 内容（强制覆盖本地修改）
+garage init --hosts all --force
+```
+
+### 安装清单：`.garage/config/host-installer.json`
+
+每次成功安装后写入；`schema_version=1`，受 `VersionManager` 管控（CON-703）。结构：
+
+```json
+{
+  "schema_version": 1,
+  "installed_hosts": ["claude", "cursor"],
+  "installed_packs": ["garage"],
+  "installed_at": "2026-04-19T18:04:19",
+  "files": [
+    {
+      "src": "packs/garage/skills/garage-hello/SKILL.md",
+      "dst": ".claude/skills/garage-hello/SKILL.md",
+      "host": "claude",
+      "pack_id": "garage",
+      "content_hash": "1f5e1270b1dfb046382695b541b9d34d4ef9ddc06b5db8644d696ac4a5272927"
+    }
+  ]
+}
+```
+
+任何后续 Agent 仅凭这个文件就能回答「本仓库装过哪些 host、哪些 pack、哪些文件来自 Garage」三个问题。
+
+### Pack 与宿主映射表
+
+| 宿主 ID | 宿主 | skill 路径 | agent 路径 | 来源依据 |
+|---|---|---|---|---|
+| `claude` | Claude Code | `.claude/skills/<id>/SKILL.md` | `.claude/agents/<id>.md` | OpenSpec `docs/supported-tools.md` claudeAdapter + Anthropic 官方 |
+| `opencode` | OpenCode | `.opencode/skills/<id>/SKILL.md` | `.opencode/agent/<id>.md`（注意 agent 单数） | OpenSpec `docs/supported-tools.md` opencodeAdapter |
+| `cursor` | Cursor | `.cursor/skills/<id>/SKILL.md` | （不支持，Cursor 当前无原生 agent surface） | OpenSpec `docs/supported-tools.md` cursorAdapter |
+
+### 已知风险
+
+- **Cursor 较旧版本可能不识别 `.cursor/skills/`**：本 cycle 选用 `.cursor/skills/` 是因为 OpenSpec 已验证可行、与 Anthropic SKILL.md 格式同构、不污染 always-loaded 的 `.cursor/rules/` context。如果你的 Cursor 版本不支持，请升级 Cursor 或临时改用其他宿主；后续可能新增 `.cursor/rules/` fallback（F007 § 5 deferred）。
+- **同名 skill 跨多个 pack 冲突**：本 cycle 内单一 `packs/garage/` 不会触发，但如果未来 F008 把 HF skills 搬到 `packs/coding/` 后又有 pack 复用同名 skill，`garage init` 会以退出码 2 + stderr 列出冲突。
+
+### 退出码
+
+| 退出码 | 含义 |
+|---|---|
+| 0 | 成功（含「无 packs，仅创建 .garage/」） |
+| 1 | 输入错误（unknown host）/ pack.json 非法 / SKILL.md 缺 front matter / OS 文件 IO 错误 |
+| 2 | 同名 skill 跨 pack 冲突（FR-704 验收 #4） |
+
+### 可发现性链
+
+新 Agent / 用户从仓库根开始读，按下列顺序 5 分钟内可掌握全部用法（FR-710 验收 #1）：
+
+1. `AGENTS.md` — 项目约定中心
+2. `packs/README.md` — `packs/` 目录契约
+3. `docs/guides/garage-os-user-guide.md` 本段（"Pack & Host Installer"）
+
+---
+
 ## 相关文档
 
 - [Garage OS 开发者指南](./garage-os-developer-guide.md) — 架构细节和扩展开发
 - [设计原则](../soul/design-principles.md) — Garage 的 5 条核心设计原则
 - [AGENTS.md](../../AGENTS.md) — 项目约定中心
+- [F007 spec](../features/F007-garage-packs-and-host-installer.md) — Pack & Host Installer 规格

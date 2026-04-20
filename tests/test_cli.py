@@ -2959,3 +2959,312 @@ class TestRecallAndGraphCrossCutting:
         assert rc == 0
         capsys.readouterr()
         assert elapsed < 1.5, f"recommend took {elapsed:.3f}s (>= 1.5s)"
+
+
+# ---------------------------------------------------------------------------
+# F007: garage init --hosts ... (host installer)
+# ---------------------------------------------------------------------------
+
+
+class TestInitWithHosts:
+    """F007 T4 — CLI integration for the host installer.
+
+    Backed by the real packs/garage/ pack shipped in T1 so these tests cover
+    the production code path end to end (no mocks of install_packs).
+    """
+
+    REPO_ROOT = Path(__file__).resolve().parents[1]
+    PACKS_ROOT = REPO_ROOT / "packs"
+
+    @staticmethod
+    def _link_packs(tmp_path: Path) -> None:
+        """Make the real packs/ available inside tmp_path via a symlink.
+
+        Avoids copying so tests stay fast while still exercising the same
+        on-disk layout that production uses.
+        """
+        link = tmp_path / "packs"
+        if link.exists() or link.is_symlink():
+            return
+        link.symlink_to(TestInitWithHosts.PACKS_ROOT)
+
+    def test_default_init_unchanged_when_no_hosts(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """CON-702: bare `garage init` with no flags must keep F002 behavior.
+
+        Specifically: stdout is the legacy 'Initialized Garage OS in <path>'
+        line, and no host directory is touched.
+        """
+        # No packs/ symlink → guarantee zero packs to install even if the
+        # interactive prompt accidentally yields hosts.
+        rc = main(["init", "--path", str(tmp_path), "--yes"])
+        assert rc == 0
+
+        captured = capsys.readouterr()
+        # The exact F002 marker must be present and unchanged.
+        assert f"Initialized Garage OS in {tmp_path}/.garage" in captured.out
+        # Nothing else relevant on stdout/stderr.
+        assert "Installed" not in captured.out
+
+        # No host directories created.
+        assert not (tmp_path / ".claude").exists()
+        assert not (tmp_path / ".cursor").exists()
+        assert not (tmp_path / ".opencode").exists()
+
+    def test_hosts_explicit_list(self, tmp_path: Path, capsys) -> None:
+        """`--hosts claude` end-to-end installs the garage pack and prints marker."""
+        self._link_packs(tmp_path)
+        rc = main(["init", "--path", str(tmp_path), "--hosts", "claude"])
+        assert rc == 0
+
+        # Skill physically present.
+        skill = tmp_path / ".claude/skills/garage-hello/SKILL.md"
+        assert skill.exists()
+        text = skill.read_text(encoding="utf-8")
+        assert "name: garage-hello" in text
+        assert "installed_by: garage" in text
+
+        # Stable stdout marker (use regex to avoid coupling to the exact
+        # number of skills/agents in packs/garage/, which T1 owns).
+        import re as _re
+        captured = capsys.readouterr()
+        assert _re.search(
+            r"Installed \d+ skills, \d+ agents into hosts: claude",
+            captured.out,
+        ), f"marker not found in stdout: {captured.out!r}"
+
+        # Manifest written.
+        manifest_path = tmp_path / ".garage" / "config" / "host-installer.json"
+        assert manifest_path.is_file()
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["installed_hosts"] == ["claude"]
+        assert manifest["installed_packs"] == ["garage"]
+
+    def test_hosts_all_installs_three_first_class(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        self._link_packs(tmp_path)
+        rc = main(["init", "--path", str(tmp_path), "--hosts", "all"])
+        assert rc == 0
+
+        assert (tmp_path / ".claude/skills/garage-hello/SKILL.md").exists()
+        assert (tmp_path / ".cursor/skills/garage-hello/SKILL.md").exists()
+        assert (tmp_path / ".opencode/skills/garage-hello/SKILL.md").exists()
+        # Cursor has no agent surface → no .cursor/agent[s]/ directory.
+        assert not (tmp_path / ".cursor/agents").exists()
+        assert not (tmp_path / ".cursor/agent").exists()
+
+        captured = capsys.readouterr()
+        assert "claude" in captured.out
+        assert "cursor" in captured.out
+        assert "opencode" in captured.out
+
+    def test_unknown_host_exit_1_but_garage_dir_created(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """FR-702 acceptance #4: unknown host fails 1, but .garage/ still created (CON-702)."""
+        self._link_packs(tmp_path)
+        rc = main(["init", "--path", str(tmp_path), "--hosts", "notarealtool"])
+        assert rc == 1
+
+        captured = capsys.readouterr()
+        assert "Unknown host: notarealtool" in captured.err
+        # CON-702: legacy structure still created even when host arg is bad.
+        assert (tmp_path / ".garage").is_dir()
+        assert (tmp_path / ".garage" / "README.md").is_file()
+
+    def test_yes_no_hosts_equivalent_to_none(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """`--yes` without `--hosts` skips both interaction and install (FR-702/703)."""
+        self._link_packs(tmp_path)
+        rc = main(["init", "--path", str(tmp_path), "--yes"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        # No "Installed N skills..." marker.
+        assert "Installed" not in captured.out
+        # No host directories.
+        assert not (tmp_path / ".claude").exists()
+
+    def test_hosts_none_explicit(self, tmp_path: Path, capsys) -> None:
+        self._link_packs(tmp_path)
+        rc = main(["init", "--path", str(tmp_path), "--hosts", "none"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Installed" not in captured.out
+        assert not (tmp_path / ".claude").exists()
+
+    def test_no_packs_dir_succeeds_with_marker(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """FR-704 acceptance #3: missing packs/ dir → exit 0, no host file written."""
+        # NB: we deliberately do NOT link packs into tmp_path.
+        rc = main(["init", "--path", str(tmp_path), "--hosts", "claude"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "No packs found" in captured.out
+        # An "Installed 0 skills, 0 agents..." marker still goes out per FR-709.
+        assert "Installed 0 skills, 0 agents" in captured.out
+        # No skill files created.
+        assert not (tmp_path / ".claude/skills/garage-hello/SKILL.md").exists()
+
+    def test_subprocess_smoke_three_hosts(self, tmp_path: Path) -> None:
+        """T4 自动化 smoke fallback: run garage CLI through subprocess for full end-to-end.
+
+        Covers the carry-forward F-5 from tasks-review (manual smoke replacement).
+        """
+        import subprocess
+        import sys as _sys
+
+        self._link_packs(tmp_path)
+        result = subprocess.run(
+            [
+                _sys.executable, "-m", "garage_os.cli",
+                "init", "--hosts", "all", "--path", str(tmp_path),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(self.REPO_ROOT),
+            timeout=30,
+        )
+        assert result.returncode == 0, (
+            f"stdout={result.stdout!r} stderr={result.stderr!r}"
+        )
+        assert (tmp_path / ".claude/skills/garage-hello/SKILL.md").exists()
+        assert (tmp_path / ".cursor/skills/garage-hello/SKILL.md").exists()
+        assert (tmp_path / ".opencode/skills/garage-hello/SKILL.md").exists()
+        # Counts are per-target-write (1 skill × 3 hosts; agents skip cursor),
+        # but use regex so this test stays robust if packs/garage/ grows new
+        # skills/agents in the future.
+        import re as _re
+        assert _re.search(
+            r"Installed \d+ skills, \d+ agents into hosts:",
+            result.stdout,
+        ), f"marker not found in stdout: {result.stdout!r}"
+
+
+class TestInitErrorPaths:
+    """F007 test-review carry-forward: end-to-end CLI exit-code coverage.
+
+    Pipeline-layer error paths are unit-tested in tests/adapter/installer/;
+    these tests verify the CLI exit-code wrapping in cli._init.
+    """
+
+    @staticmethod
+    def _link_packs(tmp_path: Path) -> None:
+        link = tmp_path / "packs"
+        if link.exists() or link.is_symlink():
+            return
+        link.symlink_to(TestInitWithHosts.PACKS_ROOT)
+
+    def test_conflicting_skill_exits_2(self, tmp_path: Path, capsys) -> None:
+        """Two packs with the same skill_id → exit code 2 (FR-704 acceptance #4)."""
+        # Build a 2-pack fixture with the same skill_id 'foo' in both.
+        for pack_id in ("packs_a", "packs_b"):
+            pack_dir = tmp_path / "packs" / pack_id
+            skill_dir = pack_dir / "skills" / "foo"
+            skill_dir.mkdir(parents=True)
+            (pack_dir / "pack.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "pack_id": pack_id,
+                        "version": "0.1.0",
+                        "description": "fixture",
+                        "skills": ["foo"],
+                        "agents": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (skill_dir / "SKILL.md").write_text(
+                "---\nname: foo\ndescription: x\n---\n\n# foo\n",
+                encoding="utf-8",
+            )
+        rc = main(["init", "--path", str(tmp_path), "--hosts", "claude"])
+        assert rc == 2
+        captured = capsys.readouterr()
+        assert "Conflicting skill" in captured.err
+        assert "packs_a" in captured.err
+        assert "packs_b" in captured.err
+
+    def test_invalid_pack_json_exits_1(self, tmp_path: Path, capsys) -> None:
+        """Malformed pack.json → exit 1, .garage/ still created (CON-702)."""
+        broken = tmp_path / "packs" / "broken"
+        broken.mkdir(parents=True)
+        (broken / "pack.json").write_text("{ broken json", encoding="utf-8")
+        rc = main(["init", "--path", str(tmp_path), "--hosts", "claude"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "Invalid pack" in captured.err
+        # CON-702: .garage/ still created.
+        assert (tmp_path / ".garage").is_dir()
+
+    def test_skill_without_frontmatter_exits_1(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """SKILL.md without front matter → MalformedFrontmatterError → exit 1."""
+        pack_dir = tmp_path / "packs" / "garage"
+        skill_dir = pack_dir / "skills" / "bad-skill"
+        skill_dir.mkdir(parents=True)
+        (pack_dir / "pack.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "pack_id": "garage",
+                    "version": "0.1.0",
+                    "description": "x",
+                    "skills": ["bad-skill"],
+                    "agents": [],
+                }
+            ),
+            encoding="utf-8",
+        )
+        # No '---' delimiter at all.
+        (skill_dir / "SKILL.md").write_text(
+            "# Bad Skill\n\nNo front matter.\n", encoding="utf-8"
+        )
+        rc = main(["init", "--path", str(tmp_path), "--hosts", "claude"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "marker injection failed" in captured.err.lower() or "front matter" in captured.err.lower()
+
+    def test_non_tty_no_flags_writes_notice_and_exits_0(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """FR-703: non-TTY + no --hosts/--yes → empty hosts + stderr notice + exit 0."""
+        # pytest's stdin is non-TTY by default → triggers the non-interactive path.
+        rc = main(["init", "--path", str(tmp_path)])
+        assert rc == 0
+        captured = capsys.readouterr()
+        # CON-702 baseline marker still printed.
+        assert "Initialized Garage OS in" in captured.out
+        assert "Installed" not in captured.out
+        # Non-interactive notice on stderr.
+        assert "non-interactive" in captured.err.lower()
+        # No host directory created.
+        assert not (tmp_path / ".claude").exists()
+
+    def test_pack_manifest_mismatch_exits_1(self, tmp_path: Path, capsys) -> None:
+        """pack.json claims skill that disk doesn't have → exit 1."""
+        pack_dir = tmp_path / "packs" / "garage"
+        pack_dir.mkdir(parents=True)
+        (pack_dir / "pack.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "pack_id": "garage",
+                    "version": "0.1.0",
+                    "description": "x",
+                    "skills": ["ghost"],
+                    "agents": [],
+                }
+            ),
+            encoding="utf-8",
+        )
+        # No skills/ghost/ on disk.
+        rc = main(["init", "--path", str(tmp_path), "--hosts", "claude"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "Pack manifest mismatch" in captured.err or "Invalid pack" in captured.err
