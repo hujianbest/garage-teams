@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 460" font-family="'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif">
+  <defs>
+    <linearGradient id="bg9" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#eef2ff"/>
+    </linearGradient>
+    <filter id="sh9" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#1e293b" flood-opacity="0.1"/>
+    </filter>
+    <marker id="ar9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+  <rect width="900" height="460" fill="url(#bg9)"/>
+  <text x="450" y="38" fill="#0f172a" font-size="20" font-weight="700" text-anchor="middle">Harness Flow / 方法论分层</text>
+  <text x="450" y="60" fill="#64748b" font-size="13" text-anchor="middle">每个阶段问不同的问题，选不同的方法</text>
+
+  <g filter="url(#sh9)">
+    <rect x="60" y="90" width="250" height="330" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+    <rect x="60" y="90" width="250" height="52" rx="14" fill="#6366f1"/>
+    <rect x="60" y="128" width="250" height="14" fill="#6366f1"/>
+    <text x="185" y="120" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">1. 定义阶段</text>
+    <text x="185" y="138" fill="#e0e7ff" font-size="11" text-anchor="middle">问：做什么？</text>
+    <rect x="80" y="160" width="210" height="30" rx="6" fill="#eef2ff" stroke="#c7d2fe"/>
+    <text x="185" y="180" fill="#4338ca" font-size="11" text-anchor="middle">模糊想法 -&gt; 可验证规格</text>
+    <text x="80" y="216" fill="#334155" font-size="12" font-weight="600">选进来的方法：</text>
+    <g font-size="11" fill="#0f172a">
+      <rect x="80" y="228" width="210" height="26" rx="5" fill="#f1f5f9"/>
+      <text x="90" y="246">Spec-Driven Dev (SDD)</text>
+      <rect x="80" y="260" width="210" height="26" rx="5" fill="#f1f5f9"/>
+      <text x="90" y="278">EARS / BDD / MoSCoW</text>
+      <rect x="80" y="292" width="210" height="26" rx="5" fill="#f1f5f9"/>
+      <text x="90" y="310">文件状态路由（非聊天）</text>
+    </g>
+    <text x="80" y="342" fill="#334155" font-size="12" font-weight="600">封装成：</text>
+    <rect x="80" y="352" width="98" height="26" rx="13" fill="#4338ca"/>
+    <text x="129" y="370" fill="#fff" font-size="11" text-anchor="middle">hf-specify</text>
+    <rect x="186" y="352" width="104" height="26" rx="13" fill="#4338ca"/>
+    <text x="238" y="370" fill="#fff" font-size="11" text-anchor="middle">workflow-router</text>
+    <rect x="80" y="384" width="210" height="26" rx="13" fill="#4338ca"/>
+    <text x="185" y="402" fill="#fff" font-size="11" text-anchor="middle">hf-design / hf-tasks</text>
+  </g>
+
+  <g filter="url(#sh9)">
+    <rect x="325" y="90" width="250" height="330" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+    <rect x="325" y="90" width="250" height="52" rx="14" fill="#f59e0b"/>
+    <rect x="325" y="128" width="250" height="14" fill="#f59e0b"/>
+    <text x="450" y="120" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">2. 执行阶段</text>
+    <text x="450" y="138" fill="#fef3c7" font-size="11" text-anchor="middle">问：做得对不对？</text>
+    <rect x="345" y="160" width="210" height="30" rx="6" fill="#fef3c7" stroke="#fde68a"/>
+    <text x="450" y="180" fill="#92400e" font-size="11" text-anchor="middle">边界清晰 -&gt; 纪律可执行</text>
+    <text x="345" y="216" fill="#334155" font-size="12" font-weight="600">选进来的方法：</text>
+    <g font-size="11" fill="#0f172a">
+      <rect x="345" y="228" width="210" height="26" rx="5" fill="#fffbeb"/>
+      <text x="355" y="246">TDD（Kent Beck）</text>
+      <rect x="345" y="260" width="210" height="26" rx="5" fill="#fffbeb"/>
+      <text x="355" y="278">Fagan 同行审查（1970s）</text>
+      <rect x="345" y="292" width="210" height="26" rx="5" fill="#fffbeb"/>
+      <text x="355" y="310">作者 / 审查者职责分离</text>
+    </g>
+    <text x="345" y="342" fill="#334155" font-size="12" font-weight="600">封装成：</text>
+    <rect x="345" y="352" width="210" height="26" rx="13" fill="#b45309"/>
+    <text x="450" y="370" fill="#fff" font-size="11" text-anchor="middle">hf-test-driven-dev</text>
+    <rect x="345" y="384" width="98" height="26" rx="13" fill="#b45309"/>
+    <text x="394" y="402" fill="#fff" font-size="11" text-anchor="middle">hf-test-review</text>
+    <rect x="451" y="384" width="104" height="26" rx="13" fill="#b45309"/>
+    <text x="503" y="402" fill="#fff" font-size="11" text-anchor="middle">hf-code-review</text>
+  </g>
+
+  <g filter="url(#sh9)">
+    <rect x="590" y="90" width="250" height="330" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+    <rect x="590" y="90" width="250" height="52" rx="14" fill="#10b981"/>
+    <rect x="590" y="128" width="250" height="14" fill="#10b981"/>
+    <text x="715" y="120" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">3. 闭环阶段</text>
+    <text x="715" y="138" fill="#d1fae5" font-size="11" text-anchor="middle">问：真的做完了吗？</text>
+    <rect x="610" y="160" width="210" height="30" rx="6" fill="#d1fae5" stroke="#a7f3d0"/>
+    <text x="715" y="180" fill="#065f46" font-size="11" text-anchor="middle">看起来做完 != 真的做完</text>
+    <text x="610" y="216" fill="#334155" font-size="12" font-weight="600">选进来的方法：</text>
+    <g font-size="11" fill="#0f172a">
+      <rect x="610" y="228" width="210" height="26" rx="5" fill="#ecfdf5"/>
+      <text x="620" y="246">Definition of Done</text>
+      <rect x="610" y="260" width="210" height="26" rx="5" fill="#ecfdf5"/>
+      <text x="620" y="278">证据包 / 追溯性</text>
+      <rect x="610" y="292" width="210" height="26" rx="5" fill="#ecfdf5"/>
+      <text x="620" y="310">Release Notes / 交接</text>
+    </g>
+    <text x="610" y="342" fill="#334155" font-size="12" font-weight="600">封装成：</text>
+    <rect x="610" y="352" width="100" height="26" rx="13" fill="#047857"/>
+    <text x="660" y="370" fill="#fff" font-size="11" text-anchor="middle">regression-gate</text>
+    <rect x="718" y="352" width="102" height="26" rx="13" fill="#047857"/>
+    <text x="769" y="370" fill="#fff" font-size="11" text-anchor="middle">completion-gate</text>
+    <rect x="610" y="384" width="210" height="26" rx="13" fill="#047857"/>
+    <text x="715" y="402" fill="#fff" font-size="11" text-anchor="middle">hf-finalize / traceability</text>
+  </g>
+
+  <path d="M 312 255 L 322 255" stroke="#94a3b8" stroke-width="2" marker-end="url(#ar9)"/>
+  <path d="M 577 255 L 587 255" stroke="#94a3b8" stroke-width="2" marker-end="url(#ar9)"/>
+  <text x="450" y="444" fill="#64748b" font-size="12" text-anchor="middle" font-style="italic">方法跟着职责走，职责跟着阶段走</text>
+</svg>
