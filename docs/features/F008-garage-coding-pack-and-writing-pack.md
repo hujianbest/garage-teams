@@ -1,13 +1,13 @@
-# F008: Garage Coding Pack 与 Writing Pack — 把 `.agents/skills/` 物化为可分发 packs，让 `garage init` 真正交付"挂上目录就有 26 skills"
+# F008: Garage Coding Pack 与 Writing Pack — 把 `.agents/skills/` 物化为可分发 packs，让 `garage init` 真正交付"挂上目录就有 ~29 skills"（数由 manifest 派生）
 
-- 状态: 草稿
+- 状态: 已批准（auto-mode approval；见 `docs/approvals/F008-spec-approval.md`）
 - 主题: 把当前散落在 `.agents/skills/` 下的 28 个已写好 SKILL.md（22 个 HF workflow [21 hf-* + 1 using-hf-workflow] + 4 个 write-blog 系列 + 1 个 writing-skills + 1 个 find-skills）按主题归并到 `packs/coding/` 与 `packs/writing/` 两个一级 pack，并把 F007 已落 `packs/garage/` 从 1 sample skill 扩到 3 skill（叠加 find-skills + writing-skills），让下游用户在自己项目里执行 `garage init --hosts <list>` 后，能直接获得 manifesto 承诺的 "Agent 几秒钟变成你的 Agent" 体验
 - 日期: 2026-04-22
 - 关联:
   - F001 § `CON-002` — 已声明 "Skills 存放在 `packs/coding/skills/` 和 `packs/product-insights/skills/`"，本 cycle 兑现 `packs/coding/`（`product-insights/` 留待后续，参见 § 5）
   - F007（Garage Packs 与宿主安装器）— 已落 `packs/<pack-id>/` 目录契约 + `garage init --hosts ...` 安装管道 + conflict 检测 + marker 注入 + extend mode + manifest；本 cycle **只增加 packs 内容**，安装管道与 host adapter 注册表零改动
   - `docs/soul/manifesto.md` § "终极形态"（"几秒后这个 Agent 就变成了你的 Agent"）+ § "核心信念" 第 1 / 5 条（数据归你、可传承）
-  - `docs/soul/growth-strategy.md` § "Stage 1 → Stage 2 触发信号"（"用户日常工作中频繁使用 Garage 的 skills"）+ § "Stage 3 触发信号"（"Skills 数量 > 30"——本 cycle 把可分发 skills 从 1 推到 26，是越过该信号的前置工程）
+  - `docs/soul/growth-strategy.md` § "Stage 1 → Stage 2 触发信号"（"用户日常工作中频繁使用 Garage 的 skills"）+ § "Stage 3 触发信号"（"Skills 数量 > 30"——本 cycle 把可分发 skills 从 1 推到约 29，越过该信号的前置工程基本就位）
   - `docs/soul/design-principles.md` § 1 宿主无关原则（搬迁过程必须保持源文件无任何宿主特定术语）
   - `packs/README.md` — 现有目录契约（顶层契约不变，只新增 2 个 `<pack-id>` 子目录）
   - `RELEASE_NOTES.md` "F007 — 已知限制 / 后续工作" 段第 1 条（"F008 候选 — 把 .agents/skills/ 30 个 HF skills 搬迁到 packs/coding/skills/，搬迁本身是机械动作 + 路径替换"）
