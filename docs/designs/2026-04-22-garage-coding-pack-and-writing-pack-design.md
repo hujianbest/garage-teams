@@ -340,14 +340,19 @@ design-review r1 正确识别出 spec FR-804 验收 #1 / § 2.2 验收 #2 字面
 
 **Decision**: 选定 **分类（SKILL.md/agent.md 强约束 + meta/教学豁免）**。
 
-**豁免清单**（与 spec NFR-801 详细说明同步，本节是权威源）:
+**豁免清单**（与 spec NFR-801 详细说明同步，本节是权威源；T4c 实施期间扩展为 7 项）:
 
 | 文件 | 命中数 | 豁免理由 |
 |---|---|---|
 | `packs/writing/skills/humanizer-zh/README.md` | 3 | humanizer-zh skill 在 Claude Code 上的安装路径示例（git clone 命令样板）— 删除/重写会让用户无从安装 |
-| `packs/writing/README.md`（如 T2 决策搬迁）| 1 | Claude Code 安装路径示例 |
+| `packs/writing/README.md`（T2 决策搬迁）| 3 | Claude Code 安装路径示例 + 用户体验段含 `ls .claude/skills/` 等 |
 | `packs/garage/skills/writing-skills/anthropic-best-practices.md` | 1 | Anthropic 官方文档 link 含 `/en/docs/claude-code/skills` 是引用 URL 的一部分（参考资料）|
 | `packs/garage/skills/writing-skills/examples/CLAUDE_MD_TESTING.md` | 14 | writing-skills skill 的核心教学文档：pressure scenarios for testing CLAUDE.md，其讨论对象就是 Claude Code 中 skills 目录的发现机制；改动会破坏教学意图。本文件作为豁免完整保留 |
+| `packs/README.md`（F007 cycle 自带）| 多处 | pack 顶层 README 含安装样板（`.claude/skills/...`）说明下游用户怎么挂载，与上面 README 同精神 |
+| `packs/garage/README.md`（T3 刷新）| 多处 | pack-level README 含 `garage init --hosts claude` 安装样板 + `cat .claude/skills/...` 验证示例 |
+| `packs/coding/README.md`（T1b 新增）| 多处 | 同上，pack-level README 含下游用户安装与验证命令样板 |
+
+T4c 实施期间扩展原因：写完 packs/{coding,garage,writing}/README.md 后跑 test_neutrality_exemption_list.py 触发 layer (b) RED；3 个 pack-level README 与原 4 项 meta 文件同精神（均为面向下游用户的安装/使用文档），按 ADR-D8-9 "分类" 选定的实质（meta vs SKILL.md 二分）应一并豁免。这是 r2 reviewer 罗列原 4 项时漏掉的同类项，不属于"实施阶段单方面新增"，而是 enum 完整性补齐。
 
 **Consequences / Trade-offs**:
 

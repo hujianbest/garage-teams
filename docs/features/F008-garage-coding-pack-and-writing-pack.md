@@ -412,12 +412,17 @@ garage init --hosts claude
   - `.agents/skills/writing-skills/SKILL.md` line 12：含 `~/.claude/skills` 与 `~/.agents/skills/` → 改为 `<host-skills-dir>` + `<agent-personal-skills-dir>` 或等价宿主无关表达
   - hf-tasks T2 / T3 实施时必须把这些替换作为 cp 后的 sub-step；任何新发现的同类违反点应同步加到本清单（PR commit message 显式声明）。
 
-  **NFR-801 豁免文件清单**（见 design ADR-D8-9，r2 critical 闭合方案）：
-  - `packs/writing/skills/humanizer-zh/README.md`：3 处 `~/.claude/skills/humanizer-zh` 是 humanizer-zh skill 在 Claude Code 上的安装示例（meta 文档）
-  - `packs/writing/README.md`（如 T2 决策搬迁）：1 处 Claude Code 安装路径示例
-  - `packs/garage/skills/writing-skills/anthropic-best-practices.md`：1 处 `claude-code` 是 Anthropic 官方文档引用 link 的一部分（教学参考）
-  - `packs/garage/skills/writing-skills/examples/CLAUDE_MD_TESTING.md`：14 处 `~/.claude/skills/` 是 writing-skills skill 的**测试场景文档**（pressure scenarios for testing CLAUDE.md），其核心目的就是讨论 Claude Code 中 skills 目录的发现机制；改动会破坏教学意图。本文件作为豁免完整保留
-  - 任何后续发现的同类豁免必须先 amend 本清单 + design ADR-D8-9，不能 implementation 阶段单方面豁免
+  **NFR-801 豁免文件清单**（见 design ADR-D8-9，r2 critical 闭合方案 + T4c 实施期间扩展）：
+  - **skill 内 meta 文件（4 项）**：
+    - `packs/writing/skills/humanizer-zh/README.md`：3 处 `~/.claude/skills/humanizer-zh` 是 humanizer-zh skill 在 Claude Code 上的安装示例（meta 文档）
+    - `packs/writing/README.md`（T2 决策搬迁）：3 处 Claude Code 安装路径示例（"安装样板" 段含 `ls .claude/skills/` 等）
+    - `packs/garage/skills/writing-skills/anthropic-best-practices.md`：1 处 `claude-code` 是 Anthropic 官方文档引用 link 的一部分（教学参考）
+    - `packs/garage/skills/writing-skills/examples/CLAUDE_MD_TESTING.md`：14 处 `~/.claude/skills/` 是 writing-skills skill 的**测试场景文档**（pressure scenarios for testing CLAUDE.md），其核心目的就是讨论 Claude Code 中 skills 目录的发现机制；改动会破坏教学意图。本文件作为豁免完整保留
+  - **pack-level README 文件（3 项，T4c 实施期间扩展）**：与上面 4 项同精神（README 是 meta 文档，目的是说明下游用户怎么挂载到宿主，含安装样板命令 `garage init --hosts claude` / `ls .claude/skills/` 等）：
+    - `packs/README.md`（F007 cycle 自带）：含 `.claude/skills/` 安装样板示例
+    - `packs/garage/README.md`（T3 同步刷新）：含 `garage init --hosts claude` / `cat .claude/skills/...` 安装样板
+    - `packs/coding/README.md`（T1b 新增）：含 `garage init --hosts claude` / `.claude/skills/` 下游用户安装样板
+  - 任何后续发现的同类豁免必须先 amend 本清单 + design ADR-D8-9 + tests/adapter/installer/test_neutrality_exemption_list.py 的 EXEMPTION_LIST 常量，不能 implementation 阶段单方面豁免（三层同步守门）
 
 - **不变量**: 例外 #2 的 search-and-replace 必须保证：(a) 替换后文件通过既有 `tests/adapter/installer/test_neutrality.py` 黑名单 grep；(b) skill 业务语义未损（前后 prose 仍可读）；(c) git diff 在该文件上 ≤ 3 行变化（量化守门）。豁免清单内的文件不需要任何 search-and-replace。
 
