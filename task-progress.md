@@ -4,7 +4,7 @@
 
 - Goal: F008 — Garage Coding Pack 与 Writing Pack（把 `.agents/skills/` 物化为可分发 packs）
 - Owner: hujianbest
-- Status: 🟡 In Progress — F008 spec **已批准**（r2 通过 + auto-mode approval），进入 `hf-design`
+- Status: 🟡 In Progress — F008 design 草稿已落，等待 `hf-design-review`
 - Last Updated: 2026-04-22
 
 ## Previous Milestones
@@ -23,13 +23,14 @@
 - Workflow Profile: `full`
 - Execution Mode: `auto`
 - Workspace Isolation: `in-place`（工作分支 `cursor/f008-coding-pack-and-writing-pack-bf33`；PR #22）
-- Current Active Task: 无（design drafting 阶段，task plan 由 `hf-tasks` 在 design 通过后产出）
-- Pending Reviews And Gates: `hf-design-review`（待派发，design 草稿完成后）
-- Next Action Or Recommended Skill: `hf-design`
+- Current Active Task: 无（design 草稿已完成，等待 review）
+- Pending Reviews And Gates: `hf-design-review`（待派发）
+- Next Action Or Recommended Skill: `hf-design-review`
 - Relevant Files:
   - `docs/features/F008-garage-coding-pack-and-writing-pack.md`（已批准）
   - `docs/approvals/F008-spec-approval.md`（auto-mode approval record）
   - `docs/reviews/spec-review-F008-coding-pack-and-writing-pack.md`（r1 需修改 + r2 通过）
+  - `docs/designs/2026-04-22-garage-coding-pack-and-writing-pack-design.md`（草稿 r1，含 8 项 ADR）
   - `docs/soul/manifesto.md`、`growth-strategy.md`、`design-principles.md`（愿景锚点）
   - `packs/README.md`、`packs/garage/`（F007 落下的现状）
   - `.agents/skills/harness-flow/`、`.agents/skills/write-blog/`、`.agents/skills/find-skills/`、`.agents/skills/writing-skills/`（搬迁源）
@@ -44,15 +45,11 @@
 
 ## Next Step
 
-进入 `hf-design`，产出 F008 设计文档，覆盖 § 11 spec 非阻塞性开放问题 1-8 共 8 项 ADR：
+派发独立 reviewer subagent 执行 `hf-design-review`，对 `docs/designs/2026-04-22-garage-coding-pack-and-writing-pack-design.md` 出 verdict。
 
-1. family-level 共享资产物理位置（候选 A/B/C）
-2. `.agents/skills/` 处置方案（候选 A/B/C）
-3. `docs/principles/skill-anatomy.md` drift 收敛策略（候选 三选一）
-4. `packs/garage/garage-sample-agent.md` 处置
-5. `pack.json.version` 是否 bump
-6. `AGENTS.md` 同步范围
-7. smoke 路径（dogfood vs `/tmp/f008-smoke`）
-8. 是否加自动化集成测试
+design 草稿已收敛 8 项 ADR（D8-1 ~ D8-8）+ 显式承认 §2.4 "F007 管道只复制 SKILL.md 单文件" 工程边界（ADR-D8-4 文档级提示策略）+ 给出 5 类提交分组（T1-T5）。每项 ADR 都可逐条对应 spec § 4.2 6 条 "Design Reviewer 可拒红线" 的判定。
 
-每项 ADR 必须能通过 § 4.2 "Design Reviewer 可拒红线" 6 条检查。design 草稿完成后派发独立 reviewer subagent 执行 `hf-design-review`。
+下一节点候选（由 design-review 结果决定）：
+- 通过 → 写 `docs/approvals/F008-design-approval.md` → `hf-tasks` 拆分 5 个 task
+- 需修改 → 回 `hf-design` 按 review findings 修订
+- 阻塞 → 回 `hf-workflow-router` 重新判定
