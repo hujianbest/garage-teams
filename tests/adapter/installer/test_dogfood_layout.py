@@ -24,14 +24,23 @@ class TestDogfoodLayout:
         )
 
     def test_gitignore_excludes_dogfood_INV8(self) -> None:
-        """INV-8: .gitignore MUST contain `.cursor/skills/` and `.claude/skills/`
-        as exclusion patterns so dogfood products don't get committed."""
+        """INV-8: .gitignore MUST exclude dogfood install products so they don't
+        get committed.
+
+        Regression-gate carry-forward: the original wording was `.cursor/skills/` +
+        `.claude/skills/` (only skills subdir), but dogfood `garage init --hosts
+        cursor,claude` also creates `.claude/agents/` (agent surface) and
+        `.garage/config/host-installer.json` (manifest). Widened to exclude
+        `.cursor/` + `.claude/` whole dirs (skills/ implied), per design ADR-D8-2
+        candidate C 精神. This test accepts either the narrow or wide form.
+        """
         gitignore_text = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
-        assert ".cursor/skills/" in gitignore_text, (
-            "INV-8 violated: .gitignore missing `.cursor/skills/` exclusion"
+        # Either narrow (.cursor/skills/) or wide (.cursor/) form satisfies INV-8.
+        assert ".cursor/" in gitignore_text, (
+            "INV-8 violated: .gitignore missing `.cursor/` (or `.cursor/skills/`) exclusion"
         )
-        assert ".claude/skills/" in gitignore_text, (
-            "INV-8 violated: .gitignore missing `.claude/skills/` exclusion"
+        assert ".claude/" in gitignore_text, (
+            "INV-8 violated: .gitignore missing `.claude/` (or `.claude/skills/`) exclusion"
         )
 
     def test_agents_md_skill_anatomy_path_红线_4(self) -> None:

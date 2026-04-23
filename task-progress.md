@@ -4,7 +4,7 @@
 
 - Goal: F008 — Garage Coding Pack 与 Writing Pack（把 `.agents/skills/` 物化为可分发 packs）
 - Owner: hujianbest
-- Status: 🟡 In Progress — F008 9 个 task 全部 commit 落地（T1a/T1b/T1c/T2/T3/T4a/T4b/T4c/T5），等待 manual smoke walkthrough + hf-test-review 链路
+- Status: 🟡 In Progress — F008 实施 + 三 review + 两 gate 全部通过, 进入 hf-finalize
 - Last Updated: 2026-04-22
 
 ## Previous Milestones
@@ -19,13 +19,13 @@
 
 ## Current Workflow State
 
-- Current Stage: `hf-test-review`（待派发，9 个 task 全部 commit 落地后）
+- Current Stage: `hf-finalize`（completion-gate 通过，无剩余任务）
 - Workflow Profile: `full`
 - Execution Mode: `auto`
 - Workspace Isolation: `in-place`（工作分支 `cursor/f008-coding-pack-and-writing-pack-bf33`；PR #22）
-- Current Active Task: 无（实施阶段全部完成，9/9 task commit 落地）
-- Pending Reviews And Gates: `hf-test-review` → `hf-code-review` → `hf-traceability-review` → `hf-regression-gate` → `hf-completion-gate` → `hf-finalize`
-- Next Action Or Recommended Skill: manual smoke walkthrough + `hf-test-review`
+- Current Active Task: 无
+- Pending Reviews And Gates: `hf-finalize`（cycle closeout）
+- Next Action Or Recommended Skill: `hf-finalize`
 - Relevant Files:
   - `docs/features/F008-garage-coding-pack-and-writing-pack.md`（已批准 r2 + design/tasks 阶段反向同步收紧 wording）
   - `docs/approvals/F008-{spec,design,tasks}-approval.md`（三份 auto-mode approval records）
