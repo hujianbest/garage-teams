@@ -353,3 +353,83 @@
 - `needs_human_confirmation = false`。
 - `reroute_via_router = false`（不存在 route/stage/profile/上游证据冲突级阻塞——上游 spec/design 已批准 r2，本轮 important 残留是 r2 修复时 task Verify 没同步收紧的 wording-only gap）。
 - 不修改 spec / design / tasks 文档；不修改 task-progress.md；不 git commit / push。
+
+---
+
+## 复审 r4
+
+- 复审日期: 2026-04-23
+- 复审输入: 父会话 commit `a1d1735` 对 r3 1 important + 3 minor 完成的定向回修
+- 复审范围: 逐项校验 r3 4 项 finding 闭合度；判断 spec / design / task 三层在 grep 范围 + 测试数量 + EXEMPTION_LIST 是否一致
+
+### r4 结论
+
+**通过**
+
+理由：r3 1 important（T2/T3 Verify wording）+ 3 minor（design § 11.1 INV-9 / 596 vs 598 / EXEMPTION_LIST 数字精度）已**全部闭合**或 wording 已收紧到不阻塞 dev；spec / design / task 三层在 grep 范围、测试数量基线、INV-9 分层守门、EXEMPTION_LIST 文件路径上语义完全一致；从 r1 到 r4 共 4 轮迭代，task plan 已稳定到可进入"任务真人确认" approval step + hf-test-driven-dev 实施。
+
+### 维度评分（r4）
+
+| 维度 | r3 评分 | r4 评分 | 备注 |
+|---|---|---|---|
+| TR1 可执行性 | 8 | 8 | 不变 |
+| TR2 任务合同完整性 | 7 | 9 | T2/T3 Acceptance + Verify 同口径分层；T4c 完成条件 / § 7 完成定义 数字统一为 ≥ 598 |
+| TR3 测试设计种子 | 9 | 9 | 不变 |
+| TR4 依赖与顺序 | 9 | 9 | 不变 |
+| TR5 追溯覆盖 | 8 | 9 | design § 11.1 INV-9 与 ADR-D8-9 三层一致 |
+| TR6 Router 重选就绪度 | 9 | 9 | 不变 |
+
+无关键维度 < 6；最低 8/10，所有维度 ≥ 8 — 通过门槛。
+
+### 逐条 r3 finding 闭合度判定
+
+| r3 finding | 严重度 | 闭合判定 | 证据 |
+|---|---|---|---|
+| important: T2/T3 Verify 仍是 r1 递归 grep | important | **已闭合** | T2 Verify line 240 改为 `find packs/writing/ \( -name 'SKILL.md' -o -path '*/agents/*.md' \) -exec grep -lE ... \; \| wc -l == 0` + line 241 meta 文件豁免守门 ⊆ ADR-D8-9 EXEMPTION_LIST；T3 Verify line 279-280 同口径改造 + 显式 enum 预期豁免命中（anthropic-best-practices.md + CLAUDE_MD_TESTING.md）|
+| minor: design § 11.1 INV-9 wording 残留 | minor | **已闭合** | design § 11.1 INV-9 行改为 (a) 强约束 SKILL.md/agent.md grep + (b) meta 豁免守门 整 packs/ 命中 ⊆ ADR-D8-9 EXEMPTION_LIST；责任 commit 扩到 T1a/T1b/T2/T3/T4c |
+| minor: 596 vs 598 不一致 | minor | **已闭合** | task § 7 完成定义 #4 line 453 改为 `≥ 598 passed（586 baseline + 5 个新文件）`；T4c 完成条件 line 390 改为 `4 测试文件全部 GREEN + 整体测试基线 ≥ 598 + commit 落地`；全文 grep 596 = 0 命中 |
+| minor: EXEMPTION_LIST "5 文件" 措辞精度 | minor | **基本闭合**（wording 收紧 + 不阻塞 dev；存在 1 处数字精度小偏差） | task T4c line 366 改为 "EXEMPTION_LIST 常量（4 个固定豁免文件 + 1 个条件性 `packs/writing/README.md`，T2 实施时若决策搬迁则启用）"；spec/design enum 实际是 4 行（3 固定 + 1 条件性）—— task 写 "4 + 1 = 5" 与 spec/design "4 行（含 1 条件性）" 之间存在数字偏差但语义清晰（条件性的含义已显式给出），dev 实施时按 ADR-D8-9 权威源维护 frozenset 不会困惑 |
+
+### 三层一致性判定（r4 重点）
+
+| 维度 | spec | design | task | 一致性 |
+|---|---|---|---|---|
+| **NFR-801 grep 范围** | NFR-801 验收 #1：`find packs/coding/ packs/writing/ packs/garage/ \( -name 'SKILL.md' -o -path '*/agents/*.md' \) ...` | INV-9 (a)：同 spec | T2/T3 Verify line 240/279：同 spec（按 pack 范围分别跑）| ✅ 三层一致 |
+| **meta 豁免守门** | NFR-801 验收 #3：命中行所属文件必须 ∈ design ADR-D8-9 enumerate 的豁免清单 | INV-9 (b)：整 packs/ 命中 ⊆ EXEMPTION_LIST | T2 Verify line 241 + T3 Verify line 280：同 design（按 pack 范围检查）| ✅ 三层一致 |
+| **测试文件数** | （不在 spec 直接约束，由 design 派生）| § 13.1 表：5 个测试文件（drift + full_packs_install + packs_garage_extended + dogfood_layout + neutrality_exemption_list）| § 7 #4：5 个新文件；T4c Acceptance：4 个新文件（T4c 内）+ T1c sentinel（独立 task）= 整 cycle 5 | ✅ 三层一致（视角差异已由 § 7 整 cycle 视角解释）|
+| **测试基线数字** | （不在 spec）| § 13.1：≥ 586 baseline + 5 = 至少 591；具体测例数派生自实施 | § 7 #4：≥ 598；T4c 完成条件：≥ 598；T4c Verify：≥ 598 | ✅ 三层一致 |
+| **EXEMPTION_LIST 文件路径** | CON-803 详细说明 line 416-419：4 行 enum（含 1 条件性）| ADR-D8-9 line 347-350：4 行表（含 1 条件性）| T4c line 366：4 固定 + 1 条件性 = 5 路径；EXEMPTION_LIST 常量与 design 表手动同步 | ⚠️ 数字精度偏差 1（spec/design 4 行 = 3 固定 + 1 条件；task 写 "4 固定 + 1 条件 = 5"）；语义已显式给出"条件性"含义；dev 按 ADR-D8-9 权威源维护 frozenset 即可，不阻塞 |
+| **§ 8 router 串行规则** | （不在 spec）| （不在 design）| § 8 + § 9：依赖图层面互不依赖 vs 调度并发二分；router 串行选 T1c → T2 → T3 | ✅ task 内一致 |
+| **fail-first sentinel 顺序** | （由 design § 14 F2 + § 11.1 INV-3 派生）| § 14 F2 + § 11.1 INV-3 | T1c Sub-acceptance Step 1/2/3 + PR walkthrough RED 截图证据要求 | ✅ 三层一致 |
+
+### r4 残留 finding（不阻塞）
+
+无 critical / important 残留。剩余 1 个 minor 数字精度偏差（EXEMPTION_LIST 4 vs 5 表述），不阻塞 dev：实施者按 spec CON-803 enum + design ADR-D8-9 表（权威源）维护 frozenset，4 个文件路径足够（含 1 条件性的 packs/writing/README.md）；如果 dev 阶段实测 packs/writing/README.md 不含黑名单字面值，frozenset 可不收录该路径，对 sentinel 测试效果无影响。建议在 hf-test-driven-dev 实施 T4c `test_neutrality_exemption_list.py` 时顺手把数字描述统一（task → spec/design 同步），但作为 r4 阻塞理由不成立。
+
+### 关键 r4 通过判断
+
+| 关键问题 | 判定 |
+|---|---|
+| spec NFR-801 / CON-803 amend 内部一致 | ✅ |
+| design ADR-D8-9 + INV-9 + § 13.1 测试 5 件套内部一致 | ✅ |
+| task T2/T3 Acceptance 与 Verify 同口径 | ✅ |
+| task § 7 完成定义 / T4c 完成条件 数字一致 | ✅ |
+| spec / design / task 三层在 grep 范围 / 测试基线 / EXEMPTION_LIST 语义一致 | ✅（EXEMPTION_LIST 数字精度偏差 1，语义清晰，不阻塞） |
+| router 重选规则唯一可重放 | ✅ |
+| critical 红线（CON-801 / CON-803 / NFR-801 / NFR-802）守门齐备 | ✅ |
+| fail-first / sentinel 测试设计种子充分 | ✅ |
+
+满足 hf-tasks-review 通过条件。task plan 可进入"任务真人确认" approval step，approval 后由 router 派发 T1a 进入 hf-test-driven-dev 实施。
+
+### 下一步
+
+`任务真人确认` — 通过 approval step（auto 模式下父会话写 `docs/approvals/F008-tasks-approval.md`；interactive 模式下等待真人）；approval 落地后由 hf-workflow-router 派发 T1a 进入 hf-test-driven-dev。
+
+### 交接说明
+
+- 结论 `通过`，进入"任务真人确认" approval step。
+- `next_action_or_recommended_skill = 任务真人确认`。
+- `needs_human_confirmation = true`（auto 模式下父会话承接写 approval record，interactive 模式下等真人确认）。
+- `reroute_via_router = false`。
+- 不修改 spec / design / tasks 文档；不修改 task-progress.md；不 git commit / push。
+- 留 1 minor 数字精度偏差（EXEMPTION_LIST 4 vs 5）作为 hf-test-driven-dev T4c 实施时顺手收尾项，不在本评审作为阻塞理由。

@@ -1,6 +1,6 @@
 # F008: Garage Coding Pack 与 Writing Pack 任务计划
 
-- 状态: 草稿
+- 状态: 已批准（auto-mode approval；见 `docs/approvals/F008-tasks-approval.md`）
 - 主题: 把已批准 D008 设计拆解为可单任务推进、可冷读、可追溯的工作单元
 - 日期: 2026-04-22
 - Revision: r1

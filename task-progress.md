@@ -4,7 +4,7 @@
 
 - Goal: F008 — Garage Coding Pack 与 Writing Pack（把 `.agents/skills/` 物化为可分发 packs）
 - Owner: hujianbest
-- Status: 🟡 In Progress — F008 task plan 草稿已落（9 个 task），等待 `hf-tasks-review`
+- Status: 🟡 In Progress — F008 task plan **已批准**（r4 通过 + auto-mode approval），进入 `hf-test-driven-dev` 实施 T1a 起步
 - Last Updated: 2026-04-22
 
 ## Previous Milestones
@@ -19,20 +19,21 @@
 
 ## Current Workflow State
 
-- Current Stage: `hf-tasks`
+- Current Stage: `hf-test-driven-dev`
 - Workflow Profile: `full`
 - Execution Mode: `auto`
 - Workspace Isolation: `in-place`（工作分支 `cursor/f008-coding-pack-and-writing-pack-bf33`；PR #22）
-- Current Active Task: 无（task plan 草稿已完成，等待 review）
-- Pending Reviews And Gates: `hf-tasks-review`（待派发）
-- Next Action Or Recommended Skill: `hf-tasks-review`
+- Current Active Task: **T1a — packs/coding/ 22 skill cp -r 字节级搬迁**（task plan § 5 T1a，Selection Priority=1）
+- Pending Reviews And Gates: 无（实施阶段；review/gate 在所有 9 task 完成后）
+- Next Action Or Recommended Skill: `hf-test-driven-dev`（实施 T1a）
 - Relevant Files:
-  - `docs/features/F008-garage-coding-pack-and-writing-pack.md`（已批准 r2 + design 阶段同步收紧 wording）
-  - `docs/approvals/F008-spec-approval.md`、`docs/approvals/F008-design-approval.md`（auto-mode approval records）
+  - `docs/features/F008-garage-coding-pack-and-writing-pack.md`（已批准 r2 + design/tasks 阶段反向同步收紧 wording）
+  - `docs/approvals/F008-{spec,design,tasks}-approval.md`（三份 auto-mode approval records）
   - `docs/reviews/spec-review-F008-coding-pack-and-writing-pack.md`（r1 需修改 + r2 通过）
   - `docs/reviews/design-review-F008-coding-pack-and-writing-pack.md`（r1 需修改 + r2 通过）
-  - `docs/designs/2026-04-22-garage-coding-pack-and-writing-pack-design.md`（已批准，含 8 项 ADR + 9 sub-commit + 9 INV + 4 测试文件）
-  - `docs/tasks/2026-04-22-garage-coding-pack-and-writing-pack-tasks.md`（草稿 r1，9 个 task：T1a/T1b/T1c + T2 + T3 + T4a/T4b/T4c + T5）
+  - `docs/reviews/tasks-review-F008-coding-pack-and-writing-pack.md`（r1 需修改 + r2 需修改 + r3 需修改 + r4 通过）
+  - `docs/designs/2026-04-22-garage-coding-pack-and-writing-pack-design.md`（已批准，含 9 项 ADR + 9 sub-commit + 9 INV + 5 测试文件）
+  - `docs/tasks/2026-04-22-garage-coding-pack-and-writing-pack-tasks.md`（已批准，9 个 task：T1a/T1b/T1c + T2 + T3 + T4a/T4b/T4c + T5）
   - `docs/soul/manifesto.md`、`growth-strategy.md`、`design-principles.md`（愿景锚点）
   - `packs/README.md`、`packs/garage/`（F007 落下的现状）
   - `.agents/skills/harness-flow/`、`.agents/skills/write-blog/`、`.agents/skills/find-skills/`、`.agents/skills/writing-skills/`（搬迁源）
@@ -47,11 +48,13 @@
 
 ## Next Step
 
-派发独立 reviewer subagent 执行 `hf-tasks-review`，对 `docs/tasks/2026-04-22-garage-coding-pack-and-writing-pack-tasks.md` 出 verdict。
+进入 `hf-test-driven-dev` 实施 **T1a — packs/coding/ 22 skill cp -r 字节级搬迁**。
 
-task plan 已含 9 个 task（T1a/T1b/T1c + T2 + T3 + T4a/T4b/T4c + T5），每个 task 已写：目标 / Acceptance / 依赖 / Ready When / 初始队列状态 / Selection Priority / Files / 测试设计种子 / Verify / 预期证据 / 完成条件；§ 4 给出完整 spec/design → task 追溯表；§ 6 关键路径；§ 8 Current Active Task 选择规则；§ 10 风险与顺序。
+T1a 详情（task plan § 5）：
+- 把 `.agents/skills/harness-flow/skills/{hf-*,using-hf-workflow}/` 共 22 skill 子目录 cp -r 到 `packs/coding/skills/<id>/`
+- Acceptance: `ls packs/coding/skills/ | wc -l == 22` + 抽样 SHA-256 字节级相等 + INV-9 grep = 0
+- Files: `packs/coding/skills/<id>/` × 22（新增）
+- Verify: `ls packs/coding/skills/ | wc -l == 22` + `find packs/coding/skills/hf-specify -type f -exec sha256sum {} \;` 抽样比对 + `grep -rE '\.claude/|\.cursor/|\.opencode/|claude-code' packs/coding/skills/ | wc -l == 0`
+- 完成条件: 22 skill 物理存在 + INV-9 通过 + commit 落地
 
-下一节点候选（由 tasks-review 结果决定）：
-- 通过 → 写 `docs/approvals/F008-tasks-approval.md` → `hf-test-driven-dev` 进入 T1a 实施
-- 需修改 → 回 `hf-tasks` 按 review findings 修订
-- 阻塞 → 回 `hf-workflow-router` 重新判定
+T1a 完成后 router 重选 → T1b → T1c → T2 → T3 → T4a → T4b → T4c → T5（按 § 8 P 升序串行）。9 个 task 全部完成后做 manual smoke walkthrough → `hf-test-review` → `hf-code-review` → `hf-traceability-review` → `hf-regression-gate` → `hf-completion-gate` → `hf-finalize`。
