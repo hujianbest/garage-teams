@@ -23,5 +23,12 @@ build/
 # F008 ADR-D8-2 候选 C: dogfood 安装产物 (本仓库自身贡献者首次 clone 后跑
 # `garage init --hosts cursor,claude` 把 packs/ 物化到这两个目录, IDE 加载入口转向
 # dogfood 产物; 详见 AGENTS.md "本仓库自身 IDE 加载入口" 段)
-.cursor/skills/
-.claude/skills/
+#
+# 排除整 .cursor/ + .claude/ 而不仅 skills/ 子目录, 因为 dogfood 还会创建
+# .claude/agents/garage-sample-agent.md (agent surface), 以及 .garage/config/
+# host-installer.json (安装清单), 这些都是 dogfood 产物.
+.cursor/
+.claude/
+
+# F008 ADR-D8-2: dogfood 安装清单 (运行时产物, 不入 git)
+.garage/config/host-installer.json
