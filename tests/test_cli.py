@@ -3039,7 +3039,11 @@ class TestInitWithHosts:
         assert manifest_path.is_file()
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         assert manifest["installed_hosts"] == ["claude"]
-        assert manifest["installed_packs"] == ["garage"]
+        # F008 carry-forward: packs/ now contains coding + garage + writing;
+        # use ⊆ instead of == to keep this F007 test forward-compatible
+        # with future pack additions (same intent as test_subprocess_smoke_three_hosts
+        # using regex-on-marker pattern).
+        assert "garage" in manifest["installed_packs"]
 
     def test_hosts_all_installs_three_first_class(
         self, tmp_path: Path, capsys
