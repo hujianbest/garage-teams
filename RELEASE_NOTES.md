@@ -4,6 +4,70 @@
 
 ---
 
+## F008 — Garage Coding Pack 与 Writing Pack（把 .agents/skills/ 物化为可分发 packs，兑现 manifesto "几秒变成你的 Agent" 承诺）
+
+- 状态: 🟡 实施完成，待 hf-test-review → hf-code-review → hf-traceability-review → hf-regression-gate → hf-completion-gate → hf-finalize 链路
+- Workflow Profile: `full`
+- Execution Mode: `auto`
+- Branch / PR: `cursor/f008-coding-pack-and-writing-pack-bf33` / [#22](https://github.com/hujianbest/garage-agent/pull/22)
+- 关联文档:
+  - 规格 `docs/features/F008-garage-coding-pack-and-writing-pack.md`（已批准 r2 + design/tasks 阶段反向同步 wording）
+  - 设计 `docs/designs/2026-04-22-garage-coding-pack-and-writing-pack-design.md`（已批准 r2，含 9 项 ADR + 9 sub-commit + 9 INV + 5 测试文件）
+  - 任务计划 `docs/tasks/2026-04-22-garage-coding-pack-and-writing-pack-tasks.md`（已批准 r4，9 个 task）
+  - 完整 review 链路：`docs/reviews/{spec(r1+r2),design(r1+r2),tasks(r1+r2+r3+r4)}-review-F008-...md`
+  - 三份 approval：`docs/approvals/F008-{spec,design,tasks}-approval.md`
+
+### 用户可见变化
+
+- **新建 `packs/coding/`**（22 skill + 11 family-level 共享资产）：HarnessFlow 工程工作流 family pack 物化落地，把 21 hf-* + 1 using-hf-workflow 完整搬到 packs/coding/skills/，外加 4 个 family-level shared docs (packs/coding/skills/docs/) + 5 个 templates (packs/coding/skills/templates/) + 2 个 principles (packs/coding/principles/)，让下游用户挂载后直接获得完整 SDD + 闸 TDD 工程工作流能力
+- **新建 `packs/writing/`**（4 skill + 1 family-level prompts）：内容创作 family pack 物化落地，含 blog-writing（含发布前定稿 12 条规律）+ humanizer-zh（去 AI 痕迹）+ hv-analysis（横纵分析法深度研究）+ khazix-writer（卡兹克公众号风格）+ family-level prompts/横纵分析法.md，外加上游 LICENSE 保留
+- **`packs/garage/` 扩容到 3 skill** + version 0.1.0 → 0.2.0：从单一 garage-hello 占位 sample 扩到 getting-started 三件套（+ find-skills 发现新 skill 的 meta-skill + writing-skills 写新 skill 的 SOP），garage-sample-agent.md 保留（验证 agent surface 在多 pack 下仍工作）
+- **总计**：3 个 pack × **29 个 skill** × 3 个宿主 = `garage init --hosts all` 物化 87 个 skill 文件 + 1 个 agent 文件（agent 仅装到 claude / opencode；cursor 无 agent surface）
+- **`docs/principles/skill-anatomy.md` drift 收敛**：项目早期 AHE → HF 重命名后未同步的 70 字节 drift 已收敛，根级与 packs/coding/principles/ 字节相等，由 sentinel test `tests/adapter/installer/test_skill_anatomy_drift.py` 守门
+- **`.agents/skills/` 整目录删除**：F008 ADR-D8-2 候选 C，本仓库自身 IDE 加载入口转向 dogfood 安装产物（`.cursor/skills/` + `.claude/skills/` 已在 `.gitignore` 排除）。首次 clone 贡献者需跑 `garage init --hosts cursor,claude` 激活 IDE skill 加载
+- **AGENTS.md 局部刷新**：§ Packs & Host Installer 段加 packs/{garage,coding,writing}/ 三行 + "本仓库自身 IDE 加载入口" onboarding 段
+- **packs/README.md "当前 packs" 表更新**：F007 后只有 garage 1 行 → F008 后 garage + coding + writing 3 行
+- **零下游用户行为变化**：`garage init --hosts <list>` 接口完全不变；只是装到的内容物从 1 sample skill 变为 29 真实可用 skill
+
+### 数据与契约影响
+
+- **零 schema 变更**：`pack.json` schema 仍 6 字段（schema_version=1 / pack_id / version / description / skills[] / agents[]），不引入新字段
+- **零 host adapter 注册表变更**：仍 claude / opencode / cursor 三项
+- **零 D7 安装管道代码变更**：CON-801 严守，`git diff main..HEAD -- src/garage_os/` = 空（INV-5 守门）
+- **零依赖变更**：`pyproject.toml` + `uv.lock` 无变化（NFR-803 守门）
+- **新增 EXEMPTION_LIST 常量**（`tests/adapter/installer/test_neutrality_exemption_list.py`）：F008 ADR-D8-9 文件级豁免清单，7 项 meta/教学/README 文件保留宿主特定字面值（与 SKILL.md/agent.md 强约束分层），三层同步守门（spec NFR-801 详细说明 + design ADR-D8-9 + 测试 EXEMPTION_LIST）
+- **CON-803 字节级 1:1 例外 #2**（宿主中性化最小替换）：T2 (hv-analysis SKILL.md L55) + T3 (writing-skills SKILL.md L12) 各 1 处，每处 ≤ 3 行 diff（量化守门），把上游 SKILL.md 内宿主特定路径作为 example 的字面值替换为宿主无关表达
+- **新增 5 个测试文件**（`tests/adapter/installer/`）：
+  - `test_skill_anatomy_drift.py` — sentinel: drift 收敛硬门槛 (T1c)
+  - `test_full_packs_install.py` — INV-1 总 29 skill + INV-2 family-asset 单点 + FR-806 三家宿主全装 + INV-4 字节级 + NFR-803 ≤ 5s (T4c)
+  - `test_packs_garage_extended.py` — FR-803 packs/garage/ 扩容 + ADR-D8-5 agents 保留 + ADR-D8-6 version bump (T4c)
+  - `test_dogfood_layout.py` — INV-6 .agents/skills/ 移除 + INV-8 .gitignore + AGENTS.md 多个结构性 invariant (T4c)
+  - `test_neutrality_exemption_list.py` — ADR-D8-9 双层守门 (T4c)
+- **测试基线扩展**：F007 baseline 586 → F008 实施完成 633 passed（+22 test_neutrality.py 新增 SKILL.md parametrize + +18 个新测试用例 + +7 个 packs/{garage,writing}/skills/<id>/SKILL.md 增量），0 改写、0 退绿（NFR-802 严格守门）
+- **F007 carry-forward 修复**：`tests/test_cli.py:3042` 的 hard-coded `installed_packs == ["garage"]` 改为 `"garage" in installed_packs`，与 `test_subprocess_smoke_three_hosts:3144` regex-on-marker 同精神（防止 packs 扩容后 F007 测试退绿）
+
+### 验证证据
+
+- `pytest tests/ -q` → **TBD passed**（finalize 阶段填实测；预期 ≥ 633）
+- `git diff main..HEAD -- src/garage_os/` → 空（CON-801 严守，INV-5 验证）
+- `git diff main..HEAD -- pyproject.toml uv.lock` → 空（零依赖变更）
+- INV-1..9 全部通过（详见 design § 11.1）；INV-7（IDE 加载链）由 manual smoke walkthrough 验证
+- Manual smoke walkthrough → **TBD**（finalize 阶段填 dogfood `garage init --hosts cursor,claude` + `find .cursor/skills | head` 实测输出）
+- NFR-803 wall-clock：自动化口径 `test_full_packs_install` 实测 < 100ms（远低于 5s 上限）；manual smoke 口径 → **TBD**
+- 完整质量链 → **TBD**（finalize 阶段补完整 review/gate verdict 表）
+
+> **占位字段** 5 项（hf-tasks T5 acceptance 已 enum）：`manual_smoke_wall_clock` / `pytest_total_count` / `installed_packs_from_manifest` / `commit_count_per_group` / `release_notes_quality_chain` — 实施完成时占位 TBD，由 hf-finalize 阶段填实测数据。
+
+### 已知限制 / 后续工作
+
+- **F009 候选 — D7 安装管道扩展为递归 references/ 子目录**：design ADR-D8-4 选定"文档级提示"路径，下游用户在 Claude Code 加载 hf-* skill 时看到的 `references/spec-template.md` 引用是文档级提示（指向 Garage 仓库 git checkout 的 packs/ 路径），不在 .claude/skills/ 下复制。D9 cycle 可扩展 D7 管道递归子目录闭合此体验差距
+- **F009 候选 — `garage uninstall --hosts <list>` + `garage update --hosts <list>`**：F007 显式 deferred 的安装逆向操作 + 拉新流程，sentinel manifest 已为这两条留好 entry point
+- **`packs/product-insights/`**：F001 CON-002 提及但仓库当前无任何 product discovery skill 内容物；待真实内容物到位后再开 cycle
+- **首次 clone 贡献者 IDE 加载链空窗**（ADR-D8-2 候选 C 已知 trade-off）：必须先跑 `garage init --hosts cursor,claude` 激活 dogfood 产物才能在 IDE 内加载 hf-* skill；AGENTS.md `## Packs & Host Installer (F007/F008) > 本仓库自身 IDE 加载入口` 段已说明
+- **NFR-801 文件级豁免清单 7 项**（design ADR-D8-9）：humanizer-zh/README.md + writing-skills/anthropic-best-practices.md + writing-skills/examples/CLAUDE_MD_TESTING.md + packs/writing/README.md + packs/README.md + packs/garage/README.md + packs/coding/README.md 含 `.claude/skills/` 等字面值作为 meta/教学/README 安装样板；SKILL.md/agent.md 仍受 NFR-801 强约束。任何后续新增同类豁免必须三层同步：spec NFR-801 详细说明 + design ADR-D8-9 + tests/adapter/installer/test_neutrality_exemption_list.py 的 EXEMPTION_LIST 常量
+
+---
+
 ## F007 — Garage Packs 与宿主安装器（让 garage init 把内置 skills/agents 安装到 Claude Code / OpenCode / Cursor）
 
 - 状态: ✅ 已完成（2026-04-19）
