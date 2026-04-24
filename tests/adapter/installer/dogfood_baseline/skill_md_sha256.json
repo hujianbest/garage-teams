@@ -1,4 +1,6 @@
 {
+  ".claude/agents/blog-writing-agent.md": "0e837702748864791788e70a4d70d35abc739c6efc566c6bb10934f76e11c517",
+  ".claude/agents/code-review-agent.md": "258fb483c50e92c0c68358316fd3158cc35f03475fdb32cb88d03b4e0e2894c7",
   ".claude/agents/garage-sample-agent.md": "8c97d4cb78b819f3ce525b0e79af723a0e6765e8a31fe57b8d42be83d1d0875e",
   ".claude/skills/ai-weekly/SKILL.md": "0259bd114d6b7a152c4ebcd58b8e7014bb287a3243be671e44298840a475d1a2",
   ".claude/skills/blog-writing/SKILL.md": "8a382ce1d3dbd0f36f304a186fd32c0e0ebccb52d7926964914af792df1ebf17",

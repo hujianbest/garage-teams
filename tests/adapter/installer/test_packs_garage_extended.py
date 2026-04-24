@@ -33,22 +33,27 @@ class TestPacksGarageExtended:
         }, f"garage skills set mismatch: {set(garage.skills)}"
 
     def test_garage_pack_version_bumped_ADR_D8_6(self) -> None:
-        """ADR-D8-6: packs/garage/ version 0.1.0 → 0.2.0 (微版 bump for skill扩容)."""
+        """ADR-D8-6 + F011: packs/garage/ version 0.2.0 → 0.3.0 (F011 加 2 production agent)."""
         packs = discover_packs(PACKS_ROOT)
         garage = next((p for p in packs if p.pack_id == "garage"), None)
         assert garage is not None
-        assert garage.version == "0.2.0", (
-            f"garage pack version = {garage.version!r}, expected '0.2.0' per ADR-D8-6"
+        assert garage.version == "0.3.0", (
+            f"garage pack version = {garage.version!r}, expected '0.3.0' per F011 (was '0.2.0' in F008)"
         )
 
     def test_garage_pack_agents_preserved_ADR_D8_5(self) -> None:
-        """ADR-D8-5: garage-sample-agent.md preserved (proves agent surface
-        still works under multi-pack layout)."""
+        """ADR-D8-5 + F011: garage-sample-agent.md preserved + F011 加 2 production agent
+        (code-review-agent + blog-writing-agent), agents 数 1 → 3."""
         packs = discover_packs(PACKS_ROOT)
         garage = next((p for p in packs if p.pack_id == "garage"), None)
         assert garage is not None
-        assert garage.agents == ["garage-sample-agent"], (
-            f"garage agents = {garage.agents}, expected exactly garage-sample-agent"
+        # F011: 3 agents (alphabetical: blog-writing-agent, code-review-agent, garage-sample-agent)
+        assert sorted(garage.agents) == [
+            "blog-writing-agent",
+            "code-review-agent",
+            "garage-sample-agent",
+        ], (
+            f"garage agents = {garage.agents}, expected 3 agents (F011 加 2 production agent + sample preserved)"
         )
 
     def test_writing_skills_subdir_complete_FR803(self) -> None:

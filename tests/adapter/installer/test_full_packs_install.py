@@ -79,9 +79,13 @@ class TestFullPacksInstall:
         assert len(by_id["garage"].skills) == 3
         assert len(by_id["search"].skills) == 1  # ai-weekly only
         assert len(by_id["writing"].skills) == 4
-        # INV-1 hard gate (30 → 31 post-search hotfix).
+        # INV-1 hard gate (30 → 31 post-search hotfix; F011 不动 skills 数).
         total = sum(len(p.skills) for p in packs)
         assert total == 31, f"INV-1 violated: total skills = {total} (want 31)"
+        # F011: garage agents 1 → 3 (sample + code-review + blog-writing)
+        assert len(by_id["garage"].agents) == 3, (
+            f"F011: packs/garage/agents/ should have 3 (sample + code-review + blog-writing); got {by_id['garage'].agents}"
+        )
 
     def test_family_asset_uniqueness_INV2(self) -> None:
         """INV-2 spec § 4.2 红线 1: each family-level asset appears at most once
@@ -126,16 +130,16 @@ class TestFullPacksInstall:
         assert sorted(manifest.installed_hosts) == ["claude", "cursor", "opencode"]
         assert sorted(manifest.installed_packs) == ["coding", "garage", "search", "writing"]
 
-        # 31 skills × 3 hosts = 93 skill files; 1 agent × 2 hosts (claude + opencode,
-        # cursor adapter returns None for target_agent_path) = 2 agent files. Total 95.
-        assert len(manifest.files) == 95, (
-            f"manifest.files = {len(manifest.files)}, expected 95"
+        # 31 skills × 3 hosts = 93 skill files; F011: 3 agents × 2 hosts (claude + opencode,
+        # cursor adapter returns None for target_agent_path) = 6 agent files. Total 99.
+        assert len(manifest.files) == 99, (
+            f"manifest.files = {len(manifest.files)}, expected 99 (93 skills + 6 agents)"
         )
 
         # Summary returned (skills counted per-write, hence × 3 here too).
         assert isinstance(summary.n_skills, int)
         assert summary.n_skills == 93  # 31 × 3
-        assert summary.n_agents == 2  # 1 agent installed to claude + opencode
+        assert summary.n_agents == 6  # 3 agents × 2 hosts (claude + opencode)
 
     def test_skill_byte_level_sample_INV4(self, tmp_path: Path) -> None:
         """INV-4 + CON-803: a sampled hf-* SKILL.md installed to .claude/skills/
