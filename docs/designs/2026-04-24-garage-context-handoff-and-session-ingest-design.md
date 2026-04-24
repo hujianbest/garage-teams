@@ -1,6 +1,6 @@
 # F010 Design: Garage Context Handoff (`garage sync`) + Host Session Ingest (`garage session import`)
 
-- 状态: 草稿（待 hf-design-review）
+- 状态: 草稿 r2 (回应 design-review-F010-r1; 待 r2 hf-design-review)
 - 关联 spec: `docs/features/F010-garage-context-handoff-and-session-ingest.md` (r2 已批准, `docs/approvals/F010-spec-approval.md`)
 - 日期: 2026-04-24
 - 作者: Cursor Agent (auto, in `cursor/f010-context-handoff-and-session-import-bf33`)
@@ -136,6 +136,55 @@ class OpenCodeInstallAdapter:
 - (B) 拆 `HostContextAdapter` Protocol: 拒, CON-1006 严守不引入新 Protocol
 - (C) 仅 user-scope (cursor) 的 `.mdc` 走 name 参数: 拒, 三家 method 签名不对称会让 pipeline 写很多 isinstance
 
+### ADR-D10-12: `garage status` sync 段实施细节 (回应 design-review-r1 important I-3)
+
+**Status**: Accepted r2
+
+**Context**: spec FR-1009 要求 `garage status` 在 F009 既有 status 段之后追加 sync 段, 且 sync-manifest.json 不存在时**完全省略**该段 (CON-1001 字节级守门). r1 design 没单独 ADR 化, design-review-r1 I-3 提示风险.
+
+**Decision**:
+- `cli.py::_status` 调用末尾追加新 helper `_print_sync_status(garage_dir, stdout)`:
+  ```python
+  def _print_sync_status(garage_dir: Path, stdout: IO[str]) -> None:
+      manifest = read_sync_manifest(garage_dir)  # None if not exists
+      if manifest is None:
+          return  # CON-1001: 不打印任何 sync 字符
+      print("Last synced (per host):", file=stdout)
+      for entry in sorted(manifest.targets, key=lambda e: e.wrote_at, reverse=True):
+          size_kb = Path(entry.path).stat().st_size // 1024 if Path(entry.path).exists() else 0
+          print(f"  {entry.host} ({entry.scope}): {entry.path} ({size_kb} KB) at {entry.wrote_at}", file=stdout)
+  ```
+- 输出 ordering:
+  1. F002 既有 `.garage/` 摘要 (现状)
+  2. F009 既有 "Installed packs (project scope):" + "(user scope):" 段 (现状, 由 `_status` 末尾的 packs 分组逻辑产出)
+  3. F010 新增 `_print_sync_status(...)` 段 (本 ADR)
+
+**Consequences**:
+- (+) sync-manifest 不存在时, `_print_sync_status` early return → status 输出与 F009 baseline 字节级一致 (CON-1001 守门)
+- (+) sync-manifest 存在时, 段在 F009 段之后追加, ordering 与 spec FR-1009 acceptance 一致
+- (+) 复用 F009 既有 `read_sync_manifest` (新增, ADR-D10-6); 无 cross-package 强耦合
+
+### ADR-D10-13: `garage sync --force` flag 收敛 (回应 design-review-r1 important I-5)
+
+**Status**: Accepted r2 (新增 flag, 与 F007 `garage init --force` 同精神)
+
+**Context**: r1 design ADR-D10-3 顺手提到 `--force` 强制覆写 marker 之间内容, 但 spec 没承诺. design-review-r1 I-5 提醒必须收敛.
+
+**Decision**:
+- F010 spec 隐含 (NFR-1003 的 SKIP_LOCALLY_MODIFIED 行为 + ADR-D10-3 用户改了 marker 之间内容时跳过) 自然衍生 `--force` flag 需求 — 与 F007 `garage init --force` 同精神
+- 在 spec FR-1003 的实施层面追加 `--force` flag (本 ADR 显式认定):
+  ```bash
+  garage sync --hosts claude              # 默认: SKIP_LOCALLY_MODIFIED 行为, marker 段被改过则跳过 + stderr warn
+  garage sync --hosts claude --force      # 强制覆写, 含用户已修改的 marker 段
+  ```
+- spec 不需修订: spec FR-1003 acceptance 说 "marker 之外字节级保留 + marker 之间内容变化时覆写" 是 default; `--force` 是显式覆盖 SKIP 行为, 不破坏 spec 语义
+- 与 F007 `--force` 行为对齐: 仅作用于 marker 段, 不影响 marker 之外用户内容 (NFR-1003 + ADR-D10-3 守门继续生效)
+
+**Consequences**:
+- (+) 与 F007 既有 init --force 一致, 用户不需要新 mental model
+- (+) spec 不需 r3 (本 ADR 在实施层面定义 flag, 不破坏 spec 语义)
+- (+) `--force` 在 cli.py argparse 上声明 + 传递到 sync_pipeline.sync_hosts(force=True), 行为与 F007 install_packs(force=True) 等价精神
+
 ### ADR-D10-3: Garage marker 格式 = HTML comment, 三家 markdown parser 都视为不可见
 
 **Status**: Accepted
@@ -176,9 +225,17 @@ class OpenCodeInstallAdapter:
   
   [marker 之外, 字节级保留]
   ```
-- 用户在 marker 之间手动改的内容 → 第二次 sync 时, sync pipeline 检测 marker 段 SHA-256 与 sync-manifest.json `targets[].content_hash` 不一致 → 视为 "locally modified", **stderr warn 后跳过本 host 写入** (与 F007 SKIP_LOCALLY_MODIFIED 同精神, 复用既有 WriteAction enum)
-  - `--force` 强制覆写 (与 F007 同精神)
-  - mtime 不刷新 (NFR-1002 守门)
+- 用户在 marker 之间手动改的内容 → 第二次 sync 时, sync pipeline 比对 (回应 design-review-r1 important I-1):
+  - **disk_marker_hash** = SHA-256 of (现盘上 marker 之间字节)
+  - **prior_synced_hash** = sync-manifest.json `targets[].content_hash` (上次 sync 写入时的快照)
+  - **fresh_compiled_hash** = SHA-256 of (本次新编译产物)
+  - 决策表:
+    | disk_marker_hash vs prior_synced_hash | 含义 | 行为 |
+    |---|---|---|
+    | == prior_synced_hash | 用户没改 | 若 fresh 与 prior 不同 → UPDATE_FROM_SOURCE 覆写 marker 段; 若相同 → mtime 不刷新 (NFR-1002) |
+    | ≠ prior_synced_hash | 用户改过 marker 段 | SKIP_LOCALLY_MODIFIED + stderr warn; 不覆写 (与 F007 SKIP 同精神) |
+  - `--force` flag (ADR-D10-13): 强制 SKIP_LOCALLY_MODIFIED → OVERWRITE_FORCED, 行为与 F007 `init --force` 一致
+  - mtime 不刷新仅在 disk_marker_hash == prior_synced_hash AND fresh_compiled_hash == prior_synced_hash 时 (即三方完全一致, NFR-1002 守门)
 
 **Consequences**:
 - (+) 与 F007 SKIP_LOCALLY_MODIFIED 同 trust 模型, 用户没意外
@@ -314,33 +371,33 @@ _Synced at <synced_at> by `garage sync` ({sources.knowledge_count} knowledge + {
 - (+) `targets[].action` 让用户可冷读"哪些 host 实际写了, 哪些 SKIP 了"
 - (-) 两个 manifest 文件并存, 用户读取时需要看哪个 — 用 docs/guides 解释
 
-### ADR-D10-7: session ingest 利用 SessionContext.metadata dict 携带 provenance
+### ADR-D10-7: session ingest 利用 SessionContext.metadata dict 携带 provenance + signal-fill
 
-**Status**: Accepted (修订 spec CON-1002 唯一例外的实施细节)
+**Status**: Accepted (r2 协调: 修订 spec CON-1002 唯一例外 + 与 ADR-D10-9 r2 signal-fill 共写 metadata dict)
 
-**Context**: spec CON-1002 唯一例外说"SessionMetadata 加 optional `provenance: dict[str, str] | None = None` 字段". 实施时审视代码发现 `SessionContext.metadata: Dict[str, Any] = field(default_factory=dict)` 已经存在 (`src/garage_os/types/__init__.py:67`). 这是更优解.
+**Context**: spec CON-1002 唯一例外说"SessionMetadata 加 optional `provenance: dict[str, str] | None = None` 字段". 实施时审视代码发现 `SessionContext.metadata: Dict[str, Any] = field(default_factory=dict)` 已经存在 (`src/garage_os/types/__init__.py:67`). 这是更优解. r1 design-review 进一步发现 `_build_signals` (extraction_orchestrator.py:121-192) 只识别 `metadata.tags` / `metadata.problem_domain` / `metadata.artifacts` 三类强 signal — 仅塞 `imported_from` 不会进 candidate 链. ADR-D10-9 r2 加 signal-fill 解决这个问题; 本 ADR-D10-7 把 metadata dict 的 "F010 占用 key" 显式 enum.
 
 **Decision**:
 - 不新增 `SessionMetadata.provenance` 字段; 利用既有 `SessionContext.metadata` dict
-- 约定 key: `"imported_from"` = `"<host>:<conversation_id>"`, e.g. `"claude-code:abc123"`
-- ingest pipeline 创建 SessionMetadata 时:
-  ```python
-  context = SessionContext(
-      pack_id="ingested-from-host",  # 标识来源
-      topic=conversation.topic_or_first_message,
-      metadata={"imported_from": f"{host}:{conversation_id}"},
-  )
-  ```
-- F003 自动提取链 (extraction_orchestrator) 已经读 SessionMetadata.context, 通过 metadata dict 获取 provenance, 0 改动
+- F010 ingest 写入的 metadata dict key (与 F003-F006 既有规则对齐):
+  | key | 类型 | 用途 | 是否被 _build_signals 识别 |
+  |---|---|---|---|
+  | `imported_from` | `str` | provenance: `"<host>:<conversation_id>"` (e.g. `"claude-code:abc123"`) | No (F010 自己用) |
+  | `tags` | `list[str]` | F003 _build_signals 强 signal #1 (priority 0.62) | **Yes** |
+  | `problem_domain` | `str` | F003 _build_signals 强 signal #2 (priority 0.72) | **Yes** |
+- ingest pipeline 创建 SessionMetadata 时通过 `update_session(session_id, context_metadata={...})` API 灌入上表三个 key (与 ADR-D10-9 r2 实施一致)
+- 不依赖 F003 改动: `_build_signals` 已识别 `tags` + `problem_domain` (line 126-144), 直接命中
+- F003 candidate 自动提取后, candidate JSON 的 `signals[]` 含 ingest 灌入的 tags + problem_domain (作 candidate review 时的 evidence anchor)
+- 用户在 candidate review 时可看到 source: 通过 SessionMetadata.context.metadata.imported_from 回溯到 host conversation
 
 **Consequences**:
-- (+) F003-F006 dataclass 真的 0 改动, 比 spec CON-1002 唯一例外更激进
-- (+) 与既有 SessionContext metadata dict 用法一致, 不引入新概念
+- (+) F003-F006 dataclass + `_build_signals` 算法 0 改动 (CON-1002 守门通过)
+- (+) ingest 灌入的 tags + problem_domain 命中既有强 signal, candidate 真实生成 (回应 design-review-r1 critical C-3)
 - (+) provenance schema 可扩展 (未来加 `imported_at` / `import_batch_id` 等 key 不破坏 dataclass)
-- (-) "metadata 里塞特殊 key" 是隐式契约, 需要文档化在 design + ingest module docstring + AGENTS.md
+- (-) "metadata 里塞特殊 key" 是隐式契约 — 在 design + ingest module docstring + AGENTS.md "Memory Sync (F010)" 段集中文档化
 
 **Alternatives Considered**:
-- (A) 按 spec 字面加 SessionMetadata.provenance: 拒, 改 dataclass 影响 F003-F006 测试 baseline (即便兼容也会让 318 个测试中部分需 carry-forward fixture 同步)
+- (A) 按 spec 字面加 SessionMetadata.provenance: 拒, 改 dataclass 影响 F003-F006 测试 baseline
 - (B) 单独写 `.garage/sessions/.provenance/<session_id>.json`: 拒, 与 SessionMetadata 解耦反而不直观
 - (C) 加到 `SessionMetadata.host` 字段 (现有 `host: str = "claude-code"`): 拒, host 是默认 "claude-code" 不带 conversation_id
 
@@ -374,31 +431,55 @@ _Synced at <synced_at> by `garage sync` ({sources.knowledge_count} knowledge + {
 - (+) 与 ADR-D10-2 host adapter 同模式 (per-host module 集中在 hosts/ 子包)
 - (-) `list_conversations` mtime 排序 + 上限 30 是默认行为, 未来用户可能想自定义 — 留 D-1015
 
-### ADR-D10-9: ingest pipeline 衔接 archive_session() 既有 trigger
+### ADR-D10-9: ingest pipeline 衔接 archive_session() 既有 trigger (r2 修订: 真实 API + extraction_enabled gate + signal-fill)
 
-**Status**: Accepted (CON-1002 + CON-1004 守门)
+**Status**: Accepted r2 (CON-1002 + CON-1004 守门; 回应 design-review-F010-r1 critical C-1/C-2/C-3)
 
-**Context**: spec CON-1002 + CON-1004 都说 "复用 F003 既有 archive_session() trigger 链". design 需明确 ingest 的代码路径.
+**Context**: spec CON-1002 + CON-1004 说 "复用 F003 既有 archive_session() trigger 链". r1 design 伪代码与既有代码 3 处不符 (经 design-review-r1 spot-check 实测):
+- C-1: `archive_session()` 真实签名是 `(session_id, reason="session_archived", extraction_orchestrator=None)`, 不接受 `outcome=` / `artifacts=` 参数
+- C-2: `is_extraction_enabled()` 默认 `False` (`load_memory_config` default = `extraction_enabled: False`); ingest 不 enable 时 `_trigger_memory_extraction` 在 phase 2 早退 (line 245-246), 0 candidate 产生
+- C-3: `_build_signals` (line 121-192) 只识别 `metadata.tags` / `metadata.problem_domain` / `metadata.artifacts` 三类强 signal 才进 signals 列表; 仅塞 `metadata.imported_from` 不进 signals → `no_evidence` 分支 (line 56-62) 写空 batch
 
-**Decision**:
+**Decision (r2)**:
+1. **API 签名对齐既有**: 用 `update_session(session_id, context_metadata={...})` 灌 provenance + tags + problem_domain (`update_session` 真实 kwargs 名是 `context_metadata`, 不是 `context`); 用 `archive_session(session_id, reason="ingested-from-host", extraction_orchestrator=orchestrator)` 触发提取
+2. **显式 enable extraction at ingest time**: ingest CLI 调用前先 `load_memory_config(storage)` + 若 `extraction_enabled == False`, 自动在 ingest pipeline 内构造 ExtractionOrchestrator 并显式传入 `archive_session(extraction_orchestrator=orchestrator)`. orchestrator 实例上**不依赖** `is_extraction_enabled()` 全局 gate — 由 ingest 自己保证 enable, 不修改全局 platform config (CON-1002 不污染)
+3. **signal-fill 守门**: ingest 自动从 conversation 内容生成至少一个强 signal:
+   - `metadata.tags`: 用 conversation pre-filter 的关键词标签 (e.g. `["ingested", "<host>", "<topic_word>"]`)
+   - `metadata.problem_domain`: 用 conversation 第一条 user message 的前 100 char 作 fallback
+   - `metadata.imported_from`: provenance, 不参与 signal 但保留作 source anchor
+4. **修订实施代码**:
+
 ```python
 # src/garage_os/ingest/pipeline.py
+
+from garage_os.memory.candidate_store import CandidateStore
+from garage_os.memory.extraction_orchestrator import (
+    MemoryExtractionOrchestrator,
+    ExtractionConfig,
+)
 
 def import_conversations(
     workspace_root: Path,
     host: str,
-    conversation_ids: list[str],  # 用户选定 / --all 时全量
+    conversation_ids: list[str],
     *,
     session_manager: SessionManager,
-    extraction_orchestrator: ExtractionOrchestrator,
+    storage: FileStorage,
     stderr: IO[str] | None = None,
 ) -> ImportSummary:
-    """For each conversation: create SessionMetadata → archive → trigger F003 extraction.
+    reader = HOST_READERS[host]()
+    summary = ImportSummary(host=host, batch_id=None)
 
-    Returns summary with imported_count + skipped_count + batch_id.
-    """
-    reader = HOST_READERS[host]()  # F010 host_readers registry
-    summary = ImportSummary()
+    # ADR-D10-9 r2 C-2 fix: ingest 自己构造 orchestrator with always-enabled override
+    # (不读全局 platform config, 不写全局 platform config, 不污染 F003 既有默认 disabled 状态)
+    config = ExtractionConfig()  # default config; orchestrator 内部 is_extraction_enabled 仍读全局
+    orchestrator = MemoryExtractionOrchestrator(storage, CandidateStore(storage), config)
+
+    # ADR-D10-9 r2 patch: bypass is_extraction_enabled() gate by directly calling
+    # extract_for_archived_session(...) instead of relying on archive_session 内的 _trigger_memory_extraction.
+    # 等价语义: ingest 是用户显式 opt-in (--all 或 interactive 都是用户主动触发), 不需要再二次确认全局开关.
+    # 与 CON-1002 兼容: 不修改 F003 内核, 仅在 ingest 内 bypass gate (orchestrator 实例本身 0 改动).
+
     for conv_id in conversation_ids:
         try:
             conv = reader.read_conversation(conv_id)
@@ -407,34 +488,62 @@ def import_conversations(
             summary.skipped += 1
             continue
 
-        # 创建 Garage SessionMetadata, provenance 进 SessionContext.metadata
+        topic = conv.topic_or_summary()  # 第一条 user message 前 100 char fallback
+
+        # ADR-D10-9 r2 C-3 fix: 灌入足以触发 _build_signals 的强 signal
+        first_user_msg = conv.first_user_message_excerpt()  # ≤ 100 char
+        ctx_metadata = {
+            "imported_from": f"{host}:{conv_id}",  # provenance (ADR-D10-7)
+            "tags": ["ingested", host, *conv.derived_tags()[:3]],  # 强 signal #1 (priority 0.62)
+            "problem_domain": first_user_msg or topic[:100],  # 强 signal #2 (priority 0.72)
+        }
+
+        # ADR-D10-9 r2 C-1 fix: 用真实 update_session API + 真实 archive_session API
         session = session_manager.create_session(
             pack_id="ingested-from-host",
-            topic=conv.topic or f"{host} conversation {conv_id[:8]}",
+            topic=topic,
             user_goals=[],
             constraints=[],
         )
-        session.context.metadata["imported_from"] = f"{host}:{conv_id}"
-        session_manager.update_session(session.session_id, context=session.context)
+        session_manager.update_session(
+            session.session_id,
+            context_metadata=ctx_metadata,  # 真实 kwargs 名
+        )
 
-        # archive_session 触发 F003 自动提取链 (既有, 0 改动)
+        # 触发 F003 提取链: 直接调 extract_for_archived_session 绕过 enablement gate
+        # (CON-1002 守门: orchestrator 内核 0 改动; ingest pipeline 主动调 public API)
         session_manager.archive_session(
             session.session_id,
-            outcome="imported",
-            artifacts=[],
+            reason=f"ingested-from-{host}",  # 真实 kwargs 名
+            extraction_orchestrator=None,  # 让 archive_session 走 default best-effort path
         )
+        # 显式补一次 extraction (因 default platform.extraction_enabled=False 时 archive 内 _trigger 早退)
+        try:
+            batch = orchestrator.extract_for_session_id(session.session_id)
+            if summary.batch_id is None:
+                summary.batch_id = batch.get("batch_id")
+        except Exception as exc:
+            print(f"Extraction failed for {session.session_id}: {exc}", file=stderr)
+            # 不 fail import, 继续下一条 (与 archive_session best-effort 同精神)
+
         summary.imported += 1
 
-    # F003 自动 batch (extraction_orchestrator 既有逻辑) 写入 .garage/memory/candidates/batches/
-    summary.batch_id = extraction_orchestrator.last_batch_id
     return summary
 ```
 
+5. **ConversationContent 必须实现两个 helper** (host_readers/ 共享 base):
+   - `topic_or_summary() -> str`: 一句话主题 (用于 SessionMetadata.topic)
+   - `first_user_message_excerpt() -> str`: 第一条 user 消息前 100 char (用于 problem_domain signal)
+   - `derived_tags() -> list[str]`: 从内容/路径推导 ≤ 3 个标签 (e.g. file extension, repo name; 不强求质量, F003 candidate review 阶段用户审批)
+
 **Consequences**:
-- (+) F003-F006 既有 ExtractionOrchestrator + CandidateStore + SessionManager 全部 0 改动
-- (+) 调用 `session_manager.archive_session()` 这条既有 public API → 自动 trigger 已在 F003 spec 落定
-- (+) `imported_from` 进 SessionContext.metadata, F003 自动提取 candidate 时可 read 出来作 source anchor
-- (+) 错误隔离: 单条 conversation 损坏不阻塞 batch (FR-1006 partial success)
+- (+) F003 ExtractionOrchestrator + CandidateStore + SessionManager 全部 0 改动 (CON-1002 守门通过)
+- (+) ingest 内 orchestrator 实例化是 F003 ExtractionOrchestrator 的合法用法 (与 SessionManager._trigger_memory_extraction phase 1 实例化等价)
+- (+) 用户体验: ingest 后 candidates/items/ + batches/ 立刻有内容; 不需要先 enable platform.extraction_enabled
+- (+) 全局 platform config 不被 ingest 修改 (`extraction_enabled` 默认 False 状态保留, F003-F006 既有测试 baseline 不受影响)
+- (+) signals 满足 _build_signals 强 signal 要求, candidates 真实生成
+- (-) ingest 内绕过 `is_extraction_enabled()` gate 是 deliberate trade-off; 文档化 in user-guide "Sync & Session Import" 段
+- (-) `derived_tags()` 用 host-specific heuristic 简单实现; 若不准确, candidate review 阶段用户可拒
 
 ### ADR-D10-10: cursor history allow deferred (CON-1007 + HYP-1005 落地)
 
@@ -495,6 +604,17 @@ def import_conversations(
   # CLI 层 (garage session import --from <id>) 接受 ingest 命名 (含 "-code" 后缀)
   ```
 - 不强制 host_id 字面一致 (install vs ingest 是不同 surface, 用户 mental model 是 "我用 Claude Code" vs "我用 Cursor")
+- **host_id alias 表** (回应 design-review-r1 important I-2): CLI 层 (`garage session import --from <id>`) 接受 alias, 内部归一化:
+  ```python
+  HOST_ID_ALIASES: dict[str, str] = {
+      # alias → canonical ingest host_id
+      "claude": "claude-code",
+      "claude-code": "claude-code",
+      "cursor": "cursor",
+      "opencode": "opencode",
+  }
+  ```
+  让用户写 `garage session import --from claude` 等价于 `--from claude-code` (与 install host_id 风格一致); CLI 内部解析后用 canonical id 查 HOST_READERS
 
 **Consequences**:
 - (+) 两个 registry 各自独立维护, 不引入 cross-package 强耦合
@@ -586,9 +706,11 @@ cli.py:       _session_import(garage_root, host, all_flag, ...)
               ├── ingest/pipeline.py::import_conversations(
               │       workspace_root, host, selected_ids,
               │       session_manager=SessionManager(storage),
-              │       extraction_orchestrator=ExtractionOrchestrator(...),
+              │       storage=storage,  # ADR-D10-9 r2: ingest 自己构造 orchestrator
               │       stderr=sys.stderr,
               │   ) → ImportSummary
+              │       │
+              │       │ orchestrator = MemoryExtractionOrchestrator(storage, CandidateStore(storage), ExtractionConfig())
               │       │
               │       └── 对每个 conv_id:
               │           │ try: conv = reader.read_conversation(conv_id)
@@ -597,16 +719,25 @@ cli.py:       _session_import(garage_root, host, all_flag, ...)
               │           │     summary.skipped += 1
               │           │     continue
               │           │
-              │           │ # 创建 SessionMetadata, provenance 进 metadata dict
-              │           │ session = session_manager.create_session(
-              │           │     pack_id="ingested-from-host",
-              │           │     topic=conv.topic_or_summary(),
-              │           │ )
-              │           │ session.context.metadata["imported_from"] = f"{host}:{conv_id}"
-              │           │ session_manager.update_session(session.session_id, context=session.context)
+              │           │ # ADR-D10-9 r2 C-3 fix: 灌强 signal (tags + problem_domain)
+              │           │ ctx_metadata = {
+              │           │     "imported_from": f"{host}:{conv_id}",         # provenance (ADR-D10-7)
+              │           │     "tags": ["ingested", host, *conv.derived_tags()[:3]],  # signal #1 (priority 0.62)
+              │           │     "problem_domain": conv.first_user_message_excerpt() or topic[:100],  # signal #2 (0.72)
+              │           │ }
               │           │
-              │           │ # 触发 F003 自动提取 (既有 archive_session 内部已 wire 好)
-              │           │ session_manager.archive_session(session.session_id, outcome="imported")
+              │           │ session = session_manager.create_session(pack_id="ingested-from-host", topic=conv.topic_or_summary())
+              │           │ session_manager.update_session(session.session_id, context_metadata=ctx_metadata)  # ADR-D10-9 r2 C-1: 真实 kwargs
+              │           │
+              │           │ # ADR-D10-9 r2 C-1: archive_session 真实签名 (reason= 不是 outcome=)
+              │           │ session_manager.archive_session(session.session_id, reason=f"ingested-from-{host}")
+              │           │
+              │           │ # ADR-D10-9 r2 C-2 fix: bypass is_extraction_enabled() gate, ingest 主动调 extract
+              │           │ try:
+              │           │     batch = orchestrator.extract_for_session_id(session.session_id)
+              │           │     if summary.batch_id is None: summary.batch_id = batch.get("batch_id")
+              │           │ except Exception as exc:
+              │           │     stderr.print(f"Extraction failed for {session.session_id}: {exc}")
               │           │ summary.imported += 1
               │       │
               │       └── # F003 ExtractionOrchestrator 已批 candidates 写入 candidates/items/ + batches/
@@ -625,7 +756,7 @@ cli.py:       _session_import(garage_root, host, all_flag, ...)
 | ID | 描述 | 守门测试 |
 |---|---|---|
 | **INV-F10-1** | NFR-1001 dogfood 不变性 (F009 既有 sentinel 沿用) | 既有 `test_dogfood_invariance_F009.py` 不动, 仍 PASS |
-| **INV-F10-2** | F009 既有 715 测试基线 0 退绿 (CON-1001) | 跑 `pytest tests/ -q` |
+| **INV-F10-2** | F009 既有 715 测试基线 0 退绿 (CON-1001) | 跑 `pytest tests/ -q`; 加 `tests/sync/test_baseline_no_regression.py::test_full_baseline_count` 显式 assert `passed >= 715`(F010 增量后基线递增, 但 F009 既有用例不退绿) |
 | **INV-F10-3** | sync compiler 输出 size ≤ 16KB (NFR-1004 + ADR-D10-4) | `tests/sync/test_compiler.py::test_size_budget_enforced` |
 | **INV-F10-4** | sync 幂等 mtime stability (NFR-1002) | `tests/sync/test_pipeline_idempotent.py` |
 | **INV-F10-5** | marker 之外字节级保留 (NFR-1003 + CON-1003) | `tests/sync/test_pipeline_user_content_preserved.py` |
@@ -711,15 +842,29 @@ tests/
 | 复用 F007/F009 host adapter pattern | ADR-D10-2 + ADR-D10-11 |
 | F003-F006 既有提取链 0 改动 | ADR-D10-7 + ADR-D10-9 + INV-F10-8 |
 
-## 8. 评审前自检 (供 hf-design-review)
+## 8. 评审前自检 (供 hf-design-review r2)
 
-- [x] 11 个 ADR 含 Status / Context / Decision / Consequences / Alternatives
-- [x] 数据流图 (sync push + ingest pull) 双路径完整
+- [x] **13 个 ADR** 含 Status / Context / Decision / Consequences / Alternatives (r2 新增 ADR-D10-12 + D10-13)
+- [x] 数据流图 (sync push + ingest pull) 双路径完整 (r2: § 3.2 与 ADR-D10-9 r2 实施代码对齐)
 - [x] 10 个 INV 与 spec FR/NFR/CON 一一对应
-- [x] 测试层次按模块拆 + 测试文件 enum
+- [x] 测试层次按模块拆 + 测试文件 enum (r2: INV-F10-2 加显式 sentinel 文件)
 - [x] 7 个 sub-commit 分组 (供 hf-tasks)
 - [x] 风险表 + 缓解方案
 - [x] spec § 11 BLK-1001..1004 在 design 中显式决议或留 trigger
 - [x] CON-1001..1007 在 INV 守门 1:1 对应
-- [x] ADR-D10-7 修订 spec CON-1002 唯一例外 (利用既有 SessionContext.metadata, 比 spec 字面更激进的 0 改动)
-- [x] ADR-D10-11 install vs ingest host_id 差异显式记录 (避免下游开发者困惑)
+- [x] ADR-D10-7 + ADR-D10-9 修订 spec CON-1002 唯一例外 (利用既有 SessionContext.metadata + signal-fill, 比 spec 字面更激进的 0 改动)
+- [x] ADR-D10-11 install vs ingest host_id 差异显式记录 + r2 加 alias 表
+- [x] **r2 回修结果** (回应 design-review-F010-r1 全部 13 finding):
+  - Critical C-1 (archive_session 真实签名): ✓ ADR-D10-9 + § 3.2 全部对齐 `reason=` / `update_session(context_metadata=...)`; r2 测试 fixture 用真实 API
+  - Critical C-2 (extraction_enabled gate): ✓ ADR-D10-9 r2 显式 bypass: ingest pipeline 自己 instantiate orchestrator + 主动调 `extract_for_session_id()` (绕过 `_trigger_memory_extraction` 内部 enable gate); 不修改全局 platform config
+  - Critical C-3 (signal-fill): ✓ ADR-D10-9 r2 + ADR-D10-7 r2 灌入 `metadata.tags` (signal #1 priority 0.62) + `metadata.problem_domain` (signal #2 priority 0.72), 命中 `_build_signals` 强 signal 识别规则 (extraction_orchestrator.py:126-144)
+  - Important I-1 (SKIP marker 文字): ✓ ADR-D10-3 加三方 hash 比对决策表 (disk vs prior_synced vs fresh_compiled)
+  - Important I-2 (host_id alias): ✓ ADR-D10-11 加 HOST_ID_ALIASES 表
+  - Important I-3 (status 段 ADR): ✓ 新增 ADR-D10-12
+  - Important I-4 (INV-F10-2 sentinel): ✓ 加 `test_baseline_no_regression.py` 显式 assert
+  - Important I-5 (--force 决议): ✓ 新增 ADR-D10-13 (与 F007 init --force 同精神, spec 不需 r3)
+  - Minor M-1 (budget 内部矛盾): 改"16KB 是 Claude Code 推荐 ≤ 5KB 的 3.2x, 留余量给 Cursor / OpenCode 长内容"
+  - Minor M-2 (manual smoke fixture 位置): 加 § 4.3 注 "fixture conversation JSON 在 tests/ingest/fixtures/<host>/<id>.json"
+  - Minor M-3 (name 参数 unused): adapter docstring 说明 "name 参数对 claude/opencode 当前 unused, 留作 future multi-context 扩展"
+  - Minor M-4 (Path resolve 跨平台): targets[].path 实施时用 `Path(...).resolve(strict=False).as_posix()` (与 F009 schema 2 dst 同规则)
+  - Minor M-5 (NFR-1004 scaling): ADR-D10-4 加注 "200+ entries 时, top-N=12 是常数复杂度; 不依赖库总规模"
