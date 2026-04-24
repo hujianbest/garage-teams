@@ -88,6 +88,61 @@ garage status
 | [tests/](tests/) | 模块、集成、兼容性和安全测试 |
 | [AGENTS.md](AGENTS.md) | 面向 Agent 的项目约定和 Garage OS 开发参考 |
 
+## 开发计划
+
+下面是「当前已实现内容」对照 [docs/soul/manifesto.md](docs/soul/manifesto.md) 愿景的差距盘点，作为后续 cycle 立项的依据。
+
+### 现状速览
+
+```
+              vision 完成度
+              ┌─────────────────────────────────┐
+信念 1 数据归你 │█████████████████████████████████│ 5/5  ✅
+信念 2 宿主可换 │███████████████████              │ 3/5  ⚠️ 缺扩展点
+信念 3 渐进增强 │█████████████████████████████████│ 5/5  ✅
+信念 4 人机共生 │███████████████████              │ 3/5  ⚠️ 飞轮没闭环
+信念 5 可传承   │████████████                     │ 2/5  ⚠️ 只能 git clone
+              └─────────────────────────────────┘
+
+承诺 ① 几秒变成你的 Agent  ⚠️ 3/5  ← P0 自动 context handoff 缺失
+承诺 ② 知道你的编码风格    ❌ 0/5  ← P1 style 维度未建模
+承诺 ③ 记得上月架构决策    ⚠️ 4/5  ← P0 召回是 pull,不是 push
+承诺 ④ 调用 50 个 skills   ✅ 5/5
+承诺 ⑤ 帮你写博客          ✅ 5/5
+
+Stage 1 工具箱  ████████████████████ 100%
+Stage 2 记忆体  ████████████          60%   ← 缺会话上下文持续化
+Stage 3 工匠    █                      5%   ← agent 组装 + skill 自动提炼几乎为 0
+Stage 4 生态    ░                      0%
+```
+
+### 缺口与优先级
+
+#### P0 — 卡住 vision 兑现的硬瓶颈
+
+1. **自动 context handoff 管道**：用户在宿主里开新对话时，`.garage/knowledge/` 与 `.garage/experience/` 不会被宿主主动加载。F003-F006 投入的整个 memory 子系统在用户真实使用路径里"看不见"。可能形态：每个 host adapter 提供一种 context 注入路径（Claude Code → `CLAUDE.md`、Cursor → `.cursor/rules/`、OpenCode → 等价物），由 `garage sync` 把 top-N knowledge + recent experience 编译进去。
+2. **宿主 session 回流**：F003 提取触发器是 `SessionManager.archive_session()`，但用户在 Cursor / Claude Code 里的日常对话不会自动归档为 Garage session，"用得越多越强"飞轮没闭环。可能形态：`garage session import --from <host-history>` 或宿主侧 rule 在对话结束时主动触发归档。
+
+#### P1 — 影响 vision 完整度
+
+3. **个人 style / preference 维度**：当前 4 类候选（decision / pattern / solution / experience_summary）里没有 style 维度，承诺 ② "知道你的编码风格"等于 0% 实现。
+4. **agent 组装层空白**：`packs/garage/` 只有 1 个 `garage-sample-agent` 占位；vision 提到的"代码审查 agent / 博客写作 agent"完全没起步，是 Stage 3 的核心能力。
+5. **pack 共享流程**：缺 `garage pack install <git-url>` / `garage pack publish` / 知识脱敏导出 / 跨用户合并工具，信念 5「可传承」实质上只能靠 `git clone`。
+
+#### P2 — 长期债
+
+6. **宿主扩展点不可插拔**：`HOST_REGISTRY` 是 hardcoded 字面表，第 4 个宿主必须改 Garage 源码。
+7. **跨设备一致性靠手动 git**：缺 `garage sync` 帮用户打理 git push/pull + conflict 合并。
+8. **memory 飞轮缺 push 一环**：当前全链路是 pull；growth-strategy 表里"系统主动指出'这个模式可以变成 skill'"无实现路径。
+
+### 推荐路线
+
+如果只能选一件事集中做，先打 **P0-1（自动 context handoff）**——它的杠杆最大，直接同时盘活承诺 ① ② ③，把已经投入的整个 memory 子系统从沉睡激活到被宿主每次对话主动看见。再加一件就选 **P0-2（宿主 session 回流）**，让 P0-1 注入的 context 持续有新东西可注入。
+
+P1 三项可以排在 P0 之后；P2 三项是长期债，等触发信号到了再做。
+
+详细评分依据见 [docs/soul/manifesto.md](docs/soul/manifesto.md) + [docs/soul/growth-strategy.md](docs/soul/growth-strategy.md) + [RELEASE_NOTES.md](RELEASE_NOTES.md) F001–F008 段。
+
 ## 开源化进展
 
 `garage-agent` 正在为公开开源发布做整理。
