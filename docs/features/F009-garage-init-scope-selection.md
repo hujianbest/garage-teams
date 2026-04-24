@@ -208,7 +208,7 @@ F008 spec § 5 deferred backlog 已明确指出："全局安装到 `~/.claude/sk
 | 能力 | 描述 |
 |------|------|
 | **`--scope` flag** | `garage init --hosts <list> --scope <scope>`：`<scope>` ∈ {`project`, `user`}；缺省 `project` |
-| **per-host scope override 语法** | `--hosts claude:user,cursor:project`：支持 `<host>` 与 `<host>:<scope>` 两种形式混合，per-host scope 覆盖 `--scope` 全局默认 |
+| **per-host scope override 语法** | `--hosts claude:user,cursor:project`：支持 `<host>` 与 `<host>:<scope>` 两种形式混合，per-host scope 覆盖 `--scope` 全局默认。**约束**：未来新增 host_id 不允许包含字面 `:` 字符（spec-review-F009 r1 minor #2 显式约束；当前 first-class 三家 claude/opencode/cursor 均符合，未来 host adapter 注册必须遵守此命名约束，由 design 在 ADR 锚定） |
 | **交互式 per-host scope 选择** | TTY 下不带 `--hosts` / `--scope` 时进入两轮交互：第一轮选宿主（F007 行为不变），第二轮对每个选中宿主独立问 scope（默认 P/project，输入 `u` 切 user）|
 | **三家 first-class adapter user scope path** | 在 `HostInstallAdapter` Protocol 新增 optional `target_skill_path_user` + `target_agent_path_user` method（返回 absolute Path）；三家实现：claude `~/.claude/skills/<id>/SKILL.md` + `~/.claude/agents/<id>.md`；opencode `~/.config/opencode/skills/<id>/SKILL.md` + `~/.config/opencode/agent/<id>.md`（XDG 默认）；cursor `~/.cursor/skills/<id>/SKILL.md`（无 agent surface）|
 | **manifest schema 1 → 2 migration** | `.garage/config/host-installer.json` `schema_version: 2`：`files[].dst` 改为 absolute path（POSIX serialization）；新增 `files[].scope` 字段（`"project"` / `"user"`）；旧 schema 1 manifest 自动 migration 时所有 entry 补 `scope: "project"` + dst 由 relative 转 absolute（`workspace_root / dst`）；migration 由 `VersionManager` 接管 |
@@ -303,7 +303,7 @@ F008 spec § 5 deferred backlog 已明确指出："全局安装到 `~/.claude/sk
   - Given 用户在 TTY 下执行 `garage init`，When 第一轮选完宿主（如选了 claude + cursor），Then 第二轮按选定顺序对每个宿主独立提示 `Install <host> skills to: [P]roject (./.{host}/skills/) or [u]ser (~/.{host}/skills/)? [P/u]: `
   - Given 用户在第二轮全部回车（默认），Then 等价于全部 project scope，与 F007/F008 行为一致（CON-901 在交互路径同样守门）
   - Given 用户对 claude 输入 `u`、对 cursor 回车，Then 等价于 `garage init --hosts claude:user,cursor:project`
-  - Given non-TTY 场景（CI/Cloud Agent），Then 沿用 F007 FR-703 退化行为（`--hosts none` + stderr 提示），**不**进入第二轮 scope 提示
+  - **(non-TTY 退化完整性，spec-review-F009 r1 minor #5)** Given non-TTY 场景（CI/Cloud Agent），Then 沿用 F007 FR-703 退化行为（`--hosts none` + stderr 提示）；stderr 提示文字为 `non-interactive shell detected; install no hosts (pass --hosts <list> to override)` 形式（与 F007 FR-703 字面一致），**不**进入第二轮 scope 提示，**不**附加 F009-specific scope-related 提示文字（避免破坏 F007 FR-703 既有 stderr grep）
 
 ### FR-904 user scope 路径解析（三家 first-class adapter）
 
@@ -363,14 +363,15 @@ F008 spec § 5 deferred backlog 已明确指出："全局安装到 `~/.claude/sk
   - Given manifest 仅 project scope，Then 仅显示 project 段，不显示空 user 段
   - Given manifest 不存在（用户没跑过 init），Then `garage status` 输出与 F008 一致（不破坏 F008 既有 status 行为）
 
-### FR-909 stdout marker 派生
+### FR-909 stdout marker 派生（保持 F007 grep 兼容）
 
 - **优先级**: Should
-- **来源**: § 2.2 success criteria + F007 FR-709 stdout marker 稳定性
-- **需求陈述**: F007 既有 `Installed N skills, M agents into hosts: <list>` 格式不变；当本次 init 含混合 scope 时，stdout 必须附加一行 `(N_user user-scope skills + N_project project-scope skills)` 形式说明（具体格式由 design 决定，但必须可冷读 + 可 grep）。
+- **来源**: § 2.2 success criteria + F007 FR-709 stdout marker 稳定性 + spec-review-F009 r1 minor #1（多 scope 附加段不破坏 F007 既有 grep）
+- **需求陈述**: F007 既有 `Installed N skills, M agents into hosts: <list>` 格式不变；当本次 init 含混合 scope 时，stdout 必须**在另一行**附加 scope 分布说明（具体格式由 design 决定），**不允许把附加内容塞进同一行的 F007 marker** —— 这保证 F007 下游脚本以 `grep -E '^Installed [0-9]+ skills, [0-9]+ agents into hosts:'` 形式扫描时仍精确命中。
 - **验收标准**:
   - Given 单 scope init（如 `--hosts claude --scope user`），Then stdout 仍 `Installed N skills, M agents into hosts: claude`，不附加 scope 段（与 F007 字节级一致，CON-901）
-  - Given 混合 scope init（如 `--hosts claude:user,cursor:project`），Then stdout 含 F007 marker + 一行 scope 分布说明（如 `(N_user user-scope, N_project project-scope)`）
+  - Given 混合 scope init（如 `--hosts claude:user,cursor:project`），Then stdout 含 F007 marker（独立一行）+ 另起一行的 scope 分布说明（如 `  (N_user user-scope, N_project project-scope)`）；F007 既有 grep `^Installed .* into hosts:` pattern 仍命中且 capture group 不变
+  - Given 任意 scope 组合，When 用 `grep -cE '^Installed [0-9]+ skills, [0-9]+ agents into hosts:'` 扫描 stdout，Then 命中数 == 1（恰好 F007 marker 那一行）
 
 ### FR-910 文档与可发现性
 
@@ -391,20 +392,25 @@ F008 spec § 5 deferred backlog 已明确指出："全局安装到 `~/.claude/sk
 ### NFR-901 F007/F008 既有调用形态字节级不变（CON-901 守门）
 
 - **优先级**: Must
-- **来源**: § 2.2 success criteria #1 + F002 CON-702 精神
-- **需求陈述**: F007/F008 既有调用形态（包括 `garage init`、`garage init --hosts <list>`、`garage init --hosts all`、`garage init --hosts none`、`garage init --yes`、`garage init --hosts claude --force`）的 stdout / stderr / 退出码 / `.garage/` 目录创建 / `<cwd>/.{host}/skills/` 落盘行为必须与 F008 closeout 时（commit `bafbd1c` 父链）字节级一致。新增 `--scope project` 行为必须等价于不带 `--scope`（默认值生效）。
+- **来源**: § 2.2 success criteria #1 + F002 CON-702 精神 + spec-review-F009 r1 important #1（manifest migration 边界澄清）
+- **需求陈述**: F007/F008 既有调用形态（包括 `garage init`、`garage init --hosts <list>`、`garage init --hosts all`、`garage init --hosts none`、`garage init --yes`、`garage init --hosts claude --force`）的 **stdout / stderr / 退出码 / `.garage/` 目录创建 / `<cwd>/.{host}/skills/` 落盘行为**必须与 F008 closeout 时（commit `bafbd1c` 父链）字节级一致。新增 `--scope project` 行为必须等价于不带 `--scope`（默认值生效）。
+- **明确例外（schema migration）**: 当 F008 用户首次跑 F009 后的 `garage init` 时，`.garage/config/host-installer.json` 内容会从 schema 1 自动 migration 到 schema 2（FR-905）；这是**唯一允许的可观察差异**，不视为 NFR-901 违反。具体豁免规则：
+  - manifest 的 `schema_version` 字段 1 → 2、`files[].dst` relative → absolute、新增 `files[].scope: "project"` 等字段变化均为 migration 预期产物
+  - 落盘 SKILL.md / agent.md / `.garage/` 目录结构 / stdout marker 仍必须字节级一致
 - **验收标准**:
-  - Given 一份 F008 cycle 期间录制的 `garage init --hosts claude` 端到端 stdout/stderr 副本，When F009 实施后再跑同样命令，Then 字节级一致（除 stdout 中 `Initialized Garage OS in <path>` 内嵌的可变 path 部分）
-  - Given F007/F008 既有 30+ installer 测试，When F009 实施后再跑，Then 100% 通过且 0 改写
-  - Given `garage init --hosts claude --scope project`（显式 scope），When 与不带 `--scope` 的同样命令对比，Then stdout / stderr / manifest 写入 / 文件落盘字节级一致
+  - **(行为字节级一致)** Given 一份 F008 cycle 期间录制的 `garage init --hosts claude` 端到端 stdout/stderr 副本，When F009 实施后再跑同样命令，Then **stdout / stderr 字节级一致**（除 stdout 中 `Initialized Garage OS in <path>` 内嵌的可变 path 部分）
+  - **(测试 0 语义退绿)** Given F007/F008 既有 30+ installer 测试 + F008 既有 5 个新增测试 + tests/test_cli.py 既有 init 相关测试，When F009 实施后再跑，Then 100% 通过；如有 wording 漂移导致测试 assertion 与 F009 新行为不匹配（如 manifest schema_version assertion），允许 LLM-FIXABLE 同步放宽 wording（如 `assert sv in (1, 2)` 或新增分别测试），**不算"改写"**，但属于 carry-forward 修复必须在 commit message 显式声明
+  - **(显式 scope project = 无 scope 等价)** Given `garage init --hosts claude --scope project`（显式 scope），When 与不带 `--scope` 的同样命令对比，Then stdout / stderr / manifest 写入 / 文件落盘字节级一致
+  - **(Dogfood 不变性硬门槛)** Given 本仓库自身 `garage init --hosts cursor,claude`（dogfood，无 `--scope`），When F009 实施后再跑，Then `.cursor/skills/` + `.claude/skills/` + `.claude/agents/` 落盘文件按 SHA-256 字节级与 F008 dogfood 输出（参考 `/opt/cursor/artifacts/f008_dogfood_init.log` 时点）一致；manifest 的 schema_version 允许从 1 → 2 但 `files[].host` + `files[].scope: "project"` + `files[].content_hash` 必须保持稳定（migration 后内容不变只是字段更名）
 
 ### NFR-902 测试基线零回归
 
 - **优先级**: Must
-- **来源**: § 2.2 success criteria #10 + F008 NFR-802 同精神
-- **需求陈述**: F009 实施完成后，`uv run pytest tests/ -q` 整体计数必须 ≥ F008 baseline 633，旧用例 0 退绿；新增测试至少覆盖：(a) 三家 adapter user scope path 解析 (b) `--scope` flag 解析 + per-host override 语法 (c) 交互式两轮 scope 选择 (d) manifest schema migration 1→2 (e) 幂等分 scope (f) `garage status` 按 scope 分组 (g) `Path.home()` fixture-isolated 测试隔离（不污染真实用户家目录）。
+- **来源**: § 2.2 success criteria #10 + F008 NFR-802 同精神 + spec-review-F009 r1 minor #3（增量量级 informational anchor）
+- **需求陈述**: F009 实施完成后，`uv run pytest tests/ -q` 整体计数必须 ≥ F008 baseline 633，旧用例 0 语义退绿（NFR-901 例外路径下的 carry-forward wording 修复不算改写）；新增测试至少覆盖：(a) 三家 adapter user scope path 解析 (b) `--scope` flag 解析 + per-host override 语法 (c) 交互式两轮 scope 选择 (d) manifest schema migration 1→2 (e) 幂等分 scope (f) `garage status` 按 scope 分组 (g) `Path.home()` fixture-isolated 测试隔离（不污染真实用户家目录）。
+- **预期增量量级**（informational anchor，非硬约束）：参考 F008 +47 增量（含 22 既有测试 parametrize 拾取新 SKILL.md），F009 预期增量 **≥ 25**（7 类新模块 × 平均 3-5 用例 + manifest migration + per-host syntax + dogfood 不变性 sentinel ≈ 30）；实际增量数由 design / hf-tasks 阶段精确定。
 - **验收标准**:
-  - Given F008 baseline 633 passed，When F009 实施完成，Then `uv run pytest tests/ -q` 整体计数 ≥ 633 + 新增；旧用例 0 退绿
+  - Given F008 baseline 633 passed，When F009 实施完成，Then `uv run pytest tests/ -q` 整体计数 ≥ 633 + 新增（实际增量预期 ≥ 25）；旧用例 0 语义退绿
   - Given F009 新增 user scope adapter / pipeline scope 分流，When 跑相关测试，Then 至少新增 ≥ 7 个测试模块覆盖上面 (a)-(g) 七类
   - Given user scope 测试，When fixture 隔离，Then 测试**不**污染真实 `~/.claude/skills/` 等用户家目录（用 `tmp_path` + monkeypatch `Path.home()` 隔离）
 
@@ -441,12 +447,18 @@ F008 spec § 5 deferred backlog 已明确指出："全局安装到 `~/.claude/sk
 - **需求陈述**: 调用方式 `garage init`（无任何新参数）+ `garage init --hosts <list>`（不带 `--scope`）+ `garage init --hosts all --yes` 等 F007/F008 既有形态的可观察输出必须与 F008 closeout 状态完全一致。新增 `--scope project` 显式 scope 必须等价于不带 `--scope`。
 - **详细说明**: 这是 F002 CON-702 + F008 CON-801 同精神的延续：新增能力是可选叠加，缺省调用形态字节级不变。
 
-### CON-902 D7 安装管道核心算法不动
+### CON-902 D7 安装管道核心算法不动（除 phase 2 scope 分流 + phase 5 schema migration 调用）
 
 - **优先级**: Must
-- **来源**: § 2.2 success criteria #11 + § 4.2 关键边界
-- **需求陈述**: `pipeline.install_packs` 函数体的 5 个 phase 算法骨架（discover → resolve → conflict → decide → apply + manifest）字节级保持原状；本 cycle 仅在 phase 2 `_resolve_targets` 内增加 scope 维度的 base path 分流（按 target scope 选 `workspace_root` 或 `Path.home()`），其它 phase 算法主体不变（仅 type signatures 因 `_Target` 增 `scope` 字段而扩展）。`pipeline.install_packs` 的函数签名可以扩展（增 optional 参数），但既有调用方（如 cli.py）不传新参数时行为字节级不变。
-- **详细说明**: 这是把"scope 扩展"局部化在 adapter + pipeline phase 2 的硬约束，防止 review surface 失控。
+- **来源**: § 2.2 success criteria #11 + § 4.2 关键边界 + spec-review-F009 r1 important #2（schema migration ordering anchor 澄清）
+- **需求陈述**: `pipeline.install_packs` 函数体的 5 个 phase 算法骨架（discover → resolve → conflict → decide → apply + manifest）保持原状；本 cycle 允许的最小改动严格限定为：
+  - **Phase 2 (`_resolve_targets`)**：按 target scope 选 base path（project 用 `workspace_root`，user 用 `Path.home()`）；`_Target` dataclass 增 `scope` 字段
+  - **Phase 4 (`_decide_action`)**：比对 key 从 F007 的 `(src_rel, dst_rel)` 4 元组扩展为 `(src_rel, dst_abs, host, pack_id, scope)` 5 元组；算法分支结构（WRITE_NEW / UPDATE_FROM_SOURCE / SKIP_LOCALLY_MODIFIED / OVERWRITE_FORCED）字节级不变
+  - **Phase 5 (`apply + manifest write`)**：算法分支结构字节级不变；manifest 写入时 schema_version 字段从 F007 的 `1` 改为 F009 的 `2`，`files[].dst` 改 absolute path，新增 `files[].scope` 字段（这些是 schema 升级的固定写入差异，由 ManifestSerializer 内部完成，不影响 phase 5 算法主体）
+  - **Phase 5 调用 VersionManager.migrate**：在 phase 5 写入新 manifest 之前，先读 prior_manifest 时若 `schema_version: 1`，调用 `VersionManager.migrate_host_installer_manifest(prior, target_version=2)` 自动迁移；migration 失败时 phase 5 不写新 manifest，pipeline 抛 `ManifestMigrationError`，CLI 层捕获 → 退出码 1（具体 ManifestMigrationError 类型与退出码常量由 design 决定）
+  - **Phase 1 (discover) + Phase 3 (conflict)**：算法主体字节级保持原状，仅 type signatures 因 `_Target` 增 scope 字段而扩展（conflict 检测仍按"同 scope 内同 dst"判定，跨 scope 不视为冲突）
+- `pipeline.install_packs` 的函数签名允许扩展（增 optional 参数），但既有调用方（如 cli.py）不传新参数时行为字节级不变（除上面 schema migration 的固定差异）。
+- **详细说明**: 这是把"scope 扩展"局部化在 adapter + pipeline phase 2/4/5 的硬约束，防止 review surface 失控。Phase 1 / Phase 3 算法主体严格不动是 CON-902 的最强守门，design reviewer 应把"phase 1 / phase 3 算法骨架字节级不变"作为可拒红线之一。
 
 ### CON-903 复用 F007 `pack.json` schema + F008 ADR-D8-9 EXEMPTION_LIST
 
@@ -455,12 +467,13 @@ F008 spec § 5 deferred backlog 已明确指出："全局安装到 `~/.claude/sk
 - **需求陈述**: 三个 pack 的 `pack.json` 必须沿用 F007 落下的 6 字段 schema 不变；F008 ADR-D8-9 的 7 项 EXEMPTION_LIST 不增不减不改。本 cycle 不动 packs/ 内容物。
 - **详细说明**: F009 是 CLI + adapter + pipeline + manifest 扩展，与 packs/ 内容物正交。
 
-### CON-904 manifest schema 1 → 2 migration 单向
+### CON-904 manifest schema 1 → 2 migration 单向 + 跨用户可移植性立场
 
 - **优先级**: Must
-- **来源**: F007 CON-703 + F001 VersionManager schema migration 政策
+- **来源**: F007 CON-703 + F001 VersionManager schema migration 政策 + spec-review-F009 r1 minor #4（manifest 跨用户 / git track 立场显式化）
 - **需求陈述**: `.garage/config/host-installer.json` schema 升级单向（1 → 2，无 2 → 1 反向），由 `VersionManager` 接管自动 migration；旧 schema 字段含义在新 schema 下仍可冷读；migration 失败时退出码 1 + 旧 manifest 不被覆盖。
-- **详细说明**: 与 F007 CON-703 + F001 platform contract 一致。
+- **跨用户可移植性立场**：manifest 默认**不入项目 git**（F008 cycle 已在 `.gitignore` 排除 `.garage/config/host-installer.json`），是用户本地状态记录。F009 manifest 的 `files[].dst` 改为 absolute path（含用户 home 部分），明确不追求跨用户可移植——若 user A 跑 init 后假设性 commit manifest，user B clone 后 manifest 含 `/home/A/...` 是预期不可移植行为，与 F009 不引入"跨用户共享 manifest"目标一致。`.gitignore` 现状无需调整。
+- **详细说明**: 与 F007 CON-703 + F001 platform contract 一致；与 F008 dogfood `.gitignore` 政策一致。
 
 ## 10. 假设
 
@@ -512,7 +525,11 @@ F008 spec § 5 deferred backlog 已明确指出："全局安装到 `~/.claude/sk
 2. **`Path.home()` 抛 `RuntimeError` 的退出码**：spec 默认 1（与 unknown host 同级），design 决定是否需要专用退出码（如 3）
 3. **stdout 多 scope 段的具体格式**：FR-909 留 wording，design 决定确切格式（如 `(N_user user-scope skills + N_project project-scope skills)` 或表格形式或 JSON）
 4. **manifest absolute path 是否带 `~/` 前缀**：spec 默认走 `Path.home() / ...` 后展开为绝对路径（如 `/home/<user>/.claude/skills/...`），design 决定是否在 manifest serialization 时把 home 部分还原为 `~/...`（更紧凑但跨用户不可移植）
-5. **交互式两轮 vs 一轮带 scope 后缀**：FR-903 默认两轮（先选宿主再每个宿主选 scope），design 决定是否合并为一轮（如 "选宿主时直接输入 `claude:user, cursor`"）
+5. **交互式两轮 vs 一轮带 scope 后缀 vs 批量快捷三选一**（spec-review-F009 r1 important #3 显式扩展）：
+   - 候选 A: spec 默认两轮（先选宿主再每个宿主选 scope）
+   - 候选 B: 合并为一轮（如 "选宿主时直接输入 `claude:user, cursor`"）
+   - 候选 C: 两轮但第二轮提供"all P / all u / per-host" 三个开关（用户首次回答可选"全部 project"或"全部 user"或"逐个询问"，避免 N 个宿主时回答 N 次）
+   - design 决定，前提是 FR-903 验收 #1-#4 均满足（特别 default = project 兼容 F007/F008）
 6. **`HostInstallAdapter` Protocol 新增 method 命名**：spec 默认 `target_skill_path_user` / `target_agent_path_user`（与既有 method 同名加 `_user` 后缀），design 决定是否改为 `target_skill_path(scope=...)` 单 method 带参数（更对称但破坏 F007 既有签名兼容性）
 7. **`garage status` 按 scope 分组的输出格式**：FR-908 留 wording，design 决定 ASCII table / nested bullets / 其它
 
