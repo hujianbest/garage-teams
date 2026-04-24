@@ -37,6 +37,7 @@ from garage_os.adapter.installer.manifest import (
     MANIFEST_SCHEMA_VERSION,
     Manifest,
     ManifestFileEntry,
+    UserHomeNotFoundError,
     read_manifest,
     write_manifest,
 )
@@ -303,6 +304,17 @@ def _resolve_targets(
     if scopes_resolved is None:
         scopes_resolved = {host_id: "project" for host_id in adapters}
 
+    # F009 ADR-D9-10 (code-review I-3 fix): 真正接通 UserHomeNotFoundError 链.
+    # 任何 user scope target 解析涉及到的 Path.home() / adapter.target_*_user()
+    # 抛 RuntimeError 时, 在此统一转译为 UserHomeNotFoundError, 由 cli._init catch
+    # → exit 1 + stderr 'Cannot determine user home directory: ...'.
+    needs_home = any(scope == "user" for scope in scopes_resolved.values())
+    if needs_home:
+        try:
+            Path.home()
+        except RuntimeError as exc:
+            raise UserHomeNotFoundError(str(exc)) from exc
+
     out: list[_Target] = []
     for pack in packs:
         for skill_id in pack.skills:
@@ -311,7 +323,10 @@ def _resolve_targets(
                 scope = scopes_resolved.get(host_id, "project")
                 if scope == "user":
                     # F009 user scope: absolute path under Path.home()
-                    skill_dst_abs = adapter.target_skill_path_user(skill_id)
+                    try:
+                        skill_dst_abs = adapter.target_skill_path_user(skill_id)
+                    except RuntimeError as exc:
+                        raise UserHomeNotFoundError(str(exc)) from exc
                     skill_dst_rel = _to_posix(skill_dst_abs)  # absolute POSIX
                 else:
                     # F007/F008 project scope: relative path under workspace_root
@@ -338,7 +353,10 @@ def _resolve_targets(
             for host_id, adapter in adapters.items():
                 scope = scopes_resolved.get(host_id, "project")
                 if scope == "user":
-                    agent_dst_path: Path | None = adapter.target_agent_path_user(agent_id)
+                    try:
+                        agent_dst_path: Path | None = adapter.target_agent_path_user(agent_id)
+                    except RuntimeError as exc:
+                        raise UserHomeNotFoundError(str(exc)) from exc
                     if agent_dst_path is None:
                         continue  # cursor: no agent surface (user 与 project scope 一致)
                     agent_dst_abs = agent_dst_path
@@ -421,20 +439,36 @@ def _merge_with_existing(workspace_root: Path, fresh: Manifest) -> Manifest:
     Extend-mode rule (FR-704 acceptance #5):
         ``garage init --hosts cursor`` after a previous ``--hosts claude``
         must keep the claude entries intact and add cursor on top.
+
+    F009 ADR-D9-2 (code-review I-4 fix): drop key 由 ``host`` 单维升级为
+    ``(host, scope)`` 二元 host-scope key — 仅 drop "本次 init 涉及到的
+    (host, scope) 组合" 的 prior entry, 而不是 "本次 init 涉及到的 host"
+    全部 prior entry. 否则用户先 ``garage init --hosts claude --scope user``,
+    再 ``garage init --hosts claude --scope project`` 时, 第二次 init 会 drop
+    所有 prior user scope claude entry → manifest 丢失记录但磁盘文件仍在
+    (manifest 与磁盘漂移).
+
+    fresh_keys 同步升级为五元组 ``(src, dst, host, pack_id, scope)`` 与 phase 4
+    比对 key 对称.
     """
     prior = read_manifest(workspace_root / ".garage")
     if prior is None:
         return fresh
 
-    fresh_hosts = set(fresh.installed_hosts)
-    fresh_keys = {(e.src, e.dst) for e in fresh.files}
+    # F009 ADR-D9-2: (host, scope) 二元 key — 跨 scope 不串扰
+    fresh_host_scopes = {(e.host, e.scope) for e in fresh.files}
+    # 五元组 key — 与 phase 4 prior_entries_index 对称
+    fresh_keys = {
+        (e.src, e.dst, e.host, e.pack_id, e.scope) for e in fresh.files
+    }
 
     carried_files: list[ManifestFileEntry] = [
         e
         for e in prior.files
-        if e.host not in fresh_hosts and (e.src, e.dst) not in fresh_keys
+        if (e.host, e.scope) not in fresh_host_scopes
+        and (e.src, e.dst, e.host, e.pack_id, e.scope) not in fresh_keys
     ]
-    carried_hosts = sorted(fresh_hosts | set(prior.installed_hosts))
+    carried_hosts = sorted(set(fresh.installed_hosts) | set(prior.installed_hosts))
     carried_packs = sorted(set(prior.installed_packs) | set(fresh.installed_packs))
 
     return Manifest(
