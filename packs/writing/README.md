@@ -1,19 +1,19 @@
 # `packs/writing/` — 内容创作 Pack
 
-`packs/writing/` 是 Garage 自带的 **内容创作 family pack**，把 4 个写作 skill 打包成可分发载体。下游用户在自己项目里 `garage init --hosts <list>` 之后，就能在挂载的宿主里加载 blog-writing / humanizer-zh / hv-analysis / khazix-writer 等 skill，按个人风格驱动 AI Agent 写博客 / 去 AI 痕迹 / 做深度研究 / 写公众号长文。
+`packs/writing/` 是 Garage 自带的 **内容创作 family pack**，把 5 个写作 skill 打包成可分发载体。下游用户在自己项目里 `garage init --hosts <list>` 之后，就能在挂载的宿主里加载 blog-writing / humanizer-zh / hv-analysis / khazix-writer / magazine-web-ppt 等 skill，按个人风格驱动 AI Agent 写博客 / 去 AI 痕迹 / 做深度研究 / 写公众号长文 / 生成杂志风网页 PPT。
 
 ## Pack 概况
 
 | 字段 | 值 |
 |---|---|
 | `pack_id` | `writing` |
-| `version` | `0.1.0` |
+| `version` | `0.2.0` |
 | `schema_version` | `1` |
-| `skills` | 4 |
+| `skills` | 5 |
 | `agents` | 0 |
 | family-level 资产 | 1（`prompts/横纵分析法.md`） |
 
-## 4 个 Skill 清单
+## 5 个 Skill 清单
 
 | Skill | 用途 |
 |---|---|
@@ -21,6 +21,7 @@
 | `humanizer-zh` | 去除中文文本中的 AI 生成痕迹（基于维基百科 AI 写作特征综合指南） |
 | `hv-analysis` | 横纵分析法深度研究（融合索绪尔历时-共时分析 + 商学院案例研究法 + 竞争战略分析） |
 | `khazix-writer` | 数字生命卡兹克公众号长文风格写作 |
+| `magazine-web-ppt` | 单文件横向翻页网页 PPT（电子杂志 × 电子墨水风格，WebGL 背景、版式与主题参考见 `references/`） |
 
 ## Family-Level 共享资产
 
@@ -38,6 +39,7 @@
 - `humanizer-zh` — Humanizer-zh 项目（https://github.com/op7418/Humanizer-zh）的 Garage skill 适配
 - `hv-analysis` — 横纵分析法（数字生命卡兹克提出）
 - `khazix-writer` — 数字生命卡兹克公众号风格
+- `magazine-web-ppt` — [guizang-ppt-skill](https://github.com/op7418/guizang-ppt-skill)（MIT；`skills/magazine-web-ppt/LICENSE`）
 
 ## 安装样板
 
@@ -47,8 +49,8 @@
 cd ~/projects/my-app
 garage init --hosts claude
 # stdout: Installed N skills, M agents into hosts: claude   (N == sum(三 pack.json.skills[]))
-ls .claude/skills/ | grep -E 'blog-writing|humanizer-zh|hv-analysis|khazix-writer'
-# 4 个 skill 子目录全部存在
+ls .claude/skills/ | grep -E 'blog-writing|humanizer-zh|hv-analysis|khazix-writer|magazine-web-ppt'
+# 5 个 skill 子目录全部存在
 cat .claude/skills/blog-writing/SKILL.md | head -5
 # → 含 installed_by: garage, installed_pack: writing
 ```

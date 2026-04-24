@@ -104,6 +104,53 @@ class TestWalkingSkeleton:
         assert summary.hosts == ["claude"]
 
 
+class TestSkillSidecarSync:
+    """references/ + assets/ beside SKILL.md are copied to the host skill dir."""
+
+    def test_install_copies_references_and_assets(self, tmp_path: Path) -> None:
+        pack_dir = tmp_path / "packs" / "demo"
+        skill_dir = pack_dir / "skills" / "sidecar-skill"
+        skill_dir.mkdir(parents=True)
+        (pack_dir / "pack.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "pack_id": "demo",
+                    "version": "0.1.0",
+                    "description": "fixture",
+                    "skills": ["sidecar-skill"],
+                    "agents": [],
+                }
+            ),
+            encoding="utf-8",
+        )
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: sidecar-skill\ndescription: test\n---\n\n# Sidecar\n",
+            encoding="utf-8",
+        )
+        (skill_dir / "references").mkdir()
+        (skill_dir / "references" / "note.md").write_text(
+            "reference body\n", encoding="utf-8"
+        )
+        (skill_dir / "assets").mkdir()
+        (skill_dir / "assets" / "t.txt").write_text("asset bytes\n", encoding="utf-8")
+
+        install_packs(
+            workspace_root=tmp_path,
+            packs_root=tmp_path / "packs",
+            hosts=["claude"],
+            force=False,
+        )
+
+        dst_base = tmp_path / ".claude/skills/sidecar-skill"
+        note = dst_base / "references" / "note.md"
+        ttxt = dst_base / "assets" / "t.txt"
+        assert note.is_file()
+        assert ttxt.is_file()
+        assert note.read_text(encoding="utf-8") == "reference body\n"
+        assert ttxt.read_text(encoding="utf-8") == "asset bytes\n"
+
+
 # ---------------------------------------------------------------------------
 # 关键边界 1 & 2: locally modified protection + --force
 # ---------------------------------------------------------------------------

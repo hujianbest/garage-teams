@@ -85,6 +85,10 @@ def discover_packs(packs_root: Path) -> list[Pack]:
         # Skip dotfiles like .DS_Store dirs.
         if entry.name.startswith("."):
             continue
+        # Skip non-pack directories (no pack.json). packs/ may hold WIP trees
+        # or auxiliary folders without tripping the whole installer.
+        if not (entry / PACK_MANIFEST_FILENAME).is_file():
+            continue
         packs.append(_load_pack(entry))
     return packs
 

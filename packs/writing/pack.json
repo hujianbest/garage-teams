@@ -1,13 +1,14 @@
 {
   "schema_version": 1,
   "pack_id": "writing",
-  "version": "0.1.0",
-  "description": "Garage 自带的内容创作 family pack：4 个写作 skill（个人博客、AI 痕迹去除、横纵分析法深度研究、卡兹克公众号风格长文）+ 1 个 family-level prompts/横纵分析法.md。F008 cycle 把 .agents/skills/write-blog/ 物化为本 pack。",
+  "version": "0.2.0",
+  "description": "Garage 自带的内容创作 family pack：5 个写作 skill（个人博客、AI 痕迹去除、横纵分析法深度研究、卡兹克公众号风格长文、杂志风横向翻页网页 PPT）+ 1 个 family-level prompts/横纵分析法.md。F008 cycle 把 .agents/skills/write-blog/ 物化为本 pack；magazine-web-ppt 自 op7418/guizang-ppt-skill。",
   "skills": [
     "blog-writing",
     "humanizer-zh",
     "hv-analysis",
-    "khazix-writer"
+    "khazix-writer",
+    "magazine-web-ppt"
   ],
   "agents": []
 }

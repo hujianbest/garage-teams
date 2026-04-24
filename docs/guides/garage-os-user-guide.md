@@ -545,7 +545,7 @@ Incoming edges:
 
 Garage 自带的 skills 与 agents 沉淀在仓库的 `packs/<pack-id>/` 目录下（spec F007 + F008）。`garage init` 提供 host installer 把它们物化到下游项目里 Claude Code / OpenCode / Cursor 三家宿主原生识别的目录。
 
-**当前 packs 内容物**（F008 落地后）：`garage init --hosts all` 默认装 N skill（其中 `N == 三个 pack.json.skills[] 长度之和`，按本 cycle 落地后约 29），分布在 `packs/garage/`（3 skill + 1 agent）+ `packs/coding/`（22 hf-* + using-hf-workflow）+ `packs/writing/`（4 write-blog 子 skill）三个 pack。详见 `packs/README.md` "当前 packs" 表。
+**当前 packs 内容物**：`garage init --hosts all` 默认装 N skill（其中 `N == 各 pack.json.skills[] 长度之和`，按本仓库当前落地为 33），分布在 `packs/garage/`（3 skill + 3 agent，F011）+ `packs/coding/`（24 hf-family skills + using-hf-workflow）+ `packs/search/`（ai-weekly）+ `packs/writing/`（5 个内容创作子 skill，含 magazine-web-ppt）四个 pack。详见 `packs/README.md` "当前 packs" 表。
 
 > **重要**：下面提到的 `.claude/skills/...`、`.opencode/skills/...`、`.cursor/skills/...` 等路径**都是各宿主的原生约定**（OpenSpec `docs/supported-tools.md` 与各家官方文档已记录），Garage 只是把内容写到那里，没有自创任何路径。
 

@@ -4,7 +4,8 @@ Acceptance per task plan T3:
 
 - discover_packs(empty dir) → []
 - discover_packs(packs/garage/) → 1 Pack with 1 skill + 1 agent
-- pack.json missing or invalid JSON → InvalidPackError
+- directories without pack.json are skipped (WIP / auxiliary trees)
+- pack.json present but invalid JSON → InvalidPackError
 - pack.json.skills[] inconsistent with disk → PackManifestMismatchError
 """
 
@@ -95,13 +96,23 @@ class TestDiscoverPacks:
 
 
 class TestPackJsonValidation:
-    def test_missing_pack_json_raises(self, tmp_path: Path) -> None:
+    def test_dir_without_pack_json_is_skipped(self, tmp_path: Path) -> None:
         packs_root = tmp_path / "packs"
-        broken = packs_root / "broken"
-        broken.mkdir(parents=True)
-        with pytest.raises(InvalidPackError) as exc_info:
-            discover_packs(packs_root)
-        assert "broken" in str(exc_info.value)
+        wip = packs_root / "wip-no-manifest"
+        wip.mkdir(parents=True)
+        assert discover_packs(packs_root) == []
+
+    def test_valid_pack_next_to_dir_without_pack_json(self, tmp_path: Path) -> None:
+        packs_root = tmp_path / "packs"
+        wip = packs_root / "wip-no-manifest"
+        wip.mkdir(parents=True)
+        garage = packs_root / "garage"
+        garage.mkdir(parents=True)
+        _write_pack_json(garage, skills=["garage-hello"], agents=[])
+        _write_skill(garage, "garage-hello")
+        packs = discover_packs(packs_root)
+        assert len(packs) == 1
+        assert packs[0].pack_id == "garage"
 
     def test_invalid_json_raises(self, tmp_path: Path) -> None:
         packs_root = tmp_path / "packs"

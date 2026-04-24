@@ -20,6 +20,7 @@ All file IO is concentrated here so the lower-level modules
 from __future__ import annotations
 
 import hashlib
+import shutil
 import sys
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -241,6 +242,12 @@ def install_packs(
             or target.dst_abs.read_bytes() != rendered_bytes
         ):
             target.dst_abs.write_bytes(rendered_bytes)
+
+        # Skill-local dirs (references/, assets/, …) are not manifest-tracked
+        # but SKILL.md often references them by relative path — mirror from pack
+        # source after each successful skill write.
+        if target.source_kind == "skill":
+            _sync_skill_sidecars(target.src_abs.parent, target.dst_abs.parent)
 
         new_entries.append(
             ManifestFileEntry(
@@ -478,6 +485,23 @@ def _merge_with_existing(workspace_root: Path, fresh: Manifest) -> Manifest:
         installed_at=fresh.installed_at,
         files=fresh.files + carried_files,
     )
+
+
+def _sync_skill_sidecars(skill_src_dir: Path, skill_dst_dir: Path) -> None:
+    """Copy optional skill subdirs beside SKILL.md (byte-identical tree).
+
+    The installer only records ``SKILL.md`` in the manifest; sidecar folders
+    still need to exist under the host skill directory so ``references/…``
+    paths resolve after ``garage init``.
+    """
+    for name in ("references", "assets", "evals", "scripts"):
+        src = skill_src_dir / name
+        if not src.is_dir():
+            continue
+        dst = skill_dst_dir / name
+        if dst.exists():
+            shutil.rmtree(dst)
+        shutil.copytree(src, dst)
 
 
 def _to_posix(path: Path) -> str:
