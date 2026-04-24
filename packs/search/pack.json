@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "pack_id": "search",
+  "version": "0.1.0",
+  "description": "Garage 自带的信息聚合 / curation family pack：从外部信息源（X/Twitter 等）收集和编排实用周报、日报。当前含 ai-weekly skill。",
+  "skills": [
+    "ai-weekly"
+  ],
+  "agents": []
+}

@@ -60,25 +60,28 @@ def _link_packs(tmp_path: Path) -> None:
 class TestFullPacksInstall:
     """End-to-end test: real packs/ installed into tmp workspace."""
 
-    def test_three_packs_total_30_skills_INV1(self) -> None:
-        """INV-1: sum(pack.json.skills[] for pack in [garage, coding, writing]) == 30.
+    def test_four_packs_total_31_skills_INV1(self) -> None:
+        """INV-1: sum(pack.json.skills[] for pack in [coding, garage, search, writing]) == 31.
 
-        Bumped from 29 → 30 after coding pack v0.2.0 reverse-sync from
-        hujianbest/harness-flow upstream Phase 0 (added hf-experiment skill).
+        Bumped from 30 → 31 (post-PR#25 hotfix): packs/search/ 由用户在 main 直接落入
+        (commit 322da15 ai weekly + 0f17188 ai daily skill), 但缺 pack.json/README, 导致
+        discover_packs InvalidPackError 拒所有 garage init. 本 cycle 给 packs/search/ 补
+        完整 pack metadata, 让 INV-1 升到 31, 同时打通 four-packs install 路径.
         """
         packs = discover_packs(PACKS_ROOT)
         # Index by pack_id for stable assertions regardless of pack order.
         by_id = {p.pack_id: p for p in packs}
-        assert set(by_id) == {"coding", "garage", "writing"}, (
-            f"expected exactly 3 packs, got {sorted(by_id)}"
+        assert set(by_id) == {"coding", "garage", "search", "writing"}, (
+            f"expected exactly 4 packs, got {sorted(by_id)}"
         )
-        # Per task plan T1b/T2/T3 acceptance + coding v0.2.0 reverse-sync:
+        # Per task plan T1b/T2/T3 acceptance + coding v0.2.0 reverse-sync + search hotfix:
         assert len(by_id["coding"].skills) == 23
         assert len(by_id["garage"].skills) == 3
+        assert len(by_id["search"].skills) == 1  # ai-weekly only
         assert len(by_id["writing"].skills) == 4
-        # INV-1 hard gate.
+        # INV-1 hard gate (30 → 31 post-search hotfix).
         total = sum(len(p.skills) for p in packs)
-        assert total == 30, f"INV-1 violated: total skills = {total} (want 30)"
+        assert total == 31, f"INV-1 violated: total skills = {total} (want 31)"
 
     def test_family_asset_uniqueness_INV2(self) -> None:
         """INV-2 spec § 4.2 红线 1: each family-level asset appears at most once
@@ -97,7 +100,7 @@ class TestFullPacksInstall:
             )
 
     def test_install_packs_three_hosts_FR806(self, tmp_path: Path) -> None:
-        """FR-806 acceptance #1-#3: garage init --hosts all writes 30 skills × 3 hosts
+        """FR-806 acceptance #1-#3: garage init --hosts all writes 31 skills × 3 hosts
         + 1 agent × 2 hosts (claude + opencode; cursor has no agent surface).
         """
         _link_packs(tmp_path)
@@ -108,30 +111,30 @@ class TestFullPacksInstall:
             hosts=["claude", "cursor", "opencode"],
         )
 
-        # Per-host skill count == 30 (after coding v0.2.0 reverse-sync).
+        # Per-host skill count == 31 (4 packs: coding 23 + garage 3 + search 1 + writing 4).
         for host_dir in [".claude/skills", ".cursor/skills", ".opencode/skills"]:
             host_root = tmp_path / host_dir
             assert host_root.is_dir(), f"{host_dir} not created"
             skill_subdirs = [d for d in host_root.iterdir() if d.is_dir()]
-            assert len(skill_subdirs) == 30, (
-                f"{host_dir} has {len(skill_subdirs)} skill dirs, expected 30"
+            assert len(skill_subdirs) == 31, (
+                f"{host_dir} has {len(skill_subdirs)} skill dirs, expected 31"
             )
 
         # Manifest matches.
         manifest = read_manifest(tmp_path / ".garage")
         assert manifest is not None
         assert sorted(manifest.installed_hosts) == ["claude", "cursor", "opencode"]
-        assert sorted(manifest.installed_packs) == ["coding", "garage", "writing"]
+        assert sorted(manifest.installed_packs) == ["coding", "garage", "search", "writing"]
 
-        # 30 skills × 3 hosts = 90 skill files; 1 agent × 2 hosts (claude + opencode,
-        # cursor adapter returns None for target_agent_path) = 2 agent files. Total 92.
-        assert len(manifest.files) == 92, (
-            f"manifest.files = {len(manifest.files)}, expected 92"
+        # 31 skills × 3 hosts = 93 skill files; 1 agent × 2 hosts (claude + opencode,
+        # cursor adapter returns None for target_agent_path) = 2 agent files. Total 95.
+        assert len(manifest.files) == 95, (
+            f"manifest.files = {len(manifest.files)}, expected 95"
         )
 
         # Summary returned (skills counted per-write, hence × 3 here too).
         assert isinstance(summary.n_skills, int)
-        assert summary.n_skills == 90  # 30 × 3
+        assert summary.n_skills == 93  # 31 × 3
         assert summary.n_agents == 2  # 1 agent installed to claude + opencode
 
     def test_skill_byte_level_sample_INV4(self, tmp_path: Path) -> None:
