@@ -14,13 +14,20 @@ from garage_os.adapter.installer import (
     ConflictingSkillError,
     InvalidPackError,
     MalformedFrontmatterError,
+    ManifestMigrationError,
     PackManifestMismatchError,
     UnknownHostError,
+    UnknownScopeError,
+    UserHomeNotFoundError,
     install_packs,
     list_host_ids,
+    read_manifest,
     resolve_hosts_arg,
 )
-from garage_os.adapter.installer.interactive import prompt_hosts
+from garage_os.adapter.installer.interactive import (
+    prompt_hosts,
+    prompt_scopes_per_host,
+)
 
 # F004 § 11.5: stable stdout markers for the two CLI abandon paths so users
 # (and downstream agents) can grep the audit log to differentiate intent.
@@ -209,6 +216,7 @@ def _init(
     hosts_arg: Optional[str] = None,
     yes: bool = False,
     force: bool = False,
+    scope: str = "project",
 ) -> int:
     """Create the .garage/ directory structure under garage_root.
 
@@ -220,6 +228,10 @@ def _init(
     F007 extension: when ``hosts_arg`` is provided OR a TTY user selects
     one or more hosts, also installs ``packs/<pack-id>/`` content into the
     host-specific directories (e.g. ``.claude/skills/``).
+
+    F009 extension: ``scope`` 参数 (default "project", CON-901 等价 F007/F008
+    行为). per-host scope override via ``--hosts <host>:<scope>`` 语法被
+    ``_resolve_init_hosts`` 解析后 override 全局 ``scope`` 默认.
     """
     garage_dir = garage_root / ".garage"
     garage_dir.mkdir(parents=True, exist_ok=True)
@@ -250,9 +262,15 @@ def _init(
 
     # F007: optional host installer step. Returns early without touching any
     # host directory when the resolved host list is empty (CON-702).
+    # F009: 同时返回 scopes_per_host (per-host scope override + 全局 --scope).
     try:
-        hosts = _resolve_init_hosts(hosts_arg=hosts_arg, yes=yes)
+        hosts, scopes_per_host = _resolve_init_hosts(
+            hosts_arg=hosts_arg, yes=yes, scope_default=scope
+        )
     except UnknownHostError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except UnknownScopeError as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
@@ -265,6 +283,7 @@ def _init(
             packs_root=garage_root / "packs",
             hosts=hosts,
             force=force,
+            scopes_per_host=scopes_per_host,
         )
     except UnknownHostError as exc:
         print(str(exc), file=sys.stderr)
@@ -278,6 +297,12 @@ def _init(
     except MalformedFrontmatterError as exc:
         print(ERR_MARKER_FAILED_FMT.format(detail=exc), file=sys.stderr)
         return 1
+    except ManifestMigrationError as exc:
+        print(f"Manifest migration failed: {exc}", file=sys.stderr)
+        return 1
+    except UserHomeNotFoundError as exc:
+        print(f"Cannot determine user home directory: {exc}", file=sys.stderr)
+        return 1
     except OSError as exc:
         print(ERR_HOST_FILE_FAILED_FMT.format(detail=exc), file=sys.stderr)
         return 1
@@ -289,32 +314,61 @@ def _init(
             hosts=", ".join(summary.hosts),
         )
     )
+    # F009 FR-909: 多 scope 时另起一行附加 scope 分布 (F007 grep 兼容硬约束:
+    # 第二行 marker 字面不变, 附加段独立一行)
+    scopes_used = set(scopes_per_host.values()) if scopes_per_host else set()
+    if len(scopes_used) > 1:
+        n_user = sum(1 for s in scopes_per_host.values() if s == "user")
+        n_project = sum(1 for s in scopes_per_host.values() if s == "project")
+        print(f"  ({n_user} user-scope hosts, {n_project} project-scope hosts)")
     return 0
 
 
 def _resolve_init_hosts(
-    *, hosts_arg: Optional[str], yes: bool
-) -> list[str]:
-    """Determine which hosts to install into based on CLI flags + TTY.
+    *,
+    hosts_arg: Optional[str],
+    yes: bool,
+    scope_default: str = "project",
+) -> tuple[list[str], dict[str, str]]:
+    """Determine which hosts to install into + per-host scope.
 
-    Resolution table (D7 §10.1):
-        --hosts <list>         → resolve_hosts_arg(<list>)
-        --yes (no --hosts)     → [] (equivalent to --hosts none, FR-702)
-        no flags + TTY         → interactive.prompt_hosts(...)
-        no flags + non-TTY     → [] + stderr notice (FR-703)
+    F007/F008 行为 (CON-901): scope_default='project' 等价 F007/F008
+    既有调用形态 (全部 host scope=project, 等价 install_packs 不传
+    scopes_per_host).
 
-    F009 T1 carry-forward: ``resolve_hosts_arg`` 返回类型从 ``list[str]`` 改为
-    ``list[tuple[str, str | None]]`` (FR-902 per-host scope override 语法)。
-    本函数当前仍返回 ``list[str]``，把 scope_override 部分丢弃 (兼容 F007/F008
-    既有 install_packs 调用方)；T2/T3/T4 commit 时把 scope 维度真正传到 install_packs。
+    Resolution table (D7 §10.1 + F009 FR-901/902/903):
+        --hosts <list>         → resolve_hosts_arg(<list>) → 解析 <host>:<scope>
+                                  per-host override; 未带 :scope 的 host 用
+                                  scope_default
+        --yes (no --hosts)     → ([], {}) (equivalent to --hosts none, FR-702)
+        no flags + TTY         → prompt_hosts → prompt_scopes_per_host
+                                  (ADR-D9-5 candidate C 三个开关)
+        no flags + non-TTY     → ([], {}) + stderr notice (FR-703 + FR-903 #4)
+
+    Returns:
+        (hosts, scopes_per_host): hosts 是 sorted host_id list;
+        scopes_per_host 是 {host_id: scope} 映射, 默认 scope_default.
     """
     if hosts_arg is not None:
-        # F009 T1 carry-forward: 解构二元组取 host_id 部分, 丢弃 scope_override
-        # (T4 commit 把 scope 传到 install_packs 后再扩展)
-        return [host_id for host_id, _scope in resolve_hosts_arg(hosts_arg)]
+        # F009: 解析 <host>:<scope> 二元组
+        parsed = resolve_hosts_arg(hosts_arg)
+        hosts = [host_id for host_id, _ in parsed]
+        scopes: dict[str, str] = {}
+        for host_id, scope_override in parsed:
+            scopes[host_id] = (
+                scope_override if scope_override is not None else scope_default
+            )
+        return hosts, scopes
     if yes:
-        return []
-    return prompt_hosts(list_host_ids(), stdin=sys.stdin, stderr=sys.stderr)
+        return [], {}
+    selected = prompt_hosts(list_host_ids(), stdin=sys.stdin, stderr=sys.stderr)
+    if not selected:
+        return [], {}
+    # F009 ADR-D9-5 candidate C: 第二轮 scope 选择
+    scopes_interactive = prompt_scopes_per_host(
+        selected, stdin=sys.stdin, stderr=sys.stderr
+    )
+    return selected, scopes_interactive
 
 
 def _status(garage_root: Path) -> None:
@@ -372,6 +426,36 @@ def _status(garage_root: Path) -> None:
     print(f"Experience records: {total_experience}")
     if recent_experience:
         print(f"Most recent experience: {recent_experience}")
+
+    # F009 FR-908 + ADR-D9-7: 按 scope 分组打印 installed packs (nested bullets).
+    # F008 兼容: manifest 不存在时跳过 (与既有 status 行为一致).
+    try:
+        manifest = read_manifest(garage_dir)
+    except ManifestMigrationError:
+        manifest = None
+    if manifest is None or not manifest.files:
+        return
+
+    # 按 scope 分组 → 每组按 host 子分组 → 计 skill / agent 数 + dst 前缀
+    by_scope: dict[str, dict[str, dict[str, int]]] = {}
+    for entry in manifest.files:
+        scope = entry.scope
+        host = entry.host
+        kind_key = "skills" if "skills/" in entry.dst else "agents"
+        by_scope.setdefault(scope, {}).setdefault(host, {"skills": 0, "agents": 0})
+        by_scope[scope][host][kind_key] += 1
+
+    # ADR-D9-7: 先 project, 再 user (固定顺序)
+    for scope_label in ("project", "user"):
+        if scope_label not in by_scope:
+            continue
+        print(f"Installed packs ({scope_label} scope):")
+        for host in sorted(by_scope[scope_label].keys()):
+            counts = by_scope[scope_label][host]
+            line = f"  {host}: {counts['skills']} skills"
+            if counts["agents"] > 0:
+                line += f", {counts['agents']} agents"
+            print(line)
 
 
 def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> int:
@@ -1447,6 +1531,19 @@ def build_parser() -> argparse.ArgumentParser:
             "and reported on stderr (FR-706b)."
         ),
     )
+    # F009 FR-901: --scope flag (default 'project', CON-901 等价 F007/F008 行为).
+    # per-host override 通过 --hosts <host>:<scope> 语法 (FR-902).
+    init_parser.add_argument(
+        "--scope",
+        dest="init_scope",
+        default="project",
+        choices=["project", "user"],
+        help=(
+            "Install scope: 'project' (default; install to ./.{host}/skills/) "
+            "or 'user' (install to ~/.{host}/skills/). Per-host override is "
+            "available via --hosts <host>:<scope> syntax."
+        ),
+    )
 
     # status
     status_parser = subparsers.add_parser(
@@ -1775,6 +1872,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             hosts_arg=args.init_hosts,
             yes=args.init_yes,
             force=args.init_force,
+            scope=args.init_scope,
         )
 
     if args.command == "status":

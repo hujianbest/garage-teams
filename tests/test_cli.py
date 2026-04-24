@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Optional
 from unittest.mock import patch, MagicMock
 
+import pytest
+
 from garage_os.cli import main
 from garage_os.storage.file_storage import FileStorage
 
@@ -3272,3 +3274,256 @@ class TestInitErrorPaths:
         assert rc == 1
         captured = capsys.readouterr()
         assert "Pack manifest mismatch" in captured.err or "Invalid pack" in captured.err
+
+
+# ===========================================================================
+# F009 T4: --scope flag + per-host override + status scope 分组 测试
+# ===========================================================================
+
+
+class TestInitWithScope:
+    """F009 FR-901/902/909: --scope flag + per-host override + stdout marker.
+
+    fixture isolation (INV-F9-8):
+    - 用 monkeypatch Path.home() 隔离, 不污染真实 ~/
+    """
+
+    REPO_ROOT = Path(__file__).resolve().parents[1]
+
+    @staticmethod
+    def _link_packs(tmp_path: Path) -> None:
+        link = tmp_path / "packs"
+        if link.exists() or link.is_symlink():
+            return
+        link.symlink_to(TestInitWithScope.REPO_ROOT / "packs")
+
+    @staticmethod
+    def _fake_home(tmp_path: Path, monkeypatch) -> Path:
+        fake = tmp_path / "fake-home"
+        fake.mkdir()
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake))
+        return fake
+
+    def test_scope_flag_default_project_F008_compat(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """FR-901: --scope project (默认) 等价 F007/F008 行为 (CON-901)."""
+        self._link_packs(tmp_path)
+        rc = main(
+            [
+                "init",
+                "--path",
+                str(tmp_path),
+                "--hosts",
+                "claude",
+                "--scope",
+                "project",
+            ]
+        )
+        assert rc == 0
+        # SKILL.md 落到 cwd/.claude/skills/ (project scope)
+        assert (tmp_path / ".claude/skills/garage-hello/SKILL.md").exists()
+
+    def test_scope_user_explicit(
+        self, tmp_path: Path, capsys, monkeypatch
+    ) -> None:
+        """FR-901 + FR-904: --scope user 装到 ~/.claude/skills/ (fixture-isolated)."""
+        fake_home = self._fake_home(tmp_path, monkeypatch)
+        self._link_packs(tmp_path)
+
+        rc = main(
+            [
+                "init",
+                "--path",
+                str(tmp_path),
+                "--hosts",
+                "claude",
+                "--scope",
+                "user",
+            ]
+        )
+        assert rc == 0
+        # SKILL.md 装到 fake_home (user scope), 不创建 cwd/.claude/
+        assert (fake_home / ".claude/skills/garage-hello/SKILL.md").exists()
+        assert not (tmp_path / ".claude").exists()
+
+    def test_per_host_override_syntax(
+        self, tmp_path: Path, capsys, monkeypatch
+    ) -> None:
+        """FR-902: --hosts claude:user,cursor:project 正确分流."""
+        fake_home = self._fake_home(tmp_path, monkeypatch)
+        self._link_packs(tmp_path)
+
+        rc = main(
+            [
+                "init",
+                "--path",
+                str(tmp_path),
+                "--hosts",
+                "claude:user,cursor:project",
+            ]
+        )
+        assert rc == 0
+        # claude → fake_home/.claude/skills/
+        assert (fake_home / ".claude/skills/garage-hello/SKILL.md").exists()
+        # cursor → cwd/.cursor/skills/
+        assert (tmp_path / ".cursor/skills/garage-hello/SKILL.md").exists()
+        # 反向: claude 不在 cwd, cursor 不在 fake_home
+        assert not (tmp_path / ".claude").exists()
+        assert not (fake_home / ".cursor").exists()
+
+    def test_unknown_scope_argparse_rejected(self, tmp_path: Path, capsys) -> None:
+        """FR-901 验收 #4: --scope unknown 被 argparse choices 拒绝 (SystemExit 2).
+
+        实施差异说明: spec FR-901 验收 #4 写 'exit 1 + stderr Unknown scope: unknown',
+        但实施时把 --scope 用 argparse choices=['project', 'user'] 在 parse 阶段拒绝,
+        argparse 默认 SystemExit(2) + 自己的 stderr 错误消息. 这是更早期 + 更严格的
+        拒绝, 与 spec 验收语义一致 (拒绝 invalid scope), 仅退出码差异 (2 vs 1) —
+        argparse choices 是 Python 标准做法, 与 F007 既有 --hosts 没用 choices
+        (因为支持 'all'/'none'/comma-list) 不同; --scope 取值集合固定可用 choices.
+        """
+        self._link_packs(tmp_path)
+        with pytest.raises(SystemExit) as exc_info:
+            main(
+                [
+                    "init",
+                    "--path",
+                    str(tmp_path),
+                    "--hosts",
+                    "claude",
+                    "--scope",
+                    "unknown",
+                ]
+            )
+        assert exc_info.value.code == 2  # argparse choices rejection
+
+    def test_per_host_override_unknown_scope_exits_1(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """FR-902 验收 #3: --hosts claude:bad → exit 1 + stderr."""
+        self._link_packs(tmp_path)
+        rc = main(
+            [
+                "init",
+                "--path",
+                str(tmp_path),
+                "--hosts",
+                "claude:bad",
+            ]
+        )
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "Unknown scope: bad" in captured.err
+
+    def test_stdout_marker_F007_grep_compat(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """FR-909: F007 既有 stdout marker 字面不变, grep 仍命中.
+
+        ``grep -cE '^Installed [0-9]+ skills, [0-9]+ agents into hosts:'`` 命中 == 1
+        """
+        self._link_packs(tmp_path)
+        rc = main(["init", "--path", str(tmp_path), "--hosts", "claude"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        # F007 grep pattern 仍命中
+        import re
+
+        matches = re.findall(
+            r"^Installed [0-9]+ skills, [0-9]+ agents into hosts:",
+            captured.out,
+            re.MULTILINE,
+        )
+        assert len(matches) == 1, (
+            f"F007 grep pattern 命中数 = {len(matches)}, 期望 1; stdout: {captured.out!r}"
+        )
+
+    def test_stdout_marker_mixed_scope_extra_line(
+        self, tmp_path: Path, capsys, monkeypatch
+    ) -> None:
+        """FR-909: 多 scope 时另起一行附加 scope 分布段; F007 marker 行不变."""
+        self._fake_home(tmp_path, monkeypatch)
+        self._link_packs(tmp_path)
+
+        rc = main(
+            [
+                "init",
+                "--path",
+                str(tmp_path),
+                "--hosts",
+                "claude:user,cursor:project",
+            ]
+        )
+        assert rc == 0
+        captured = capsys.readouterr()
+        # F007 marker 行仍恰好 1 次
+        import re
+
+        matches = re.findall(
+            r"^Installed [0-9]+ skills, [0-9]+ agents into hosts:",
+            captured.out,
+            re.MULTILINE,
+        )
+        assert len(matches) == 1
+        # 多 scope 时, 附加段独立一行 (含 'user-scope' + 'project-scope')
+        assert "user-scope" in captured.out
+        assert "project-scope" in captured.out
+
+
+class TestStatusScopeGrouped:
+    """F009 FR-908 + ADR-D9-7: garage status 按 scope 分组 (nested bullets)."""
+
+    REPO_ROOT = Path(__file__).resolve().parents[1]
+
+    @staticmethod
+    def _link_packs(tmp_path: Path) -> None:
+        link = tmp_path / "packs"
+        if link.exists() or link.is_symlink():
+            return
+        link.symlink_to(TestStatusScopeGrouped.REPO_ROOT / "packs")
+
+    def test_status_no_manifest_no_scope_segment(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """F008 兼容: 无 manifest 时 status 不打印 scope 分组段."""
+        # 仅 init 不带 hosts → 无 manifest
+        main(["init", "--path", str(tmp_path), "--yes"])
+        # 加一些数据让 status 不 'No data'
+        knowledge_dir = tmp_path / ".garage" / "knowledge" / "decisions"
+        knowledge_dir.mkdir(parents=True, exist_ok=True)
+        (knowledge_dir / "test.md").write_text("# test\n", encoding="utf-8")
+        capsys.readouterr()  # clear
+
+        main(["status", "--path", str(tmp_path)])
+        captured = capsys.readouterr()
+        # status 不应含 scope 分组段
+        assert "Installed packs" not in captured.out
+
+    def test_status_project_scope_only(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """status 在 project scope only manifest 时只打 project 段."""
+        self._link_packs(tmp_path)
+        rc = main(
+            [
+                "init",
+                "--path",
+                str(tmp_path),
+                "--hosts",
+                "claude",
+                "--scope",
+                "project",
+            ]
+        )
+        assert rc == 0
+        # 加一些数据让 status 不 'No data'
+        knowledge_dir = tmp_path / ".garage" / "knowledge" / "decisions"
+        knowledge_dir.mkdir(parents=True, exist_ok=True)
+        (knowledge_dir / "t.md").write_text("# t\n", encoding="utf-8")
+        capsys.readouterr()
+
+        main(["status", "--path", str(tmp_path)])
+        captured = capsys.readouterr()
+        assert "Installed packs (project scope):" in captured.out
+        assert "Installed packs (user scope):" not in captured.out
+        assert "claude:" in captured.out
