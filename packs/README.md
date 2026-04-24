@@ -84,6 +84,48 @@ garage init --hosts claude,cursor
 
 详见 `docs/guides/garage-os-user-guide.md` 的 "Pack & Host Installer" 段。
 
+## Install Scope（F009 新增）
+
+F009 在 `garage init` 加 `--scope` flag，让用户选**装到哪里**：
+
+| Scope | 落盘位置 | 用途 |
+|---|---|---|
+| `project`（默认） | `<cwd>/.{host}/skills/` | 跟着项目走；`git status` 可见；F007/F008 行为完全等价（CON-901） |
+| `user` | `~/.{host}/skills/` 等家目录 | 跟着你走；solo creator 跨多客户仓库共享同一套 skills；不入项目 git |
+
+**3 种使用方式**：
+
+```bash
+# (1) 全局 --scope flag (新增): 全部 host 用同一 scope
+garage init --hosts all --scope user
+# → 装到 ~/.claude/skills/ + ~/.cursor/skills/ + ~/.config/opencode/skills/ (XDG default)
+
+# (2) per-host 后缀语法 (新增): 每个 host 独立 scope, 覆盖 --scope 全局默认
+garage init --hosts claude:user,cursor:project
+# → claude → ~/.claude/skills/, cursor → <cwd>/.cursor/skills/
+
+# (3) 交互式两轮 (新增): TTY 用户首选, candidate C 三个开关
+garage init                     # 不带 --hosts / --yes / --scope, TTY 进入交互
+# 第一轮: 选哪些宿主?
+# 第二轮: a (all project, default 一键回车) / u (all user) / p (per-host 逐个询问)
+```
+
+**何时选哪个**：
+
+- **project**（默认）— 与团队共享、与项目绑定（如 hf-* workflow 装到团队仓库）
+- **user** — 跟着自己跨项目复用（如个人写博客 / 横纵分析 skill 装到家目录，所有项目都能用）
+- **混合（per-host）** — 比如 hf-* workflow 装到 user scope（跟人走），团队特定 skill 装到 project（跟项目走）
+
+**三家宿主 user scope 路径**（来自各家官方文档）：
+
+| Host | User scope path |
+|---|---|
+| Claude Code | `~/.claude/skills/<id>/SKILL.md` + `~/.claude/agents/<id>.md` |
+| OpenCode | `~/.config/opencode/skills/<id>/SKILL.md` (XDG default) + `~/.config/opencode/agent/<id>.md` |
+| Cursor | `~/.cursor/skills/<id>/SKILL.md`（无 agent surface） |
+
+详见 `docs/features/F009-garage-init-scope-selection.md`（已批准 spec）+ `docs/designs/2026-04-23-garage-init-scope-selection-design.md`（11 ADR + 完整调研锚点）。
+
 ## 不变量
 
 - `packs/` 目录及其内容物**不得**包含任何宿主特定术语（`.claude/` / `.cursor/` / `.opencode/` / `claude-code` 等），由 NFR-701 自动测试守护。

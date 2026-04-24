@@ -4,6 +4,99 @@
 
 ---
 
+## F009 — `garage init` 双 Scope 安装（project / user）+ 交互式 Scope 选择
+
+- 状态: 🟡 实施完成，待 hf-test-review → hf-code-review → hf-traceability-review → hf-regression-gate → hf-completion-gate → hf-finalize 链路
+- Workflow Profile: `full`
+- Execution Mode: `auto`
+- Branch / PR: `cursor/f009-init-scope-selection-bf33` / [#24](https://github.com/hujianbest/garage-agent/pull/24)
+- 关联文档:
+  - 规格 `docs/features/F009-garage-init-scope-selection.md`（已批准 r2，10 FR + 4 NFR + 4 CON + 4 ASM）
+  - 设计 `docs/designs/2026-04-23-garage-init-scope-selection-design.md`（已批准 r2，11 ADR + 6 task + 9 INV + 11 测试文件）
+  - 任务计划 `docs/tasks/2026-04-23-garage-init-scope-selection-tasks.md`（已批准 r3，6 task）
+  - 完整 review 链路：`docs/reviews/{spec(r1+r2),design(r1+r2),tasks(r1+r2+r3)}-review-F009-...md`
+  - 三份 approval：`docs/approvals/F009-{spec,design,tasks}-approval.md`
+
+### 用户可见变化
+
+- **新增 `--scope <project|user>` flag**（默认 `project`，CON-901 严守 F007/F008 字节级兼容）：让 solo creator 选择装到当前项目还是用户家目录
+- **per-host scope override 语法**：`garage init --hosts claude:user,cursor:project` 让每个 host 独立指定 scope，覆盖全局 `--scope` 默认
+- **交互式两轮（candidate C 三个开关）**：TTY 下 `garage init` 第一轮选宿主（F007 行为不变），第二轮 `[a]` all project (default 一键回车，F007/F008 兼容) / `[u]` all user / `[p]` per-host 逐个询问
+- **三家 first-class adapter 各加 user scope path 解析**：
+  - Claude Code: `~/.claude/skills/<id>/SKILL.md` + `~/.claude/agents/<id>.md`（Anthropic 官方）
+  - OpenCode: `~/.config/opencode/skills/<id>/SKILL.md` + `~/.config/opencode/agent/<id>.md`（XDG default；dotfiles `~/.opencode/` 留 deferred）
+  - Cursor: `~/.cursor/skills/<id>/SKILL.md`（无 agent surface，与 project scope 一致）
+- **`garage status` 按 scope 分组**展示 installed packs：`Installed packs (project scope):` / `Installed packs (user scope):` 段，每段按 host 子分组 + 类型计数
+- **stdout marker 派生**（FR-909 F007 grep 兼容硬约束）：F007 既有 `Installed N skills, M agents into hosts: <list>` 字面**字节级不变**；多 scope 时另起一行附加 `(N user-scope hosts, M project-scope hosts)` 段，下游脚本 `grep -E '^Installed [0-9]+ skills, [0-9]+ agents into hosts:'` 仍恰好命中 1 次
+- **零下游用户行为变化（F007/F008 兼容）**：`garage init`、`garage init --hosts <list>`、`garage init --hosts all`、`garage init --hosts none`、`garage init --yes`、`garage init --hosts claude --force` 等 F007/F008 既有调用形态的 stdout / stderr / 退出码 / `.garage/` 目录创建 / `<cwd>/.{host}/skills/` 落盘行为字节级一致（除 manifest schema 1→2 自动 migration 例外，由 `VersionManager` 透明承接）
+- **本仓库自身 dogfood 路径不受影响**（NFR-901 Dogfood 不变性硬门槛）：`garage init --hosts cursor,claude` 仍默认 project scope，落盘文件 SHA-256 与 F008 baseline 字节级一致（由 `test_dogfood_invariance_F009.py` sentinel 守门）
+
+### 数据与契约影响
+
+- **Manifest schema 1 → 2 升级**（FR-905 + ADR-D9-1/3）：
+  - `files[].dst` 改为 absolute POSIX path（含 cwd 或 user home）
+  - 新增 `files[].scope` 字段（`"project"` / `"user"`）
+  - F007/F008 既有 schema 1 manifest 由 `read_manifest` 自动 migrate（旧 entry 默认 scope=project + dst project-relative 转 absolute）
+  - 安全语义硬门槛（FR-905 #4 + CON-904）：JSON 损坏 / 字段缺失时抛 `ManifestMigrationError`，旧 manifest 字节级 + mtime 严格保留
+  - 跨用户立场：manifest 默认不入项目 git（`.gitignore` 已排除），`files[].dst` absolute path 不追求跨用户可移植
+- **HostInstallAdapter Protocol 字段扩展**（ADR-D9-6）：
+  - 新增 optional `target_skill_path_user(skill_id) -> Path` + `target_agent_path_user(agent_id) -> Path | None` method（绝对路径返回值）
+  - F007 既有 `target_skill_path` / `target_agent_path` / `render` method 签名严格不变（CON-901）
+  - host_id 命名约束：MUST NOT contain literal `:`（ADR-D9-9 用作 `--hosts <host>:<scope>` 分隔符），由 `host_registry._build_registry()` import-time assert 守门
+- **新增错误类型**:
+  - `ManifestMigrationError(ValueError)` (ADR-D9-8): manifest migration 失败 → CLI exit 1
+  - `UserHomeNotFoundError(RuntimeError)` (ADR-D9-10): `Path.home()` 抛 RuntimeError → CLI exit 1
+  - `UnknownScopeError(ValueError)` (新增): scope 值非法 → CLI exit 1（`--hosts claude:bad` 或 `--scope unknown`，注：argparse choices 实施 `--scope` 时是 SystemExit(2)）
+- **CLI 新增**:
+  - `--scope <project|user>` flag（argparse choices，default 'project'）
+  - `--hosts <host>:<scope>,...` 语法（`resolve_hosts_arg` 返回 `list[tuple[str, str | None]]`）
+  - `cli._resolve_init_hosts` 返回二元组 `(hosts: list[str], scopes_per_host: dict[str, str])`
+- **零依赖变更**：`pyproject.toml` + `uv.lock` 在本 cycle `git diff main..HEAD` 为空（NFR-803 子项）
+- **CON-902 严守**：D7 安装管道 `pipeline._check_conflicts` (phase 3) + `discover_packs` (phase 1) 算法主体字节级保持原状；phase 2 (_resolve_targets) + phase 4 (decide_action 5 元组) + phase 5 (manifest schema 升至 2) 按 enum 允许的最小改动
+- **新增 11 个测试文件**:
+  - `tests/adapter/installer/test_adapter_user_scope.py`（FR-904 + ADR-D9-6 + Path.home() 守门，15 用例）
+  - `tests/adapter/installer/test_host_registry_colon_assert.py`（ADR-D9-9 双层守门，3 用例）
+  - `tests/adapter/installer/test_pipeline_scope_routing.py`（FR-906 + ADR-D9-2 + CON-902 INV-F9-2，10 用例）
+  - `tests/adapter/installer/test_manifest_schema_v2.py`（FR-905 + ADR-D9-1/3，10 用例）
+  - `tests/adapter/installer/test_manifest_migration_v1_to_v2.py`（FR-905 + ADR-D9-8 + 安全语义硬门槛，11 用例）
+  - `tests/adapter/installer/test_interactive_two_round.py`（FR-903 + ADR-D9-5 candidate C，10 用例）
+  - `tests/test_cli.py::TestInitWithScope`（FR-901/902/909，7 用例）
+  - `tests/test_cli.py::TestStatusScopeGrouped`（FR-908 + ADR-D9-7，2 用例）
+  - `tests/adapter/installer/test_dogfood_invariance_F009.py`（NFR-901 + ADR-D9-11 sentinel，2 用例）
+  - `tests/adapter/installer/test_manifest_v2_dogfood_fields_stable.py`（ADR-D9-11 字段稳定独立守门，4 用例）
+  - `tests/adapter/installer/test_full_init_user_scope.py`（端到端 user scope 三家宿主，4 用例）
+- **新增 baseline fixture**: `tests/adapter/installer/dogfood_baseline/skill_md_sha256.json`（59 文件 SHA-256，hf-test-driven-dev executor 在 T5 fixture 内首跑生成，候选 A）
+- **测试基线扩展**：F008 baseline 633 → F009 实施完成 **708 passed**（+75 增量；含 11 个新增测试文件 + carry-forward wording 修复 + 既有 test_neutrality.py 等自动 parametrize 拾取的兼容性测试）
+- **Carry-forward wording 修复**（in-cycle，与 F008 carry-forward 同精神）：
+  - `tests/adapter/installer/test_host_registry.py`：`resolve_hosts_arg` 返回类型 `list[str]` → `list[tuple[str, str | None]]` 同步更新（T1）
+  - `tests/adapter/installer/test_manifest.py`：`MANIFEST_SCHEMA_VERSION == 1` → `== 2`；test fixture schema_version=1 → 2 (T3)
+  - `tests/platform/test_version_manager.py`：`test_manifest_constant_pinned_to_one` → `pinned_to_two` (T3)
+  - `tests/test_cli.py`：顶部 `import pytest` 加（T4 新增 TestInitWithScope 用 pytest.raises）
+
+### 验证证据
+
+- `pytest tests/ -q` → **TBD passed**（finalize 阶段填实测；预期 ≥ 708）
+- `git diff main..HEAD -- src/garage_os/` → 仅 `adapter/installer/{host_registry,pipeline,manifest,interactive}.py` + `hosts/{claude,opencode,cursor}.py` + `cli.py` + `__init__.py` 改动；其它模块零改动
+- `git diff main..HEAD -- pyproject.toml uv.lock` → 空（零依赖变更）
+- INV-F9-1..9 全部通过（详见 design § 11.1）；INV-F9-1 dogfood SHA-256 由 sentinel test 自动守门
+- **Manual smoke walkthrough** → **TBD**（finalize 阶段填实测，dogfood + tmp 双轨：dogfood 验证 NFR-901 + tmp 验证 user scope 三家宿主全装）
+- **完整质量链** → **TBD**（finalize 阶段补 test/code/traceability review + regression/completion gate 链路）
+
+> **占位字段** 5 项（task plan T6 acceptance 已 enum）：`manual_smoke_wall_clock` / `pytest_total_count` / `installed_packs_from_manifest` / `commit_count_per_group` / `release_notes_quality_chain` — 实施完成时占位 TBD，由 hf-finalize 阶段填实测数据。
+
+### 已知限制 / 后续工作
+
+- **F010 候选 — `garage uninstall --scope <scope>`**：与 F009 正交（先做装两端再做反向）
+- **F010 候选 — `garage update --scope <scope>`**：同上
+- **F010 候选 — D7 管道扩展为递归 `references/` 子目录**（F008 deferred）：与 F009 正交，独立 cycle
+- **单独候选 — Enterprise scope**（Anthropic 官方有）：solo creator 用不到，需要时单独 spec 化
+- **单独候选 — Plugin scope**：同上
+- **单独子选项候选 — OpenCode dotfiles 风格 `~/.opencode/skills/`**：XDG default 已覆盖 90%+ 用户；少数 dotfiles 偏好用户可在 D10+ 加 `--scope user-dotfiles` 子选项
+- **不做 — 跨 scope 同名 skill 自动 dedupe / 优先级解析**：Garage 不替宿主决定加载优先级（manifesto "你做主"）
+- **不做 — `~/.garage/config/host-installer.json` 全局 manifest**：与 workspace-first 信念冲突；每次 init 仍只写一份 cwd manifest
+
+---
+
 ## F008 — Garage Coding Pack 与 Writing Pack（把 .agents/skills/ 物化为可分发 packs，兑现 manifesto "几秒变成你的 Agent" 承诺）
 
 - 状态: ✅ 已完成（2026-04-23）

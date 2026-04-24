@@ -36,7 +36,7 @@
 - 平台契约: .garage/contracts/
 - 技术栈: Python 3.11+ (Poetry)
 
-## Packs & Host Installer (F007/F008)
+## Packs & Host Installer (F007/F008/F009)
 
 Garage 自带的可分发 skills + agents 沉淀在仓库 `packs/<pack-id>/` 下；`garage init --hosts ...` 把它们物化到下游项目里 Claude Code / OpenCode / Cursor 三家宿主原生目录。
 
@@ -59,6 +59,7 @@ Garage 自带的可分发 skills + agents 沉淀在仓库 `packs/<pack-id>/` 下
 | `docs/guides/garage-os-user-guide.md` "Pack & Host Installer" 段 | 端到端用法（交互/非交互/extend mode、退出码、宿主路径表、风险） |
 | `docs/features/F007-garage-packs-and-host-installer.md` | F007 已批准规格（packs/ 目录契约 + `garage init --hosts ...` 安装管道） |
 | `docs/features/F008-garage-coding-pack-and-writing-pack.md` | F008 已批准规格（把 `.agents/skills/` 物化为 packs 内容物）|
+| `docs/features/F009-garage-init-scope-selection.md` | F009 已批准规格（`garage init` 双 scope project/user + 交互式 scope 选择）|
 
 代码入口：`src/garage_os/adapter/installer/`（与 F001 `host_adapter.py` 同包但接口独立，详见 design ADR-D7-1）。三个 first-class host adapter 在 `src/garage_os/adapter/installer/hosts/{claude,opencode,cursor}.py`。
 
@@ -81,6 +82,19 @@ garage init --hosts cursor,claude
 - 无平台 symlink 风险（与 candidate A 的 git symlink 路径相比，跨平台兼容更强）
 
 详见 design ADR-D8-2（`docs/designs/2026-04-22-garage-coding-pack-and-writing-pack-design.md`）。
+
+### Install Scope（F009 新增）
+
+F009 在 `garage init` 加 `--scope` flag，让 solo creator 跨多客户仓库使用同一套 packs：
+
+- `--scope project`（默认，CON-901 兼容）：装到 `<cwd>/.{host}/skills/`，与 F007/F008 行为完全等价
+- `--scope user`：装到 `~/.{host}/skills/` 等家目录（claude `~/.claude/skills/`，opencode XDG `~/.config/opencode/skills/`，cursor `~/.cursor/skills/`）
+- per-host override：`--hosts claude:user,cursor:project` 让每个 host 独立指定 scope
+- 交互式两轮：TTY 下 `garage init` 第一轮选宿主、第二轮 a/u/p 三个开关（default `a` = all project = F007/F008 行为）
+
+**dogfood 路径不受影响**：本仓库自身 `garage init --hosts cursor,claude` 仍默认 project scope（无 `--scope`），与 F008 ADR-D8-2 candidate C 完全等价（NFR-901 Dogfood 不变性硬门槛由 sentinel test 守门）。
+
+详见 spec `docs/features/F009-garage-init-scope-selection.md` + design `docs/designs/2026-04-23-garage-init-scope-selection-design.md`（11 ADR + 完整调研锚点）+ user guide "Pack & Host Installer > Install Scope" 段。
 
 ### Garage OS 开发者参考
 

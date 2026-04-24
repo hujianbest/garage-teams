@@ -594,6 +594,66 @@ Installed 1 skills, 1 agents into hosts: claude, opencode
 
 **non-TTY 退化**（CI / 脚本场景）：当 `stdin` 不是 TTY 且没传 `--hosts`、没传 `--yes`，CLI 会向 stderr 打印 `non-interactive shell detected; install no hosts (pass --hosts <list> to override)` 然后正常退出（`.garage/` 仍创建）。
 
+### Install Scope（F009 新增）
+
+F009 在 `garage init` 加 `--scope` flag 让你选**装到哪里**。F007/F008 既有调用形态默认 `--scope project` 完全等价（CON-901 字节级兼容）。
+
+**3 种使用方式**：
+
+```bash
+# 方式 A — 全局 --scope (新增)
+garage init --hosts all --scope user
+# → 装到 ~/.claude/skills/ + ~/.cursor/skills/ + ~/.config/opencode/skills/
+
+# 方式 B — per-host 后缀语法 (新增)
+garage init --hosts claude:user,cursor:project
+# → claude → ~/.claude/skills/, cursor → <cwd>/.cursor/skills/
+
+# 方式 C — 交互式两轮 (新增, candidate C 三个开关)
+garage init  # TTY, 不带 --hosts/--yes/--scope
+# 第一轮 (F007 既有): 选哪些宿主?
+# 第二轮 (F009 新增):
+#   Install selected hosts to:
+#     [a] all project (./.{host}/skills/) — F007/F008 default
+#     [u] all user    (~/.{host}/skills/)
+#     [p] per-host    — pick scope individually
+#   Choice [a/u/p]: <enter>     # default a = F007/F008 行为完全等价
+```
+
+**Scope 对照表**：
+
+| Scope | 落盘位置 | 用途 |
+|---|---|---|
+| `project`（默认） | `<cwd>/.{host}/skills/` | 跟项目走；F007/F008 行为 |
+| `user` | `~/.{host}/skills/` 等家目录 | 跟人走；solo creator 跨多客户仓库共享 |
+
+**三家宿主 user scope 路径**（来自各家官方文档）：
+
+| Host | User scope path |
+|---|---|
+| Claude Code | `~/.claude/skills/<id>/SKILL.md` + `~/.claude/agents/<id>.md` |
+| OpenCode | `~/.config/opencode/skills/<id>/SKILL.md` (XDG default) + `~/.config/opencode/agent/<id>.md` |
+| Cursor | `~/.cursor/skills/<id>/SKILL.md`（无 agent surface） |
+
+**何时选 user scope**：
+
+- solo creator 跨多客户/雇主仓库工作，希望 hf-* workflow + 写博客 skill 跟着自己走
+- 个人偏好 skill（不希望污染团队仓库 `.claude/skills/`）
+- 跨项目复用同一套技能基座
+
+**何时选 project scope**：
+
+- 团队共享、与项目绑定（如团队特定的 hf-* workflow 节点配置）
+- F007/F008 已有的 `garage init --hosts <list>` 调用方式（完全兼容）
+- 装好的 skill 想随项目 git 共享（手动 commit `.claude/skills/`）
+
+**已知限制 / 后续工作**（详见 `docs/features/F009-garage-init-scope-selection.md` § 5 deferred）：
+
+- 无 `garage uninstall --scope` / `garage update --scope` (F010 候选)
+- OpenCode 不支持 dotfiles 风格 `~/.opencode/skills/`（XDG default 已覆盖 90%+ 用户）
+- 无 enterprise / plugin scope（solo creator 用不到）
+- 无跨用户可移植 manifest（manifest 默认不入项目 git）
+
 ### 用法 2：非交互（CI / 脚本）
 
 ```bash
