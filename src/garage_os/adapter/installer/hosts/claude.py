@@ -46,5 +46,22 @@ class ClaudeInstallAdapter:
         """F009 user-scope agent path (absolute, under ~/.claude/agents/)."""
         return Path.home() / ".claude" / "agents" / f"{agent_id}.md"
 
+    def target_context_path(self, name: str) -> Path:
+        """F010 (FR-1004 + ADR-D10-2) project-scope context surface path.
+
+        Claude Code auto-loads ``CLAUDE.md`` from the cwd. The ``name`` parameter
+        is currently unused for claude (filename is fixed by the host convention);
+        retained in the Protocol signature for future multi-context扩展.
+        """
+        return Path("CLAUDE.md")
+
+    def target_context_path_user(self, name: str) -> Path:
+        """F010 user-scope context surface path (absolute, ~/.claude/CLAUDE.md).
+
+        Claude Code 用户级 ``CLAUDE.md`` (auto-loaded for all projects). ``name``
+        参数当前 unused (与 project scope 同精神).
+        """
+        return Path.home() / ".claude" / "CLAUDE.md"
+
     def render(self, content: str) -> str:
         return content

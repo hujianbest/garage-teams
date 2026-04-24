@@ -52,5 +52,17 @@ class CursorInstallAdapter:
         """F009 user-scope agent path: None (cursor 无 agent surface, 与 project scope 一致)."""
         return None
 
+    def target_context_path(self, name: str) -> Path:
+        """F010 (FR-1004 + ADR-D10-2) project-scope context surface path.
+
+        Cursor auto-loads ``.cursor/rules/<name>.mdc`` files with ``alwaysApply: true``
+        front matter. Default ``name="garage-context"`` 时, 装到 ``.cursor/rules/garage-context.mdc``.
+        """
+        return Path(".cursor/rules") / f"{name}.mdc"
+
+    def target_context_path_user(self, name: str) -> Path:
+        """F010 user-scope context surface path (absolute, ~/.cursor/rules/<name>.mdc)."""
+        return Path.home() / ".cursor" / "rules" / f"{name}.mdc"
+
     def render(self, content: str) -> str:
         return content

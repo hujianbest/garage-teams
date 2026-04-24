@@ -46,5 +46,17 @@ class OpenCodeInstallAdapter:
         """F009 user-scope agent path (XDG default ~/.config/opencode/agent/)."""
         return Path.home() / ".config" / "opencode" / "agent" / f"{agent_id}.md"
 
+    def target_context_path(self, name: str) -> Path:
+        """F010 (FR-1004 + ADR-D10-2) project-scope context surface path.
+
+        OpenCode auto-loads ``.opencode/AGENTS.md``. The ``name`` parameter is
+        currently unused for opencode (filename is fixed by the host convention).
+        """
+        return Path(".opencode/AGENTS.md")
+
+    def target_context_path_user(self, name: str) -> Path:
+        """F010 user-scope context surface path (XDG default ~/.config/opencode/AGENTS.md)."""
+        return Path.home() / ".config" / "opencode" / "AGENTS.md"
+
     def render(self, content: str) -> str:
         return content

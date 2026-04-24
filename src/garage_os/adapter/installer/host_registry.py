@@ -66,6 +66,13 @@ class HostInstallAdapter(Protocol):
     - ``target_agent_path_user(agent_id)``: F009 user-scope (absolute) Path
       to the installed agent file, or ``None`` if no agent surface in user
       scope (cursor: returns ``None`` like project scope).
+    - ``target_context_path(name)``: F010 (FR-1004 + ADR-D10-2) project-scope
+      (cwd-relative) ``Path`` to the host's auto-loaded context surface file
+      (CLAUDE.md / .cursor/rules/<name>.mdc / .opencode/AGENTS.md). The
+      ``name`` parameter is currently used only by cursor (for ``<name>.mdc``);
+      claude/opencode use a fixed filename and ignore ``name``.
+    - ``target_context_path_user(name)``: F010 user-scope (absolute) ``Path``
+      to the host's auto-loaded context surface file under ``Path.home()``.
     - ``render(content)``: optional content transform applied before write;
       defaults to identity passthrough. Reserved for future host-specific
       metadata injection beyond the standard marker.
@@ -77,6 +84,8 @@ class HostInstallAdapter(Protocol):
     def target_agent_path(self, agent_id: str) -> Path | None: ...
     def target_skill_path_user(self, skill_id: str) -> Path: ...
     def target_agent_path_user(self, agent_id: str) -> Path | None: ...
+    def target_context_path(self, name: str) -> Path: ...
+    def target_context_path_user(self, name: str) -> Path: ...
     def render(self, content: str) -> str: ...
 
 
