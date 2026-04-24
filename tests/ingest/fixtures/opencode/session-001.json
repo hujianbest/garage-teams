@@ -1,0 +1,13 @@
+{
+  "topic": "OpenCode session fixture for F010 ingest tests",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Implement HostHistoryReader for OpenCode using XDG default path"
+    },
+    {
+      "role": "assistant",
+      "content": "Reading from ~/.local/share/opencode/sessions/*.json per OpenCode README's Storage section."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "topic": "Review F010 design decisions for sync compiler",
+  "messages": [
+    {
+      "role": "user",
+      "content": "How should we set the budget for garage sync? Claude Code's CLAUDE.md is recommended ≤ 5KB but I want to fit a few more entries."
+    },
+    {
+      "role": "assistant",
+      "content": "Going with 16KB budget — about 3.2x the recommended single-file limit, gives long-form knowledge entries headroom while staying within typical context window. We'll truncate per-entry to 200 chars and emit stderr warning when budget is exceeded."
+    },
+    {
+      "role": "user",
+      "content": "Sounds good. What about ranking?"
+    },
+    {
+      "role": "assistant",
+      "content": "Ranking: decision > solution > pattern; same-kind by date DESC; experience separately top-5 by mtime DESC."
+    }
+  ]
+}
