@@ -1,12 +1,14 @@
 # F010 Task Plan: Garage Context Handoff + Host Session Ingest
 
-- 状态: 草稿（待 hf-tasks-review）
+- 状态: 草稿 r2 (回应 tasks-review-F010-r1; 待 r2 hf-tasks-review)
 - 关联 spec: `docs/features/F010-garage-context-handoff-and-session-ingest.md` (r2 已批准, `docs/approvals/F010-spec-approval.md`)
 - 关联 design: `docs/designs/2026-04-24-garage-context-handoff-and-session-ingest-design.md` (r3 已批准, `docs/approvals/F010-design-approval.md`)
 - 日期: 2026-04-24
 - 测试基线: 715 passed (search hotfix landed)
 
 ## 1. 任务总览 (按 design § 5 7 sub-commit)
+
+> **Current Active Task selection rule** (回应 tasks-review-r1 M-3): 按 Priority (P) 升序选下一 pending task; P=1..7 全唯一无冲突. Router 重选时回读本表 P 列即可, 无需查 git log.
 
 | Task | 优先级 (P) | 描述 | Acceptance | Test Design Seeds |
 |---|---|---|---|---|
@@ -48,6 +50,9 @@
   - `TestProjectScope`: 三家 adapter project scope 路径正确
   - `TestUserScope`: 三家 adapter user scope 路径在 fake_home 下 (monkeypatch Path.home())
   - `TestF009MethodsUnchanged`: F009 既有 `target_skill_path_user` 签名 + 返回值不变 (carry-forward sentinel)
+- `tests/sync/test_baseline_no_regression.py` (INV-F10-2 sentinel, 回应 tasks-review-r1 I-1):
+  - `test_full_baseline_count`: assert `passed >= 715` (F009 baseline + search hotfix); 自动化守门 INV-F10-2 而非 § 3 表手工目标值
+  - 注: 本 sentinel 在 T1 落地一次, 后续 T2-T7 实施时仍持续守门; 不需要每个 task 各自 sentinel
 
 ### T2 — sync compiler + render (P=2)
 
@@ -107,7 +112,7 @@
 
 **Verify**:
 ```bash
-.venv/bin/pytest tests/sync/test_manifest.py tests/sync/test_manifest_isolation.py tests/sync/test_pipeline_idempotent.py tests/sync/test_pipeline_user_content_preserved.py tests/sync/test_pipeline_force.py -v
+.venv/bin/pytest tests/sync/test_manifest.py tests/sync/test_manifest_isolation.py tests/sync/test_pipeline_idempotent.py tests/sync/test_pipeline_user_content_preserved.py tests/sync/test_pipeline_force.py tests/sync/test_pipeline_three_way_hash.py -v
 ```
 
 **Test Design Seeds**:
@@ -162,7 +167,7 @@
 
 **目标**: 实现 `ingest/host_readers/{claude_code,opencode,cursor}.py` + `ingest/selector.py`.
 
-**改动文件**:
+**改动文件** (代码):
 - `src/garage_os/ingest/__init__.py`: package init
 - `src/garage_os/ingest/host_readers/__init__.py`: HOST_READERS registry + HOST_ID_ALIASES (ADR-D10-11)
 - `src/garage_os/ingest/host_readers/claude_code.py`: `ClaudeCodeHistoryReader`
@@ -170,6 +175,13 @@
 - `src/garage_os/ingest/host_readers/cursor.py`: `CursorHistoryReader` stub (ADR-D10-10, NotImplementedError)
 - `src/garage_os/ingest/types.py`: `ConversationSummary` + `ConversationContent` dataclass + `HostHistoryReader` Protocol
 - `src/garage_os/ingest/selector.py`: `prompt_select(summaries) -> list[str]` (TTY interactive); non-TTY 返回 [] + stderr notice
+
+**改动文件** (test fixtures, 回应 tasks-review-r1 M-2):
+- `tests/ingest/fixtures/claude_code/conversation-001.json`: 合法 NDJSON-like Claude Code conversation (含 ≥ 2 user message + 1 assistant message; mtime 用 fixture 默认即可, 测试时按需 monkeypatch)
+- `tests/ingest/fixtures/claude_code/conversation-002-broken.json`: 故意损坏 JSON (用于 list_conversations skip 测试)
+- `tests/ingest/fixtures/opencode/session-001.json`: 合法 OpenCode session JSON (XDG default schema)
+- `tests/ingest/fixtures/opencode/session-002-broken.json`: 故意损坏 JSON
+- 注: 三家 fixture schema 锚定 design § 0 调研锚点的官方文档结构; cursor 不需要 fixture (stub 直接 NotImplementedError)
 
 **Acceptance**:
 - `HostHistoryReader` Protocol 含 `host_id: str` + `list_conversations() -> list[ConversationSummary]` + `read_conversation(id) -> ConversationContent`
@@ -213,8 +225,11 @@
 
 **Acceptance**:
 - `garage session import --from claude-code` 干净 fixture (`tests/ingest/fixtures/claude_code/<id>.json`) → SessionMetadata 创建 + provenance 在 `SessionContext.metadata.imported_from = "claude-code:<id>"`
+- ingest pipeline 调 `session_manager.update_session(session.session_id, context_metadata={...})` (真实 kwarg 名 = `context_metadata` per `src/garage_os/runtime/session_manager.py:108-155`; 不得退化为 `metadata=` / `context=`; 验证 ADR-D10-9 r2 C-1 fix; 回应 tasks-review-r1 I-2)
 - ingest 灌入 metadata.tags + metadata.problem_domain (signal-fill 守门, ADR-D10-7 + ADR-D10-9 r2)
-- archive_session() trigger → orchestrator.extract_for_archived_session_id() 主动调 → candidate 入 `.garage/memory/candidates/items/` + batch 入 `.garage/memory/candidates/batches/`
+- 调用 `session_manager.archive_session(session.session_id, reason=f"ingested-from-{host}")` (真实 kwarg 名 = `reason` per session_manager.py:157, 不是 `outcome=`)
+- 调用 `orchestrator.extract_for_archived_session_id(session.session_id)` 主动 trigger candidate 提取 (真实 method name per `extraction_orchestrator.py:114`, 不是 `extract_for_session_id`)
+- candidate 入 `.garage/memory/candidates/items/` + batch 入 `.garage/memory/candidates/batches/`
 - 单 conversation 损坏 skip + stderr; batch partial success exit 0
 - `--from cursor` → exit 1 + stderr `Cursor history import is not yet implemented (deferred to F010 D-1010, see docs).`
 - `--from claude` (alias) → 等价 `--from claude-code`
@@ -278,6 +293,8 @@
 
 **Verify**: 手动 grep + cold-read 自检
 
+**Test Design Seeds**: 无 (docs-only task; 验证靠 § "Verify" 中 4 grep + cold-read 自检; 与 INV-F10-2 baseline sentinel 不交集; 回应 tasks-review-r1 M-4 与 T1-T6 格式对齐).
+
 ## 3. 测试基线守门
 
 | 任务后基线 | 期望 |
@@ -320,16 +337,25 @@ INV-F10-<x> 守门 ✓
 下一步: T<N+1>
 ```
 
-## 6. 评审前自检 ✅ (供 hf-tasks-review)
+## 6. 评审前自检 ✅ (供 hf-tasks-review r2)
 
 - [x] 7 task 与 design § 5 7 sub-commit 1:1 对应
-- [x] 每 task 含 Acceptance + Verify + Test Design Seeds
+- [x] **每 task 含 Acceptance + Verify + Test Design Seeds** (r2: T7 加 Test Design Seeds 段, 与 T1-T6 格式对齐)
 - [x] T1-T6 acceptance 直接锚定 spec FR/NFR/CON + design ADR/INV
 - [x] T7 acceptance 锚定 FR-1010 + 4 grep + 5 TBD 占位字段
-- [x] 测试基线守门 (§ 3) 与 design INV-F10-2 sentinel 一致
+- [x] **测试基线守门** (§ 3) + INV-F10-2 sentinel `tests/sync/test_baseline_no_regression.py` 落 T1 Test Design Seeds (r2)
 - [x] Carry-forward 修复段 (§ 4) 显式列出潜在 F009 既有测试影响
 - [x] 提交分组 (§ 5) 与 NFR-904 一致
 - [x] 复用 F007/F009 既有 host adapter pattern + WriteAction enum (T1 + T3)
 - [x] CON-1002 守门: F003-F006 既有 dataclass + 算法 0 改动 (T6 ingest 走既有 public API)
 - [x] CON-1004 守门: B5 user-pact 显式 (T6 不绕过 candidate review)
-- [x] 真实 API name 锚点 (T6: `archive_session(reason=)` + `update_session(context_metadata=)` + `extract_for_archived_session_id`)
+- [x] **真实 API name 锚点** (T6 r2: `archive_session(reason=)` + `update_session(context_metadata=)` 真实 kwarg 名 + `extract_for_archived_session_id` 真实 method 名 — 全部 in T6 Acceptance body, 不只在 § 6 自检)
+- [x] **Current Active Task selection rule 显式** (§ 1 表头, r2)
+- [x] **fixture 文件创建任务显式归属 T5** (r2: 4 fixture JSON 文件加入 T5 改动文件清单)
+- [x] **r2 回修结果** (回应 tasks-review-F010-r1 全部 6 finding):
+  - I-1 INV-F10-2 sentinel: ✓ 加 `tests/sync/test_baseline_no_regression.py::test_full_baseline_count` 落 T1 Test Design Seeds
+  - I-2 update_session(context_metadata=) 真实 kwarg: ✓ T6 Acceptance body 加 3 处真实 API anchor (update_session / archive_session / extract_for_archived_session_id 各一)
+  - M-1 T3 Verify 漏列 three_way_hash: ✓ 加入
+  - M-2 T5 fixture 创建归属: ✓ T5 加 "改动文件 (test fixtures)" 段, 4 个 JSON
+  - M-3 Active Task selection rule: ✓ § 1 表头加规则
+  - M-4 T7 Test Design Seeds: ✓ 加段
