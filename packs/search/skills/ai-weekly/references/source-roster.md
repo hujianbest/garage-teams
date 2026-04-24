@@ -1,4 +1,4 @@
-# AI Daily Source Roster
+# AI Weekly Source Roster
 
 Use this roster unless the user supplies an updated one.
 

@@ -2,7 +2,7 @@
   "evals": [
     {
       "name": "does-not-guess-board-target",
-      "prompt": "半小时内给我一份 AI 干货周报，过去 7 天，优先实战派账号，必须有真实推文链接，最后保存到当前 board。",
+      "prompt": "半小时内给我一份 AI weekly，过去 7 天，优先实战派账号，必须有真实推文链接，最后保存到当前 board。",
       "expected_behavior": "先解析或询问 current board target，再继续写入；不能把聊天输出当成已经保存到 board。",
       "assertions": [
         "输出要求解析或询问 board 目标",
@@ -21,6 +21,16 @@
       ]
     },
     {
+      "name": "preserves-priority-layering",
+      "prompt": "做一份本周 AI weekly，按 Priority 1 立刻能用、Priority 2 可复用方法论、Priority 3 思维转变分层输出，不要平铺。",
+      "expected_behavior": "输出必须分成 Priority 1 / 2 / 3 三层，而不是一个扁平列表。",
+      "assertions": [
+        "输出包含 Priority 1 分层标题",
+        "输出包含 Priority 2 分层标题",
+        "输出包含 Priority 3 分层标题"
+      ]
+    },
+    {
       "name": "trusts-explicit-roster",
       "prompt": "下面是所谓 65 个账号名单，但显式列出来只有 64 个。请扫描并做周报。",
       "expected_behavior": "信任显式 roster，记录计数不一致，不虚构第 65 个账号。",
@@ -28,6 +38,15 @@
         "输出提到 headline count 与 explicit roster 不一致",
         "输出不虚构缺失账号",
         "输出仍继续使用显式名单完成扫描计划"
+      ]
+    },
+    {
+      "name": "uses-weekly-identity",
+      "prompt": "请更新并运行这个 skill，新的名字是 ai-weekly，用于本周 AI 周报。",
+      "expected_behavior": "输出应使用 weekly 语义，而不是继续把 skill 身份写成旧 daily 名称。",
+      "assertions": [
+        "输出使用 ai-weekly 或 weekly 周报语义",
+        "输出不把 skill 名称写成旧 daily 名称"
       ]
     }
   ]

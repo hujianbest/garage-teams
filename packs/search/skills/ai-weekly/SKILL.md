@@ -1,33 +1,35 @@
 ---
-name: ai-daily
-description: Use when the user wants a practical AI digest built from recent X/Twitter posts, especially from a fixed source roster, with a 7-day window, real tweet links, reusable tools/workflows/prompts, and a board-ready markdown report. Not for generic AI news, benchmark recaps, infrastructure updates, funding coverage, or paper-only summaries.
+name: ai-weekly
+description: Use when the user wants a practical weekly AI roundup from recent X/Twitter posts, especially from a fixed source roster, with a 7-day window, real tweet links, and a Chinese markdown report layered by Priority 1/2/3 for creators. Not for generic AI news, benchmark recaps, infrastructure updates, funding coverage, or paper-only summaries.
 ---
 
-# AI Daily
+# AI Weekly
 
-Build a Chinese-first weekly digest from recent X/Twitter posts that a content creator can use immediately. This skill is for practical signal extraction and board-ready reporting, not for hype roundups or deep research essays.
+Build a Chinese-first weekly digest from recent X/Twitter posts that a content creator can use immediately. This skill is for priority-layered, practical weekly curation, not for hype roundups or deep research essays.
 
 ## When to Use
 
 Use this skill when:
-- the user wants a weekly or daily AI digest from X/Twitter
-- the user provides a source roster or named accounts to scan
-- the user cares about prompts, tools, workflows, tutorials, methods, or creator productivity
-- the output must be a concise markdown report with links and clear "why this matters"
+- the user wants a weekly or past-7-day AI roundup from X/Twitter
+- the user provides a fixed source roster or named accounts to scan
+- the user cares about tools, workflows, tutorials, prompts, methods, or creator productivity
+- the output must be a concise Chinese markdown report with links and explicit practical value
+- the user wants the final report grouped by `Priority 1 / Priority 2 / Priority 3`
 
 Do not use this skill when:
-- the request is for generic AI news, product launches, or industry recap
-- the user wants a deep research report, competitive landscape, or long-form article
+- the request is for generic AI news, model launch recaps, or industry headlines
+- the user wants a deep research report, competitive analysis, or long-form article
 - the source is not X/Twitter posts
-- the user mainly wants infrastructure, benchmark, funding, or enterprise-only announcements
+- the user mainly wants infrastructure, benchmark, funding, cybersecurity, or enterprise-only announcements
 
 ## Hard Gates
 
 - Do not guess the meaning of "current board". Resolve the target from session context, the current board artifact, or an explicit file path first. If the board target is not uniquely identifiable, ask once before writing.
 - Do not use screenshots, aggregators, newsletters, or secondary summaries as substitutes for the original post. Every selected item must link to the original `x.com/.../status/...` or `twitter.com/.../status/...` URL.
-- Do not pad the report. If fewer than 5 items pass the "immediately usable" bar, return fewer and explain why.
+- Do not pad the report. If fewer than 5 items pass the usefulness bar, return fewer and explain why.
 - Do not silently invent missing accounts. If the stated total and the explicit handle list disagree, treat the explicit roster as authoritative and note the discrepancy in the scan stats.
-- Do not let "popular" replace "practical". Every item must pass the content-creator test: "Can the reader apply this immediately to improve work?"
+- Do not let "popular" replace "practical". Every item must pass the creator test: "Can the reader apply this immediately to improve work?"
+- Do not flatten the final output. When the user provides `Priority 1 / 2 / 3`, the report must be grouped by those priority sections instead of one flat list.
 
 ## Quick Reference
 
@@ -39,7 +41,8 @@ Do not use this skill when:
 | Search focus | `tool`, `workflow`, `method`, `tutorial`, `prompt`, `tip`, `guide`, `framework` |
 | Inclusion bar | Practical, reusable, creator-relevant |
 | Exclusions | Infra, security, benchmarks, funding, paper-only, enterprise-only |
-| Output | Chinese markdown report with real tweet URLs and "为什么有用" |
+| Classification | Assign every kept item to exactly one of `Priority 1 / 2 / 3` |
+| Output | Chinese markdown weekly report with real tweet URLs, `为什么有用`, and priority layering |
 | Save | Write the finished report to the resolved current board |
 
 ## Workflow
@@ -63,45 +66,51 @@ Do not use this skill when:
    - If a result points to a thread, keep the root tweet URL and summarize only the immediately useful takeaway.
 
 4. Filter with the utility rubric.
-   - Priority 1: immediately usable tools, plugins, apps, step-by-step tutorials, prompt templates, workflow tips.
-   - Priority 2: reusable creator methodologies, AI best practices, productivity systems, skill-building frameworks.
-   - Priority 3: mindset shifts that clearly change how a creator uses AI in practice.
+   - `Priority 1: 立刻能用` — tools, plugins, apps, step-by-step tutorials, prompt templates, workflow tips that a creator can adopt today.
+   - `Priority 2: 可复用方法论` — creator methodologies, AI best practices, productivity systems, skill-building frameworks that can be reused across weeks.
+   - `Priority 3: 思维转变` — mindset shifts, recurring mistakes, or expert perspectives that clearly change how a creator uses AI in practice.
    - Exclude anything that fails the test: "After reading this, can a content creator apply it right away?"
    - Exclude infrastructure, cybersecurity specialist content, academic papers without direct application, enterprise/B2B announcements without personal utility, fundraising/revenue news, and benchmark/model-comparison posts.
 
-5. Select the final 5-10 items.
+5. Select and classify the final 5-10 items.
    - Rank by immediacy, reusability, and creator relevance.
    - Prefer diversity across `可复用方法`, `工作流优化`, `提示词技巧`, and `新工具`.
-   - Avoid duplicate angles from the same topic unless one item is clearly stronger.
+   - Assign each selected item to exactly one priority section.
+   - If an item could fit multiple priorities, place it in the highest applicable priority.
 
 6. Write the report.
    - Use the exact structure in `references/report-template.md`.
    - Keep the title and commentary in Chinese.
+   - Group the output under `Priority 1｜立刻能用`, `Priority 2｜可复用方法论`, and `Priority 3｜思维转变`.
    - Each item must include:
      - a practical title
      - source handle
      - item type
      - 2-3 actionable takeaways
-     - "为什么有用"
+     - `为什么有用`
      - the real tweet URL
    - Keep each item concise; target roughly 150-200 Chinese characters.
+   - If a priority section has no qualifying items, keep the heading and write `本周无符合条件内容。`
 
 7. Save to the current board.
    - Write the finished markdown report to the resolved board target.
    - If the board is file-backed, report the path after saving.
-   - If the board supports appending sections, insert under a clear date heading such as `AI 干货周报 - YYYY-MM-DD`.
+   - If the board supports appending sections, insert under a clear date heading such as `AI 周报 - YYYY-MM-DD`.
    - Do not treat "posted in chat" as equivalent to "saved to board".
 
 ## Output Contract
 
-- Write one board-ready markdown digest in Chinese.
+- Write one board-ready markdown weekly digest in Chinese.
 - The report must include:
   - scan date
   - source coverage summary
   - 5-10 selected items or an explicit smaller count with reason
+  - `Priority 1 / 2 / 3` layered sections
+  - priority distribution
   - category distribution
   - real tweet URLs for every selected item
 - The final save location must be explicit: board name, path, or section updated.
+- If the user asked for priorities, the output must not collapse those sections into a flat list.
 - If the board target could not be resolved, stop before the write step and ask for the destination instead of guessing.
 
 ## Red Flags
@@ -111,6 +120,7 @@ Do not use this skill when:
 - Filling the list with "interesting" news that is not immediately useful
 - Skipping the 6 priority handles because they are harder to verify
 - Claiming "65 scanned" without reconciling the explicit roster count
+- Returning a polished report but flattening the priority structure
 - Returning a polished report but never saving it to the current board
 
 ## Common Mistakes
@@ -121,6 +131,7 @@ Do not use this skill when:
 | Trusting search snippets | Snippets can hide old posts, reposts, or wrong authors | Verify the original post URL and date before inclusion |
 | Guessing the board target | The report lands in the wrong place or nowhere | Resolve board context first or ask once |
 | Forcing 10 items | Padding dilutes the digest | Return fewer items if quality is low |
+| Flattening `Priority 1/2/3` into one list | The report ignores the user's requested structure | Keep explicit layered headings and classify every item |
 | Trusting the headline count over the roster | The agent invents or omits accounts | Use the explicit handle list as the authority |
 
 ## Verification
@@ -130,6 +141,7 @@ Do not use this skill when:
 - [ ] Any stated-count vs explicit-roster mismatch was noted instead of normalized away
 - [ ] Every selected item is within the last 7 days
 - [ ] Every selected item links to an original `x.com` or `twitter.com` status URL
-- [ ] Every selected item passes the "content creator can use this immediately" test
+- [ ] Every selected item passes the creator "immediately usable" test
+- [ ] Every selected item is assigned to exactly one of `Priority 1 / 2 / 3`
 - [ ] Output matches `references/report-template.md`
 - [ ] The report was saved to the resolved current board
