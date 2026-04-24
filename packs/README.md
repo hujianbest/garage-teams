@@ -47,16 +47,18 @@ packs/<pack-id>/
 | Pack | 用途 | skills | agents | 状态 |
 |---|---|---|---|---|
 | `packs/garage/` | Getting-started 三件套：占位 sample + find-skills（发现）+ writing-skills（写 skill）| 3 | 1 | ✅ 已落盘（F007 T1 + F008 T3 扩容到 0.2.0） |
-| `packs/coding/` | HarnessFlow 工程工作流 family：21 hf-* + using-hf-workflow + 11 family-level 共享资产（4 docs + 5 templates + 2 principles）| 22 | 0 | ✅ 已落盘（F008） |
+| `packs/coding/` | HarnessFlow 工程工作流 family：22 hf-* + using-hf-workflow + 15 family-level 共享资产（4 docs + 6 templates + 5 principles；reverse-sync 自 hujianbest/harness-flow upstream Phase 0）| 23 | 0 | ✅ 已落盘（F008 + PR#25 扩容到 0.2.0） |
+| `packs/search/` | 信息聚合 / curation family：ai-weekly（X/Twitter 周报，Priority 1/2/3 中文报告）| 1 | 0 | ✅ 已落盘（PR#28 search hotfix 补 pack metadata） |
 | `packs/writing/` | 内容创作 family：blog-writing / humanizer-zh / hv-analysis / khazix-writer + family-level prompts/横纵分析法.md | 4 | 0 | ✅ 已落盘（F008） |
 
-合计 3 个 pack × **29 个 skill** × 3 个宿主 = `garage init --hosts all` 物化 87 个 skill 文件 + 1 个 agent 文件（agent 仅装到 claude / opencode；cursor 无 agent surface）。
+合计 4 个 pack × **31 个 skill** × 3 个宿主 = `garage init --hosts all` 物化 93 个 skill 文件 + 1 个 agent 文件（agent 仅装到 claude / opencode；cursor 无 agent surface）。
 
-未来计划（F009+）：
+未来计划（F010+）：
 
 - `packs/product-insights/` — product discovery 系列 skill 沉淀目标（待真实内容物到位后开 cycle）
 - `garage uninstall` / `garage update` — 安装逆向操作 + packs 内容拉新流程
 - D7 安装管道扩展为递归 `references/` / `evals/` / `scripts/` 子目录（让下游宿主装后引用直接可达，闭合 design ADR-D8-4 接受的"文档级提示"工程边界）
+- F009 carry-forward I-1 (CON-902 phase 1+3 body 守门) + I-2 (VersionManager host-installer migration 链注册)
 
 ## `.agents/skills/` 已删除（F008 ADR-D8-2 候选 C）
 
