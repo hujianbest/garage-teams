@@ -4,7 +4,7 @@
 
 - Goal: F009 — `garage init` 双 Scope 安装（project / user）+ 交互式 Scope 选择
 - Owner: hujianbest
-- Status: 🟡 In Progress — F009 design **已批准**（r2 通过 + auto-mode approval），进入 `hf-tasks`
+- Status: 🟡 In Progress — F009 task plan 草稿已落（6 个 task），等待 `hf-tasks-review`
 - Last Updated: 2026-04-23
 
 ## Previous Milestones
@@ -24,14 +24,15 @@
 - Workflow Profile: `full`
 - Execution Mode: `auto`
 - Workspace Isolation: `in-place`（工作分支 `cursor/f009-init-scope-selection-bf33`；PR #24）
-- Current Active Task: 无（task plan drafting 阶段）
-- Pending Reviews And Gates: `hf-tasks-review`（待派发，task plan 完成后）
-- Next Action Or Recommended Skill: `hf-tasks`
+- Current Active Task: 无（task plan 草稿已完成，等待 review）
+- Pending Reviews And Gates: `hf-tasks-review`（待派发）
+- Next Action Or Recommended Skill: `hf-tasks-review`
 - Relevant Files:
   - `docs/features/F009-garage-init-scope-selection.md`（已批准 r2，10 FR + 4 NFR + 4 CON + 4 ASM）
   - `docs/designs/2026-04-23-garage-init-scope-selection-design.md`（已批准 r2，11 ADR + 6 task + 9 INV + 11 测试文件）
   - `docs/approvals/F009-{spec,design}-approval.md`（auto-mode approval records）
   - `docs/reviews/{spec,design}-review-F009-garage-init-scope-selection.md`（r1 需修改 + r2 通过）
+  - `docs/tasks/2026-04-23-garage-init-scope-selection-tasks.md`（草稿 r1，6 个 task：T1 adapter / T2 pipeline / T3 manifest / T4 cli / T5 tests / T6 docs）
   - `docs/soul/manifesto.md`、`user-pact.md`、`design-principles.md`、`growth-strategy.md`（价值锚点；本 cycle 与 workspace-first 信念有 trade-off，需显式评估）
   - F008 spec § 5 deferred backlog 第 3 行（"全局安装到 `~/.claude/skills/...`：solo creator 跨多客户仓库的需求"——本 cycle 即落地）
   - F007 安装管道 `src/garage_os/adapter/installer/{pack_discovery,pipeline,manifest,host_registry}.py` + 三家 adapter `hosts/{claude,opencode,cursor}.py`（F009 扩展点）
