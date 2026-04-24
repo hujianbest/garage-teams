@@ -24,13 +24,14 @@
 - Workflow Profile: `full`
 - Execution Mode: `auto`
 - Workspace Isolation: `in-place`（工作分支 `cursor/f009-init-scope-selection-bf33`；PR #24）
-- Current Active Task: 无（design drafting 阶段）
-- Pending Reviews And Gates: `hf-design-review`（待派发，design 完成后）
-- Next Action Or Recommended Skill: `hf-design`
+- Current Active Task: 无（design 草稿已完成，等待 review）
+- Pending Reviews And Gates: `hf-design-review`（待派发）
+- Next Action Or Recommended Skill: `hf-design-review`
 - Relevant Files:
   - `docs/features/F009-garage-init-scope-selection.md`（已批准 r2，10 FR + 4 NFR + 4 CON + 4 ASM）
   - `docs/approvals/F009-spec-approval.md`（auto-mode approval record）
   - `docs/reviews/spec-review-F009-garage-init-scope-selection.md`（r1 需修改 + r2 通过）
+  - `docs/designs/2026-04-23-garage-init-scope-selection-design.md`（草稿 r1，9 ADR + 6 task + 9 INV + 10 测试文件）
   - `docs/soul/manifesto.md`、`user-pact.md`、`design-principles.md`、`growth-strategy.md`（价值锚点；本 cycle 与 workspace-first 信念有 trade-off，需显式评估）
   - F008 spec § 5 deferred backlog 第 3 行（"全局安装到 `~/.claude/skills/...`：solo creator 跨多客户仓库的需求"——本 cycle 即落地）
   - F007 安装管道 `src/garage_os/adapter/installer/{pack_discovery,pipeline,manifest,host_registry}.py` + 三家 adapter `hosts/{claude,opencode,cursor}.py`（F009 扩展点）
