@@ -32,7 +32,7 @@
 - 运行时数据存储: .garage/
 - 平台配置: .garage/config/platform.json
 - 宿主适配器配置: .garage/config/host-adapter.json
-- **Pack 安装清单（F007）**: `.garage/config/host-installer.json`（schema_version=1，`garage init --hosts ...` 写入；记录已安装宿主集合 + Garage-owned 文件清单 + content_hash，作为幂等再运行凭证）
+- **Pack 安装清单（F007/F008/F009）**: `.garage/config/host-installer.json`（**schema_version=2** since F009；F007/F008 schema 1 manifest 由 `read_manifest` 自动 migrate；`garage init --hosts ...` 写入；记录已安装宿主集合 + Garage-owned 文件清单 + content_hash + scope，作为幂等再运行凭证）
 - 平台契约: .garage/contracts/
 - 技术栈: Python 3.11+ (Poetry)
 

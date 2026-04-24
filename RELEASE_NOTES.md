@@ -6,7 +6,7 @@
 
 ## F009 — `garage init` 双 Scope 安装（project / user）+ 交互式 Scope 选择
 
-- 状态: 🟡 实施完成，待 hf-test-review → hf-code-review → hf-traceability-review → hf-regression-gate → hf-completion-gate → hf-finalize 链路
+- 状态: ✅ 完成 (closed by hf-finalize 2026-04-23)
 - Workflow Profile: `full`
 - Execution Mode: `auto`
 - Branch / PR: `cursor/f009-init-scope-selection-bf33` / [#24](https://github.com/hujianbest/garage-agent/pull/24)
@@ -75,14 +75,28 @@
 
 ### 验证证据
 
-- `pytest tests/ -q` → **TBD passed**（finalize 阶段填实测；预期 ≥ 708）
+- `pytest tests/ -q` → **713 passed** (+80 from F008 baseline 633, 0 regressions)
 - `git diff main..HEAD -- src/garage_os/` → 仅 `adapter/installer/{host_registry,pipeline,manifest,interactive}.py` + `hosts/{claude,opencode,cursor}.py` + `cli.py` + `__init__.py` 改动；其它模块零改动
 - `git diff main..HEAD -- pyproject.toml uv.lock` → 空（零依赖变更）
 - INV-F9-1..9 全部通过（详见 design § 11.1）；INV-F9-1 dogfood SHA-256 由 sentinel test 自动守门
-- **Manual smoke walkthrough** → **TBD**（finalize 阶段填实测，dogfood + tmp 双轨：dogfood 验证 NFR-901 + tmp 验证 user scope 三家宿主全装）
-- **完整质量链** → **TBD**（finalize 阶段补 test/code/traceability review + regression/completion gate 链路）
+- **Manual smoke walkthrough** → 4 tracks 全绿（dogfood + project + user + mixed），完整记录见 `docs/manual-smoke/F009-walkthrough.md`
+- **完整质量链** → 全部通过：
+  - `hf-test-review` r1: APPROVE_WITH_FINDINGS (0 critical / 2 important / 10 minor)
+  - `hf-code-review` r1: APPROVE_WITH_FINDINGS (0 critical / 4 important / 5 minor; I-3+I-4 in-cycle fix)
+  - `hf-traceability-review` r1: APPROVE_WITH_FINDINGS (0 critical / 3 important / 5 minor)
+  - `hf-regression-gate` r1: PASS
+  - `hf-completion-gate` r1: COMPLETE — Ready to finalize
+  - `hf-finalize`: ✅ closed 2026-04-23
 
-> **占位字段** 5 项（task plan T6 acceptance 已 enum）：`manual_smoke_wall_clock` / `pytest_total_count` / `installed_packs_from_manifest` / `commit_count_per_group` / `release_notes_quality_chain` — 实施完成时占位 TBD，由 hf-finalize 阶段填实测数据。
+### 实测占位字段（已填）
+
+| 字段 | 实测值 |
+|---|---|
+| `manual_smoke_wall_clock` | 0.11s (`garage init --hosts all --scope user`) << 5s NFR-803 上限 |
+| `pytest_total_count` | 713 passed (+80 from F008 baseline 633, 0 regressions) |
+| `installed_packs_from_manifest` | dogfood: 58 skills + 1 agent (29 skill × 2 host + 1 agent claude only); --hosts all: 87 skills + 2 agents (29 × 3 + 2 hosts with agents); --hosts all --scope user: 同 87 skills + 2 agents 但装到 fake_home |
+| `commit_count_per_group` | 8 commits (T1-T6 各 1 + manual smoke 1 + post-code-review 1) |
+| `release_notes_quality_chain` | ✅ 完整: 6 个 review/gate 文档全部生成 + finalize-approval 显式记录 carry-forward |
 
 ### 已知限制 / 后续工作
 

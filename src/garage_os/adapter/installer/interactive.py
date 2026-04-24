@@ -127,7 +127,10 @@ def prompt_scopes_per_host(
         host_ids 为空时返回空 dict.
     """
     src = stdin if stdin is not None else sys.stdin
-    err = stderr if stderr is not None else sys.stderr
+    # F009 (FR-903 验收 #4): non-TTY 退化时不向 stderr 打印 F009-specific scope 文字,
+    # 完全沿用 F007 prompt_hosts 退化语义; stderr 参数保留是为 future-proof
+    # (e.g. 后续 F010 加 user-facing 提示) + 与 prompt_hosts 签名对称.
+    _ = stderr  # keep in signature for symmetry with prompt_hosts (F007)
 
     if not host_ids:
         return {}

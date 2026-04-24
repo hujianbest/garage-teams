@@ -684,20 +684,29 @@ garage init --hosts all --force
 
 ### 安装清单：`.garage/config/host-installer.json`
 
-每次成功安装后写入；`schema_version=1`，受 `VersionManager` 管控（CON-703）。结构：
+每次成功安装后写入；**`schema_version=2`** since F009（F007/F008 既有 schema 1 manifest 由 `read_manifest` 自动 migrate；migration 安全语义：JSON 损坏 / 字段缺失时旧 manifest 字节级保留 + mtime 不被覆盖，由 `ManifestMigrationError` 守门）。schema 2 在 `dst` 字段改 absolute POSIX path（含 cwd 或 user home）+ 新增 `scope` 字段（`"project"` / `"user"`）。结构：
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "installed_hosts": ["claude", "cursor"],
   "installed_packs": ["garage"],
-  "installed_at": "2026-04-19T18:04:19",
+  "installed_at": "2026-04-23T18:04:19",
   "files": [
     {
       "src": "packs/garage/skills/garage-hello/SKILL.md",
-      "dst": ".claude/skills/garage-hello/SKILL.md",
+      "dst": "/home/alice/projects/my-app/.claude/skills/garage-hello/SKILL.md",
       "host": "claude",
       "pack_id": "garage",
+      "scope": "project",
+      "content_hash": "1f5e1270b1dfb046382695b541b9d34d4ef9ddc06b5db8644d696ac4a5272927"
+    },
+    {
+      "src": "packs/garage/skills/garage-hello/SKILL.md",
+      "dst": "/home/alice/.claude/skills/garage-hello/SKILL.md",
+      "host": "claude",
+      "pack_id": "garage",
+      "scope": "user",
       "content_hash": "1f5e1270b1dfb046382695b541b9d34d4ef9ddc06b5db8644d696ac4a5272927"
     }
   ]

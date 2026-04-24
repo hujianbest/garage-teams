@@ -4,7 +4,7 @@
 
 - Goal: F009 — `garage init` 双 Scope 安装（project / user）+ 交互式 Scope 选择
 - Owner: hujianbest
-- Status: 🟡 In Progress — F009 6 个 task 全部 commit 落地（T1-T6），等待 manual smoke walkthrough + hf-test-review 链路
+- Status: ✅ 完成 (closed by hf-finalize 2026-04-23)
 - Last Updated: 2026-04-23
 
 ## Previous Milestones
@@ -20,13 +20,13 @@
 
 ## Current Workflow State
 
-- Current Stage: `hf-test-review`（待派发，6 个 task 全部 commit 落地后）
-- Workflow Profile: `full`
-- Execution Mode: `auto`
+- Current Stage: `closed`
+- Workflow Profile: `N/A` (无活跃 cycle, F009 已完成)
+- Execution Mode: `N/A`
 - Workspace Isolation: `in-place`（工作分支 `cursor/f009-init-scope-selection-bf33`；PR #24）
-- Current Active Task: 无（6/6 task commit 落地）
-- Pending Reviews And Gates: `hf-test-review` → `hf-code-review` → `hf-traceability-review` → `hf-regression-gate` → `hf-completion-gate` → `hf-finalize`
-- Next Action Or Recommended Skill: manual smoke walkthrough + `hf-test-review`
+- Current Active Task: 无 (cycle 完成)
+- Pending Reviews And Gates: 无
+- Next Action Or Recommended Skill: `null` (cycle 已 closed)
 - Relevant Files:
   - `docs/features/F009-garage-init-scope-selection.md`（已批准 r2，10 FR + 4 NFR + 4 CON + 4 ASM）
   - `docs/designs/2026-04-23-garage-init-scope-selection-design.md`（已批准 r2，11 ADR + 6 task + 9 INV + 11 测试文件）
@@ -49,23 +49,20 @@
 
 ## Next Step
 
-6/6 task commit 落地。下一步：
+无. F009 cycle 已 closed.
 
-1. **Manual smoke walkthrough**（dogfood + tmp 双轨）：
-   - dogfood: 在 Garage 仓库自身根目录跑 `garage init --hosts cursor,claude` 验证 NFR-901 Dogfood 不变性
-   - tmp: 在 `/tmp/f009-smoke/` 跑 `garage init --hosts all --scope user` 验证 user scope 三家宿主全装
-2. 派发 `hf-test-review` reviewer subagent
-3. 派发 `hf-code-review` reviewer subagent
-4. 派发 `hf-traceability-review` reviewer subagent
-5. `hf-regression-gate`
-6. `hf-completion-gate`
-7. `hf-finalize`（用 manual smoke 实测填 RELEASE_NOTES F009 段 5 项 TBD + workflow closeout pack）
+下一 cycle 候选 (F010+):
+- `garage uninstall --scope <scope>` (与 F009 正交)
+- `garage update --scope <scope>` (与 F009 正交)
+- D7 安装管道扩展为递归 `references/` / `evals/` / `scripts/` 子目录 (F008 deferred)
+- F009 carry-forward I-1/I-2 (CON-902 body 守门 + VersionManager 注册链, 与 garage uninstall/update --scope 同 cycle 修复)
 
-## 实施完成证据
+## 完成证据 (F009 final, 2026-04-23 closed)
 
-- 测试基线: 633 (F008 baseline) → **708 passed** (+75 增量, 0 退绿)
-- INV-F9-1..9 全部通过（design § 11.1，含 INV-F9-1 dogfood SHA-256 sentinel + INV-F9-7 manifest schema 2 + INV-F9-8 fixture-isolated）
-- `git diff main..HEAD -- pyproject.toml uv.lock` 输出空（零依赖变更）
-- `git diff main..HEAD -- src/garage_os/` 仅 installer + cli 改动（CON-901 + CON-902 严守）
-- 6 sub-commit 分组提交（NFR-904 git diff 可审计）：T1 adapter / T2 pipeline / T3 manifest / T4 cli / T5 tests / T6 docs
-- F009 总 11 个新增测试文件（含 baseline JSON fixture）+ 4 处 carry-forward wording 修复
+- 测试基线: 633 (F008 baseline) → **713 passed** (+80 增量, 0 退绿)
+- 8 cycle commits: T1 adapter / T2 pipeline / T3 manifest / T4 cli / T5 tests / T6 docs + manual smoke + post-code-review
+- 12 个新增测试文件（含 baseline JSON fixture + post-code-review 修复测试）+ 4 处 carry-forward wording 修复
+- INV-F9-1..9 全部通过（design § 11.1）
+- 完整 review/gate 链路: spec/design/tasks 三方 approved + test/code/traceability review + regression/completion gate + finalize approval
+- Manual smoke walkthrough 4 tracks 全绿 (dogfood + project + user + mixed)
+- 详见 `docs/approvals/F009-finalize-approval.md`
