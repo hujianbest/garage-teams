@@ -2,10 +2,10 @@
 
 ## Goal
 
-- Goal: F009 — `garage init` 双 Scope 安装（project / user）+ 交互式 Scope 选择
+- Goal: Vision-gap analysis + F010+ next-cycle planning (planning artifact, 不是 spec; 真正 spec 由 hf-specify 起草)
 - Owner: hujianbest
-- Status: ✅ 完成 (closed by hf-finalize 2026-04-23)
-- Last Updated: 2026-04-23
+- Status: 🟡 Planning artifact 已落, 待用户确认 P0/P1/P2 排序后启 F010 spec
+- Last Updated: 2026-04-24
 
 ## Previous Milestones
 
@@ -17,16 +17,18 @@
 - F006 Garage Recall & Knowledge Graph: ✅ 完成（T1-T5，496 测试通过；workflow closeout 见 `docs/verification/F006-finalize-closeout-pack.md`）
 - F007 Garage Packs 与宿主安装器: ✅ 完成（T1-T5，586 测试通过；workflow closeout 见 `docs/verification/F007-finalize-closeout-pack.md`）
 - F008 Garage Coding Pack 与 Writing Pack: ✅ 完成（T1a/T1b/T1c + T2 + T3 + T4a/T4b/T4c + T5，633 测试通过；workflow closeout 见 `docs/verification/F008-finalize-closeout-pack.md`）
+- F009 garage init 双 Scope 安装: ✅ 完成（T1-T6 + manual smoke + post-code-review，713 测试通过；finalize approval 见 `docs/approvals/F009-finalize-approval.md`）
+- packs/search hotfix (PR#28 candidate): ✅ 落地（补 pack metadata + INV-1 30→31 + dogfood baseline 59→63，715 测试通过）
 
 ## Current Workflow State
 
-- Current Stage: `closed`
-- Workflow Profile: `N/A` (无活跃 cycle, F009 已完成)
-- Execution Mode: `N/A`
-- Workspace Isolation: `in-place`（工作分支 `cursor/f009-init-scope-selection-bf33`；PR #24）
-- Current Active Task: 无 (cycle 完成)
-- Pending Reviews And Gates: 无
-- Next Action Or Recommended Skill: `null` (cycle 已 closed)
+- Current Stage: `planning` (vision-gap analysis written; awaiting user P0/P1/P2 confirmation)
+- Workflow Profile: `N/A` (planning artifact, not a workflow cycle)
+- Execution Mode: `auto`
+- Workspace Isolation: `in-place`（工作分支 `cursor/vision-gap-analysis-bf33`）
+- Current Active Task: 无 (planning 文档已落)
+- Pending Reviews And Gates: 用户确认 F010 范围 (单独 F010-A 还是 F010-A+B 一起) → 启 `hf-specify`
+- Next Action Or Recommended Skill: 用户确认后, 派发 `hf-specify` 起草 F010 spec (基于 `docs/planning/2026-04-24-vision-gap-and-next-cycle-plan.md` § 2.1)
 - Relevant Files:
   - `docs/features/F009-garage-init-scope-selection.md`（已批准 r2，10 FR + 4 NFR + 4 CON + 4 ASM）
   - `docs/designs/2026-04-23-garage-init-scope-selection-design.md`（已批准 r2，11 ADR + 6 task + 9 INV + 11 测试文件）
@@ -49,20 +51,31 @@
 
 ## Next Step
 
-无. F009 cycle 已 closed.
+完成 vision-gap 分析, 推荐**单一最优下一步**:
 
-下一 cycle 候选 (F010+):
-- `garage uninstall --scope <scope>` (与 F009 正交)
-- `garage update --scope <scope>` (与 F009 正交)
-- D7 安装管道扩展为递归 `references/` / `evals/` / `scripts/` 子目录 (F008 deferred)
-- F009 carry-forward I-1/I-2 (CON-902 body 守门 + VersionManager 注册链, 与 garage uninstall/update --scope 同 cycle 修复)
+### F010-A — 自动 context handoff pipeline (`garage sync` + 三家 host context surface)
 
-## 完成证据 (F009 final, 2026-04-23 closed)
+**为什么 P0 中的 P0**:
+- 同时复活 manifesto promise ① + ③, 让 B4 飞轮真正能转
+- F003-F006 已 build 的整个 memory 子系统在用户日常 Cursor / Claude Code 对话里 invisible — 必须有 `garage sync` 把 top-N knowledge + recent experience 编译到宿主原生 context surface (CLAUDE.md / .cursor/rules/ / OpenCode 等价路径) 才能让用户感知到
+- 复用既有 F007 host adapter pattern, 没有架构性重构成本
 
-- 测试基线: 633 (F008 baseline) → **713 passed** (+80 增量, 0 退绿)
-- 8 cycle commits: T1 adapter / T2 pipeline / T3 manifest / T4 cli / T5 tests / T6 docs + manual smoke + post-code-review
-- 12 个新增测试文件（含 baseline JSON fixture + post-code-review 修复测试）+ 4 处 carry-forward wording 修复
-- INV-F9-1..9 全部通过（design § 11.1）
-- 完整 review/gate 链路: spec/design/tasks 三方 approved + test/code/traceability review + regression/completion gate + finalize approval
-- Manual smoke walkthrough 4 tracks 全绿 (dogfood + project + user + mixed)
-- 详见 `docs/approvals/F009-finalize-approval.md`
+**推荐组合 (如果做 2-3 cycle)**:
+1. **F010-A** — context inject (用户感知)
+2. **F010-B** — `garage session import --from <host-history>` (闭合飞轮 input 端)
+3. **F011-B** — `packs/garage/agents/code-review-agent.md` + `blog-writing-agent.md` (Stage 3 启动证据)
+
+详细 vision-gap 分析 + 候选清单 + 排序理由见 `docs/planning/2026-04-24-vision-gap-and-next-cycle-plan.md`.
+
+### F009 carry-forward (与 F010 候选并行)
+
+- I-1 (CON-902 phase 1+3 body 守门, F010-A 不必修, 等 garage uninstall 同 cycle)
+- I-2 (VersionManager host-installer migration 链注册, 同上)
+
+## 完成证据 (F009 final + search hotfix, 2026-04-24)
+
+- 测试基线: 633 (F008 baseline) → 713 (F009 closed) → **715 passed** (search hotfix landed, 0 regressions)
+- F009 cycle: 8 commits (T1-T6 + manual smoke + post-code-review), 12 个新增测试文件
+- search hotfix: 1 commit (补 pack metadata + INV-1 30→31 + dogfood baseline 59→63)
+- 完整 review/gate 链路: F009 spec/design/tasks 三方 approved + test/code/traceability review + regression/completion gate + finalize approval
+- Vision-gap planning artifact: `docs/planning/2026-04-24-vision-gap-and-next-cycle-plan.md`
