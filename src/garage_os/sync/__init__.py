@@ -18,11 +18,13 @@ from garage_os.sync.compiler import (
 )
 from garage_os.sync.manifest import (
     SyncManifest,
+    SyncManifestMigrationError,
     SyncSources,
     SyncTargetEntry,
     read_sync_manifest,
     write_sync_manifest,
 )
+from garage_os.sync.pipeline import SyncSummary, SyncWriteAction, sync_hosts
 
 __all__ = [
     "CompiledSection",
@@ -30,9 +32,13 @@ __all__ = [
     "KNOWLEDGE_TOP_N",
     "SIZE_BUDGET_BYTES",
     "SyncManifest",
+    "SyncManifestMigrationError",
     "SyncSources",
+    "SyncSummary",
     "SyncTargetEntry",
+    "SyncWriteAction",
     "compile_garage_section",
     "read_sync_manifest",
+    "sync_hosts",
     "write_sync_manifest",
 ]
