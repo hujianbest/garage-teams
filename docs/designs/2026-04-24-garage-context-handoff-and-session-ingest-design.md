@@ -1,6 +1,6 @@
 # F010 Design: Garage Context Handoff (`garage sync`) + Host Session Ingest (`garage session import`)
 
-- 状态: 草稿 r2 (回应 design-review-F010-r1; 待 r2 hf-design-review)
+- 状态: 草稿 r3 (回应 design-review-F010-r2 typo + 3 minor; 待 r3 hf-design-review)
 - 关联 spec: `docs/features/F010-garage-context-handoff-and-session-ingest.md` (r2 已批准, `docs/approvals/F010-spec-approval.md`)
 - 日期: 2026-04-24
 - 作者: Cursor Agent (auto, in `cursor/f010-context-handoff-and-session-import-bf33`)
@@ -262,7 +262,7 @@ class OpenCodeInstallAdapter:
 |---|---|---|
 | `KNOWLEDGE_TOP_N` | 12 | 每类 4 个 (decision / solution / pattern), 共 12; 一屏 markdown 可读 |
 | `EXPERIENCE_TOP_M` | 5 | 最近 5 次, 提供"上次怎么做的"参考 |
-| `SIZE_BUDGET_BYTES` | 16384 (16KB) | Claude Code CLAUDE.md 推荐 ≤ 5KB / Cursor `.mdc` typical ≤ 4KB / OpenCode AGENTS.md 无硬限. 16KB 是 conservative 上限, 三家都能消化 |
+| `SIZE_BUDGET_BYTES` | 16384 (16KB) | Claude Code CLAUDE.md 推荐 ≤ 5KB / Cursor `.mdc` typical ≤ 4KB / OpenCode AGENTS.md 无硬限. 16KB 是这三家推荐值的 ~3.2x, 给 long-form knowledge entry 留余量, 同时保持单次 read 在 host conversation context window 内可消化 |
 | `RANKING_STRATEGY` | recency_then_kind_priority | 同 kind 内按 mtime 倒序; kind 优先级 decision > solution > pattern; experience 最后段独立 |
 
 如果编译产物 > budget, sync compiler 截断 (按上述 ranking 顺序填充直到 budget 满) + stderr 输出 `Truncated 3 entries due to size budget (16384 bytes)` warning. 不抛异常.
@@ -271,6 +271,7 @@ class OpenCodeInstallAdapter:
 - (+) 默认值 conservative, 三家 host 都能消化
 - (+) 截断行为可观察 (stderr warning), 不静默
 - (+) ranking 复用 spec FR-1007 的语义, 不需要查 query API 的复杂选项
+- (+) **scaling 复杂度**: top-N=12 + top-M=5 是常数, sync compiler 处理时间不依赖知识库总规模 (200+ entries 也只 select 17 个 entry); NFR-1004 ≤ 5s budget 在大库下仍宽松
 - (-) 12 + 5 是经验值; 用户群知识库变大时可能不够 — 留 D-1013 配置化候选
 - (-) 截断丢失的内容用户感知弱 (只在 stderr); 但 sync-manifest.json `sources.knowledge_count` + `experience_count` 字段记录实际 selected 数量, 与磁盘库总数比对可发现
 
@@ -519,7 +520,7 @@ def import_conversations(
         )
         # 显式补一次 extraction (因 default platform.extraction_enabled=False 时 archive 内 _trigger 早退)
         try:
-            batch = orchestrator.extract_for_session_id(session.session_id)
+            batch = orchestrator.extract_for_archived_session_id(session.session_id)
             if summary.batch_id is None:
                 summary.batch_id = batch.get("batch_id")
         except Exception as exc:
@@ -734,7 +735,7 @@ cli.py:       _session_import(garage_root, host, all_flag, ...)
               │           │
               │           │ # ADR-D10-9 r2 C-2 fix: bypass is_extraction_enabled() gate, ingest 主动调 extract
               │           │ try:
-              │           │     batch = orchestrator.extract_for_session_id(session.session_id)
+              │           │     batch = orchestrator.extract_for_archived_session_id(session.session_id)
               │           │     if summary.batch_id is None: summary.batch_id = batch.get("batch_id")
               │           │ except Exception as exc:
               │           │     stderr.print(f"Extraction failed for {session.session_id}: {exc}")
@@ -802,7 +803,7 @@ tests/
 按 spec § 2.2 #9, 4 tracks:
 1. dogfood `garage sync --hosts claude` 在 Garage 仓库自身根目录, 验证 sync 写到 `<workspace>/CLAUDE.md`
 2. 干净 tmp 项目 `garage sync --hosts all`, 三家 context surface 全装
-3. `garage session import --from claude-code` interactive 选 1 条对话 → archive → F003 candidate 入库 (用 fixture conversation JSON 模拟, 因 VM 无真实 ~/.claude/)
+3. `garage session import --from claude-code` interactive 选 1 条对话 → archive → F003 candidate 入库 (用 fixture conversation JSON 模拟, 因 VM 无真实 ~/.claude/; fixture 路径 `tests/ingest/fixtures/claude_code/<conversation_id>.json`, opencode fixture 在 `tests/ingest/fixtures/opencode/<session_id>.json`)
 4. import → `garage sync` → 看到新 ingest 的 candidate 经审批后入 .garage/knowledge/, 再 sync 立刻进 host context surface
 
 ## 5. Commit 分组 (供 hf-tasks)
@@ -856,7 +857,7 @@ tests/
 - [x] ADR-D10-11 install vs ingest host_id 差异显式记录 + r2 加 alias 表
 - [x] **r2 回修结果** (回应 design-review-F010-r1 全部 13 finding):
   - Critical C-1 (archive_session 真实签名): ✓ ADR-D10-9 + § 3.2 全部对齐 `reason=` / `update_session(context_metadata=...)`; r2 测试 fixture 用真实 API
-  - Critical C-2 (extraction_enabled gate): ✓ ADR-D10-9 r2 显式 bypass: ingest pipeline 自己 instantiate orchestrator + 主动调 `extract_for_session_id()` (绕过 `_trigger_memory_extraction` 内部 enable gate); 不修改全局 platform config
+  - Critical C-2 (extraction_enabled gate): ✓ ADR-D10-9 r2 显式 bypass: ingest pipeline 自己 instantiate orchestrator + 主动调 `extract_for_archived_session_id()` (真实 API name, extraction_orchestrator.py:114; 绕过 `_trigger_memory_extraction` 内部 enable gate); 不修改全局 platform config
   - Critical C-3 (signal-fill): ✓ ADR-D10-9 r2 + ADR-D10-7 r2 灌入 `metadata.tags` (signal #1 priority 0.62) + `metadata.problem_domain` (signal #2 priority 0.72), 命中 `_build_signals` 强 signal 识别规则 (extraction_orchestrator.py:126-144)
   - Important I-1 (SKIP marker 文字): ✓ ADR-D10-3 加三方 hash 比对决策表 (disk vs prior_synced vs fresh_compiled)
   - Important I-2 (host_id alias): ✓ ADR-D10-11 加 HOST_ID_ALIASES 表
@@ -864,7 +865,12 @@ tests/
   - Important I-4 (INV-F10-2 sentinel): ✓ 加 `test_baseline_no_regression.py` 显式 assert
   - Important I-5 (--force 决议): ✓ 新增 ADR-D10-13 (与 F007 init --force 同精神, spec 不需 r3)
   - Minor M-1 (budget 内部矛盾): 改"16KB 是 Claude Code 推荐 ≤ 5KB 的 3.2x, 留余量给 Cursor / OpenCode 长内容"
-  - Minor M-2 (manual smoke fixture 位置): 加 § 4.3 注 "fixture conversation JSON 在 tests/ingest/fixtures/<host>/<id>.json"
+  - Minor M-2 (manual smoke fixture 位置): r3 inline 加 § 4.3 fixture 路径 `tests/ingest/fixtures/<host>/<id>.json`
   - Minor M-3 (name 参数 unused): adapter docstring 说明 "name 参数对 claude/opencode 当前 unused, 留作 future multi-context 扩展"
   - Minor M-4 (Path resolve 跨平台): targets[].path 实施时用 `Path(...).resolve(strict=False).as_posix()` (与 F009 schema 2 dst 同规则)
-  - Minor M-5 (NFR-1004 scaling): ADR-D10-4 加注 "200+ entries 时, top-N=12 是常数复杂度; 不依赖库总规模"
+  - Minor M-5 (NFR-1004 scaling): r3 ADR-D10-4 Consequences 段加 "scaling 复杂度: top-N=12 + top-M=5 是常数, 处理时间不依赖知识库总规模"
+- [x] **r3 回修结果** (回应 design-review-F010-r2):
+  - C-2-residual: ✓ 3 处 `extract_for_session_id` → `extract_for_archived_session_id` (真实 method name, extraction_orchestrator.py:114)
+  - M-1: ✓ ADR-D10-4 budget 表述统一为 "16KB 是 ~3.2x 推荐值, 给 long-form 留余量"
+  - M-2: ✓ § 4.3 inline fixture 路径
+  - M-5: ✓ ADR-D10-4 Consequences inline scaling note
