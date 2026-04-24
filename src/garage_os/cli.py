@@ -546,6 +546,78 @@ def _sync(
     return 0
 
 
+def _session_import(
+    garage_root: Path,
+    *,
+    from_host: str,
+    all_flag: bool = False,
+) -> int:
+    """F010 _session_import entry: orchestrate `garage session import --from <host>`."""
+    from garage_os.ingest.host_readers import HOST_READERS, resolve_host_id
+    from garage_os.ingest.pipeline import import_conversations
+    from garage_os.ingest.selector import prompt_select
+
+    # Resolve canonical host_id (alias support: claude → claude-code)
+    try:
+        canonical_host = resolve_host_id(from_host)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    # Instantiate reader (catches NotImplementedError for cursor stub at use time)
+    try:
+        reader_cls = HOST_READERS[canonical_host]
+        reader = reader_cls()
+        # Probe via list_conversations to surface NotImplementedError early
+        try:
+            summaries = reader.list_conversations()
+        except NotImplementedError as exc:
+            print(
+                f"{from_host} history import is not yet implemented: {exc}",
+                file=sys.stderr,
+            )
+            return 1
+    except KeyError:
+        print(f"Unknown host: {from_host}", file=sys.stderr)
+        return 1
+
+    # Select conversations (interactive or --all)
+    if all_flag:
+        selected_ids = [s.conversation_id for s in summaries]
+        if not selected_ids:
+            print(f"No conversations found for {canonical_host}.")
+            return 0
+    else:
+        selected_ids = prompt_select(summaries)
+        if not selected_ids:
+            return 0  # user cancel / non-TTY / no summaries (notice already in stderr)
+
+    # Run import pipeline
+    try:
+        summary = import_conversations(
+            garage_root,
+            canonical_host,
+            selected_ids,
+            reader=reader,
+        )
+    except OSError as exc:
+        print(f"Import failed: {exc}", file=sys.stderr)
+        return 1
+
+    # FR-1005/1006 stdout marker
+    if summary.skipped > 0:
+        print(
+            f"Imported {summary.imported} conversations from {canonical_host} "
+            f"({summary.skipped} skipped, batch-id: {summary.batch_id})"
+        )
+    else:
+        print(
+            f"Imported {summary.imported} conversations from {canonical_host} "
+            f"(batch-id: {summary.batch_id})"
+        )
+    return 0
+
+
 def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> int:
     """Run a Garage skill and record the experience.
 
@@ -1676,6 +1748,37 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # F010 session import (FR-1005/1006 + ADR-D10-7/8/9/10/11)
+    session_parser = subparsers.add_parser(
+        "session",
+        help="Manage Garage sessions (F010: import host conversations)",
+        parents=[path_parser],
+    )
+    session_subparsers = session_parser.add_subparsers(dest="session_command")
+    import_parser = session_subparsers.add_parser(
+        "import",
+        help="Import host conversation history as Garage SessionState (triggers F003 candidate extraction)",
+        parents=[path_parser],
+    )
+    import_parser.add_argument(
+        "--from",
+        dest="session_import_from",
+        required=True,
+        help=(
+            "Host id to import from. Supported: claude (alias for claude-code), "
+            "claude-code, opencode. cursor is deferred to F010 D-1010."
+        ),
+    )
+    import_parser.add_argument(
+        "--all",
+        dest="session_import_all",
+        action="store_true",
+        help=(
+            "Batch import ALL conversations without interactive prompt. "
+            "Default: TTY interactive selection; non-TTY exits with notice."
+        ),
+    )
+
     # run
     run_parser = subparsers.add_parser("run", help="Run a Garage skill", parents=[path_parser])
     run_parser.add_argument(
@@ -2014,6 +2117,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             scope_default=args.sync_scope,
             force=args.sync_force,
         )
+
+    if args.command == "session":
+        if args.session_command == "import":
+            root = args.path if args.path else _find_garage_root()
+            return _session_import(
+                root,
+                from_host=args.session_import_from,
+                all_flag=args.session_import_all,
+            )
+        # Unknown session subcommand → show help
+        session_parser.print_help()
+        return 1
 
     if args.command == "run":
         root = args.path if args.path else _find_garage_root()

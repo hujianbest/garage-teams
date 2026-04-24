@@ -3687,3 +3687,111 @@ class TestStatusSyncSegment:
         out = capsys.readouterr().out
         assert "Last synced (per host):" in out
         assert "claude" in out
+
+
+# ===========================================================================
+# F010 T6: garage session import CLI tests
+# ===========================================================================
+
+
+class TestSessionImportCommand:
+    """F010 FR-1005/1006: garage session import CLI."""
+
+    FIXTURE_DIR = Path(__file__).resolve().parent / "ingest" / "fixtures"
+
+    @staticmethod
+    def _patch_claude_history(monkeypatch, fixture_dir: Path) -> None:
+        from garage_os.ingest.host_readers import claude_code as cc
+        original_init = cc.ClaudeCodeHistoryReader.__init__
+
+        def patched_init(self, *args, **kwargs):
+            kwargs["history_dir"] = fixture_dir
+            original_init(self, *args, **kwargs)
+
+        monkeypatch.setattr(cc.ClaudeCodeHistoryReader, "__init__", patched_init)
+
+    def test_import_all_from_claude_code(self, tmp_path: Path, capsys, monkeypatch) -> None:
+        # Init garage skeleton (so _find_garage_root works)
+        main(["init", "--path", str(tmp_path), "--yes"])
+        capsys.readouterr()
+
+        # Patch Claude reader to use fixture dir
+        self._patch_claude_history(monkeypatch, self.FIXTURE_DIR / "claude_code")
+
+        rc = main([
+            "session", "import",
+            "--path", str(tmp_path),
+            "--from", "claude-code",
+            "--all",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Imported" in captured.out
+        # FR-1005 negative path: broken JSON fixture skipped at list_conversations
+        # (reader emits stderr "Skipped unreadable conversation"), so summary.skipped=0
+        # but stderr captures the skip notice.
+        assert "Skipped unreadable" in captured.err
+        assert "conversation-002-broken" in captured.err
+
+    def test_import_alias_claude(self, tmp_path: Path, capsys, monkeypatch) -> None:
+        """Alias 'claude' → 'claude-code' resolution."""
+        main(["init", "--path", str(tmp_path), "--yes"])
+        capsys.readouterr()
+        self._patch_claude_history(monkeypatch, self.FIXTURE_DIR / "claude_code")
+
+        rc = main([
+            "session", "import",
+            "--path", str(tmp_path),
+            "--from", "claude",
+            "--all",
+        ])
+        assert rc == 0
+        # imported as canonical "claude-code"
+        captured = capsys.readouterr()
+        assert "claude-code" in captured.out
+
+    def test_import_cursor_deferred_exits_1(self, tmp_path: Path, capsys) -> None:
+        """ADR-D10-10: cursor stub raises NotImplementedError → exit 1."""
+        main(["init", "--path", str(tmp_path), "--yes"])
+        capsys.readouterr()
+
+        rc = main([
+            "session", "import",
+            "--path", str(tmp_path),
+            "--from", "cursor",
+            "--all",
+        ])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "deferred" in captured.err.lower() or "not yet implemented" in captured.err.lower()
+        assert "D-1010" in captured.err
+
+    def test_import_unknown_host_exits_1(self, tmp_path: Path, capsys) -> None:
+        main(["init", "--path", str(tmp_path), "--yes"])
+        capsys.readouterr()
+
+        rc = main([
+            "session", "import",
+            "--path", str(tmp_path),
+            "--from", "nonexistent",
+            "--all",
+        ])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "Unknown host" in captured.err
+
+    def test_import_non_tty_without_all_returns_0(self, tmp_path: Path, capsys, monkeypatch) -> None:
+        """FR-1006 + ADR-D10-9 r2: non-TTY without --all → exit 0 + stderr notice."""
+        main(["init", "--path", str(tmp_path), "--yes"])
+        capsys.readouterr()
+        self._patch_claude_history(monkeypatch, self.FIXTURE_DIR / "claude_code")
+
+        rc = main([
+            "session", "import",
+            "--path", str(tmp_path),
+            "--from", "claude-code",
+        ])
+        assert rc == 0
+        # No conversations imported (selector returned []), no stdout marker
+        captured = capsys.readouterr()
+        assert "non-interactive shell detected" in captured.err
