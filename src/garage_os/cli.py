@@ -624,6 +624,38 @@ def _session_import(
     return 0
 
 
+def _pack_install(workspace_root: Path, *, git_url: str) -> int:
+    """F011 _pack_install entry: orchestrate `garage pack install <git-url>`."""
+    from garage_os.adapter.installer.pack_install import (
+        PackInstallError,
+        install_pack_from_url,
+    )
+
+    try:
+        summary = install_pack_from_url(workspace_root, git_url)
+    except PackInstallError as exc:
+        print(f"Pack install failed: {exc}", file=sys.stderr)
+        return 1
+
+    print(
+        f"Installed pack '{summary.pack_id}' v{summary.version} from {summary.source_url}"
+    )
+    print(f"  → {summary.installed_path}")
+    return 0
+
+
+def _pack_ls(workspace_root: Path) -> int:
+    """F011 _pack_ls entry: orchestrate `garage pack ls`."""
+    from garage_os.adapter.installer.pack_install import list_installed_packs
+
+    packs = list_installed_packs(workspace_root)
+    print(f"Installed packs ({len(packs)} total):")
+    for p in packs:
+        source = p["source_url"] if p["source_url"] != "local" else "local"
+        print(f"  {p['pack_id']} v{p['version']} [{source}]")
+    return 0
+
+
 def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> int:
     """Run a Garage skill and record the experience.
 
@@ -1754,6 +1786,28 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # F011 pack install + ls (FR-1106/1107/1108 + ADR-D11-4/6/7)
+    pack_parser = subparsers.add_parser(
+        "pack",
+        help="Manage installed Garage packs (F011: install / ls)",
+        parents=[path_parser],
+    )
+    pack_subparsers = pack_parser.add_subparsers(dest="pack_command")
+    pack_install_parser = pack_subparsers.add_parser(
+        "install",
+        help="Install a pack from a git URL (or file:// URL)",
+        parents=[path_parser],
+    )
+    pack_install_parser.add_argument(
+        "git_url",
+        help="Git URL to clone (https / ssh / file://; shallow --depth=1 clone)",
+    )
+    pack_ls_parser = pack_subparsers.add_parser(
+        "ls",
+        help="List installed packs (id, version, source URL)",
+        parents=[path_parser],
+    )
+
     # F010 session import (FR-1005/1006 + ADR-D10-7/8/9/10/11)
     session_parser = subparsers.add_parser(
         "session",
@@ -2134,6 +2188,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
         # Unknown session subcommand → show help
         session_parser.print_help()
+        return 1
+
+    if args.command == "pack":
+        root = args.path if args.path else Path.cwd()
+        if args.pack_command == "install":
+            return _pack_install(root, git_url=args.git_url)
+        if args.pack_command == "ls":
+            return _pack_ls(root)
+        pack_parser.print_help()
         return 1
 
     if args.command == "run":

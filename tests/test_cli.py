@@ -3795,3 +3795,89 @@ class TestSessionImportCommand:
         # No conversations imported (selector returned []), no stdout marker
         captured = capsys.readouterr()
         assert "non-interactive shell detected" in captured.err
+
+
+# ===========================================================================
+# F011 T4: garage pack install + ls CLI tests
+# ===========================================================================
+
+
+class TestPackInstallCommand:
+    """F011 FR-1106 + ADR-D11-4..7."""
+
+    @staticmethod
+    def _build_test_pack(repo_dir: Path, pack_id: str = "test-pack") -> None:
+        import json
+        import subprocess
+        (repo_dir / "skills" / "hello-skill").mkdir(parents=True)
+        (repo_dir / "skills" / "hello-skill" / "SKILL.md").write_text(
+            "---\nname: hello-skill\ndescription: minimal\n---\n# Hello\n",
+            encoding="utf-8",
+        )
+        (repo_dir / "pack.json").write_text(
+            json.dumps({
+                "schema_version": 1,
+                "pack_id": pack_id,
+                "version": "0.1.0",
+                "description": "F011 CLI test",
+                "skills": ["hello-skill"],
+                "agents": [],
+            }, indent=2),
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "init", "-q"], cwd=repo_dir, check=True)
+        subprocess.run(["git", "add", "."], cwd=repo_dir, check=True)
+        subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=T", "commit", "-q", "-m", "init"],
+            cwd=repo_dir,
+            check=True,
+        )
+
+    def test_install_local_pack_via_cli(self, tmp_path: Path, capsys) -> None:
+        repo_dir = tmp_path / "src-pack"
+        repo_dir.mkdir()
+        self._build_test_pack(repo_dir, pack_id="cli-test-pack")
+
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        url = f"file://{repo_dir}"
+        rc = main(["pack", "install", "--path", str(workspace), url])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Installed pack 'cli-test-pack'" in captured.out
+        assert "v0.1.0" in captured.out
+
+    def test_install_invalid_url_exits_1(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        rc = main([
+            "pack", "install",
+            "--path", str(workspace),
+            "https://nonexistent-host-12345.invalid/repo.git",
+        ])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "Pack install failed" in captured.err
+
+
+class TestPackLsCommand:
+    """F011 FR-1107 + ADR-D11-7."""
+
+    def test_ls_empty_workspace(self, tmp_path: Path, capsys) -> None:
+        rc = main(["pack", "ls", "--path", str(tmp_path)])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Installed packs (0 total):" in captured.out
+
+    def test_ls_workspace_packs(self, tmp_path: Path, capsys) -> None:
+        # Use real workspace with 4 packs
+        REPO_ROOT = Path(__file__).resolve().parents[1]
+        rc = main(["pack", "ls", "--path", str(REPO_ROOT)])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Installed packs (4 total):" in captured.out
+        # All 4 packs listed alphabetically
+        for pack_id in ["coding", "garage", "search", "writing"]:
+            assert pack_id in captured.out
+        # All show '[local]' since no source_url
+        assert "[local]" in captured.out
