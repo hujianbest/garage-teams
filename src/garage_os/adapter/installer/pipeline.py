@@ -194,10 +194,13 @@ def install_packs(
         rendered_bytes = rendered.encode("utf-8")
         rendered_hash = hashlib.sha256(rendered_bytes).hexdigest()
 
+        # F009 ADR-D9-3: prior_entries_index key 用 absolute dst (与 schema 2
+        # 写 manifest 时 dst=target.dst_abs.as_posix() 一致). schema 1 manifest
+        # 经 read_manifest 自动 migrate 后 dst 已是 absolute, 与本 key 对齐.
         prior_entry: ManifestFileEntry | None = prior_entries_index.get(
             (
                 target.src_rel,
-                target.dst_rel,
+                target.dst_abs.as_posix(),
                 target.host,
                 target.pack_id,
                 target.scope,
@@ -241,10 +244,13 @@ def install_packs(
         new_entries.append(
             ManifestFileEntry(
                 src=target.src_rel,
-                dst=target.dst_rel,
+                # F009 ADR-D9-3: schema 2 dst 是 absolute POSIX path (含 cwd 或 home).
+                # 比对 key 用 dst (5 元组) 与 prior_entry 一致.
+                dst=target.dst_abs.as_posix(),
                 host=target.host,
                 pack_id=target.pack_id,
                 content_hash=rendered_hash,
+                scope=target.scope,  # F009 ADR-D9-2: phase 5 写 manifest 含 scope 字段
             )
         )
         if target.source_kind == "skill":
