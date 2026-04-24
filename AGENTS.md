@@ -137,6 +137,33 @@ F010 让 F003-F006 build 的整个 memory 子系统（`.garage/knowledge/` + `.g
 
 详见 spec `docs/features/F010-garage-context-handoff-and-session-ingest.md` + design `docs/designs/2026-04-24-garage-context-handoff-and-session-ingest-design.md`（13 ADR + 10 INV + 7 sub-commit 分组）+ user guide "Sync & Session Import" 段。
 
+## P1 Completion (F011)
+
+F011 cycle 把 vision-gap planning § 2.2 三个 P1 candidate 在一个 cycle 内合做:
+
+### A. KnowledgeType.STYLE 维度 (复活 Promise ② "知道你的编码风格")
+
+- `KnowledgeType` enum 加 `STYLE = "style"` value
+- `KnowledgeStore.TYPE_DIRECTORIES[STYLE] = "knowledge/style"`
+- `garage knowledge add --type style --topic "Functional Python preference" --content "..."` 可用
+- F010 sync compiler 自动 include STYLE 到 top-N (per-kind=4, ranking 在 pattern 之后)
+- CLAUDE.md 等 host context surface 自动出现 `### Recent Style Preferences` 段
+
+### B. 2 个 production agent (启动 Stage 3 工匠)
+
+- `packs/garage/agents/code-review-agent.md`: 组合 hf-code-review + user style entries
+- `packs/garage/agents/blog-writing-agent.md`: 组合 blog-writing + humanizer-zh + (可选) hv-analysis
+- `packs/garage/pack.json` version 0.2.0 → 0.3.0; agents 数 1 → 3
+- `garage init --hosts <list>` 自动装到 `.claude/agents/` + `.opencode/agent/` (cursor 无 agent surface)
+
+### C. `garage pack install <git-url>` (B5 可传承 2/5 → 3.5/5)
+
+- `garage pack install <git-url>`: shallow git clone (`--depth=1`) + 验证 pack.json + 装到 `<workspace>/packs/<pack-id>/` + 写 `source_url`
+- `garage pack ls`: 列出已装 pack (id, version, source_url 或 'local')
+- `pack.json` schema 加 optional `source_url` 字段 (向后兼容, F007 既有 packs 仍 valid)
+
+详见 spec `docs/features/F011-style-dimension-and-production-agents-and-pack-install.md` + design `docs/designs/2026-04-24-style-dimension-and-production-agents-and-pack-install-design.md`。
+
 ### Garage OS 开发者参考
 
 #### 模块概览

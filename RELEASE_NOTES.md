@@ -4,6 +4,64 @@
 
 ---
 
+## F011 — KnowledgeType.STYLE + 2 production agents + `garage pack install` (P1 三合一)
+
+- 状态: ✅ 完成 (closed by hf-finalize 2026-04-24)
+- Workflow Profile: `full` (auto-mode 自我评审, 三 candidate 都是单领域改动 ROI 高)
+- Branch / PR: `cursor/f011-style-agents-pack-install-bf33` / TBD
+
+### 用户可见变化
+
+**A. KnowledgeType.STYLE 维度** (复活 Promise ②):
+- 新 enum value `KnowledgeType.STYLE = "style"`; 目录 `.garage/knowledge/style/`
+- `garage knowledge add --type style --topic "Functional Python preference"` 可用
+- F010 sync compiler 自动 include style 到 top-N (per-kind=4, decision > solution > pattern > **style** > experience)
+- CLAUDE.md 等 host context surface 自动含 `### Recent Style Preferences` 段
+- F003-F006 dataclass 0 改动 (CON-1102, 与 F010 CON-1002 同精神)
+
+**B. 2 个 production agent** (启动 Stage 3 工匠):
+- `packs/garage/agents/code-review-agent.md`: 组合 hf-code-review skill + 用户 style entries
+- `packs/garage/agents/blog-writing-agent.md`: 组合 blog-writing + humanizer-zh + (可选) hv-analysis
+- `packs/garage/` version 0.2.0 → 0.3.0; agents 数 1 → 3; `garage init` 自动装 3 agent 到 .claude/agents + .opencode/agent
+- agent.md 是文档级 hint (ADR-D11-3), 不引入 runtime engine; 由宿主 read body + 调对应 skill
+
+**C. `garage pack install <git-url>`** (B5 可传承 2/5 → 3.5/5):
+- 新 CLI: `garage pack install https://github.com/<user>/<repo>` 一键拉装第三方 pack
+- shallow `git clone --depth=1` + 验证 pack.json + 装到 `<workspace>/packs/<pack-id>/` + 写 `source_url`
+- 新 CLI: `garage pack ls` 列出已装 pack (id / version / source_url 或 'local')
+- `pack.json` schema 加 optional `source_url` 字段 (向后兼容, F007 既有 4 packs 仍 valid)
+- 零依赖变更 (CON-1104): subprocess 调本机 git, 不引入 GitPython
+
+### 数据与契约影响
+
+- `KnowledgeType` enum + 1 (STYLE)
+- `KnowledgeStore.TYPE_DIRECTORIES` + 1 mapping
+- `pack.json` schema_version 不变 (= 1); 加 optional `source_url` 字段 (FR-1108)
+- `packs/garage/pack.json` version 0.2.0 → 0.3.0; agents 数 1 → 3
+- 新增 module: `src/garage_os/adapter/installer/pack_install.py`
+- 新增 CLI: `garage pack install` + `garage pack ls`
+- 新增 9+ 测试文件 (test_style_kind.py + test_compiler_style.py + test_garage_agents_F011.py + test_pack_install.py + TestPackInstallCommand + TestPackLsCommand)
+- INV-1 hard gate 同步: agents 1 → 3, manifest.files 95 → 99 (3 agents × 2 hosts), n_agents 2 → 6
+- F008 既有 sentinel `test_packs_garage_extended.py` carry-forward (version 0.2.0 → 0.3.0; agents 1 → 3)
+- Dogfood baseline regenerate (63 → 65 文件)
+
+### 验证证据
+
+- `pytest tests/ -q` → **855 passed** (+30 from F010 baseline 825, 0 regressions)
+- `git diff main..HEAD -- pyproject.toml uv.lock` → 空 (零依赖变更, CON-1104)
+- INV-F11-1..7 全部通过
+
+### 已知限制 / 后续 (F012+)
+
+- `garage pack publish` (远端推送): F011 deferred D-1, 等用户实际想分享时再开
+- `garage pack update` / `garage pack remove`: F011 deferred D-1, 与 F010 carry-forward 一并考虑
+- 多 pack from monorepo: F011 deferred D-2 (假设单 pack per repo)
+- pack signature / 安全审核: F011 deferred D-3 (用户自管, B5)
+- knowledge 脱敏导出 (与 pack install 反向): F011 deferred D-4
+- F010 carry-forward (code-review MIN-1..6 + traceability MIN-1): 留 F012+ polish
+
+---
+
 ## F010 — Context Handoff (`garage sync`) + Host Session Ingest (`garage session import`)
 
 - 状态: ✅ 完成 (closed by hf-finalize 2026-04-24)
