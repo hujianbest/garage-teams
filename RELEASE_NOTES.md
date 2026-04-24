@@ -6,7 +6,7 @@
 
 ## F010 — Context Handoff (`garage sync`) + Host Session Ingest (`garage session import`)
 
-- 状态: 🟡 实施完成, 待 hf-test-review → hf-code-review → hf-traceability-review → hf-regression-gate → hf-completion-gate → hf-finalize
+- 状态: ✅ 完成 (closed by hf-finalize 2026-04-24)
 - Workflow Profile: `full`
 - Execution Mode: `auto`
 - Branch / PR: `cursor/f010-context-handoff-and-session-import-bf33` / TBD
@@ -56,26 +56,31 @@
 
 ### 验证证据
 
-- `pytest tests/ -q` → **TBD passed** (实施完成时 821 passed; finalize 阶段填实测; 预期 ≥ 821)
+- `pytest tests/ -q` → **825 passed** (+110 from F009 baseline 715, 0 regressions; +1 e2e import-then-sync added in finalize closing test-review IMP-1)
 - `git diff main..HEAD -- src/garage_os/` → 仅 `sync/` + `ingest/` 新增 + `adapter/installer/host_registry.py` + `adapter/installer/hosts/*.py` + `cli.py` 改动
 - `git diff main..HEAD -- pyproject.toml uv.lock` → 空 (零依赖变更)
 - INV-F10-1..10 全部通过 (design § 4.1)
-- **Manual smoke walkthrough** → **TBD** (finalize 阶段填实测, 4 tracks: dogfood / project / user / mixed + import → sync 闭环)
+- **Manual smoke walkthrough** → 4 tracks 全绿 (dogfood / project / user / mixed-ingest), 完整记录 `docs/manual-smoke/F010-walkthrough.md`
 - **完整质量链** → 全部通过:
   - `hf-spec-review` r2: APPROVED (12/12 r1 findings closed)
   - `hf-design-review` r3: PASS (r1 13 + r2 4 → r3 0 finding)
   - `hf-tasks-review` r2: PASS (r1 6 → r2 0 finding)
-  - `hf-test-review` / `hf-code-review` / `hf-traceability-review` / `hf-regression-gate` / `hf-completion-gate` / `hf-finalize`: TBD
+  - `hf-test-review` r1: PASS_WITH_FINDINGS (0 critical / 1 important / 6 minor / 4 nit)
+  - `hf-code-review` r1: CHANGES_REQUESTED → PASS (IMP-1 + IMP-2 in-cycle fix)
+  - `hf-traceability-review` r1: PASS_WITH_FINDINGS (0 critical / 0 important / 3 minor / 2 nit)
+  - `hf-regression-gate` r1: PASS
+  - `hf-completion-gate` r1: COMPLETE — Ready to finalize
+  - `hf-finalize`: ✅ closed 2026-04-24
 
-### 5 项 TBD 占位字段 (待 hf-finalize 实测)
+### 5 项实测占位字段 (hf-finalize 已填)
 
-| 字段 | 占位 |
+| 字段 | 实测 |
 |---|---|
-| `manual_smoke_wall_clock` | TBD (NFR-1004 ≤ 5s) |
-| `pytest_total_count` | TBD (实施完成 821; finalize 含新增 review/gate/manual smoke 调整) |
-| `candidate_count_per_test` | TBD (FR-1005 ingest → candidates 数) |
-| `commit_count_per_group` | TBD (T1-T7 各 1 + 可能 carry-forward) |
-| `release_notes_quality_chain` | TBD (review/gate verdict 文档全部生成 + finalize approval) |
+| `manual_smoke_wall_clock` | ~0.1s per command (NFR-1004 ≤ 5s; ~50× headroom) |
+| `pytest_total_count` | 825 passed (+110 from F009 baseline 715) |
+| `candidate_count_per_test` | 4 candidate items + 1 batch per fixture conversation (manual smoke Track 4) |
+| `commit_count_per_group` | 11 commits (T1-T7 各 1 + manual smoke 1 + post-code-review fix 1 + ruff StrEnum 1 + finalize) |
+| `release_notes_quality_chain` | ✅ 完整 (9 review/gate/finalize verdict 文档全部生成) |
 
 ### 已知限制 / 后续工作
 

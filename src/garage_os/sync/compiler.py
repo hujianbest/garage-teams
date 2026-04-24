@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import IO
 
@@ -230,5 +230,4 @@ def _truncate_to(text: str, max_chars: int) -> str:
 
 
 def _now_iso() -> str:
-    from datetime import timezone
-    return datetime.now(timezone.utc).replace(microsecond=0, tzinfo=None).isoformat() + "Z"
+    return datetime.now(UTC).replace(microsecond=0, tzinfo=None).isoformat() + "Z"

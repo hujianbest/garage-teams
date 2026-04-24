@@ -15,16 +15,16 @@ from __future__ import annotations
 import hashlib
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import IO
 
 from garage_os.adapter.installer.host_registry import (
     HOST_REGISTRY,
+    SUPPORTED_SCOPES,
     UnknownHostError,
     UnknownScopeError,
-    SUPPORTED_SCOPES,
     get_adapter,
 )
 from garage_os.sync.compiler import compile_garage_section
@@ -43,7 +43,7 @@ from garage_os.sync.render.markdown import (
 from garage_os.sync.render.mdc import render_mdc_with_front_matter
 
 
-class SyncWriteAction(str, Enum):
+class SyncWriteAction(StrEnum):
     """Per-host write decision (ADR-D10-3 r2 决策表 + F007 SKIP_LOCALLY_MODIFIED 同精神)."""
 
     WRITE_NEW = "write_new"
@@ -403,4 +403,4 @@ def _resolve_absolute(path: Path) -> str:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0, tzinfo=None).isoformat() + "Z"
+    return datetime.now(UTC).replace(microsecond=0, tzinfo=None).isoformat() + "Z"
