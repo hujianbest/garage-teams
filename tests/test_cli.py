@@ -3527,3 +3527,163 @@ class TestStatusScopeGrouped:
         assert "Installed packs (project scope):" in captured.out
         assert "Installed packs (user scope):" not in captured.out
         assert "claude:" in captured.out
+
+
+# ===========================================================================
+# F010 T4: garage sync CLI + status sync segment tests
+# ===========================================================================
+
+
+class TestSyncCommand:
+    """F010 FR-1001/2/8 + ADR-D10-12/13: garage sync CLI."""
+
+    @staticmethod
+    def _seed_decision(workspace_root: Path) -> None:
+        from datetime import datetime as _dt
+        from garage_os.knowledge.knowledge_store import KnowledgeStore
+        from garage_os.storage.file_storage import FileStorage
+        from garage_os.types import KnowledgeEntry, KnowledgeType
+        storage = FileStorage(workspace_root / ".garage")
+        KnowledgeStore(storage).store(
+            KnowledgeEntry(
+                id="d-001",
+                type=KnowledgeType.DECISION,
+                topic="test",
+                date=_dt(2026, 4, 24),
+                tags=[],
+                content="content",
+            )
+        )
+
+    @staticmethod
+    def _fake_home(tmp_path: Path, monkeypatch) -> Path:
+        fake = tmp_path / "fake-home"
+        fake.mkdir()
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake))
+        return fake
+
+    def test_sync_hosts_claude_project_default(self, tmp_path: Path, capsys) -> None:
+        self._seed_decision(tmp_path)
+        rc = main(["sync", "--path", str(tmp_path), "--hosts", "claude"])
+        assert rc == 0
+        # CLAUDE.md created in cwd
+        assert (tmp_path / "CLAUDE.md").exists()
+        # sync-manifest.json created
+        assert (tmp_path / ".garage/config/sync-manifest.json").exists()
+
+    def test_sync_hosts_claude_scope_user(
+        self, tmp_path: Path, capsys, monkeypatch
+    ) -> None:
+        fake_home = self._fake_home(tmp_path, monkeypatch)
+        self._seed_decision(tmp_path)
+        rc = main(
+            ["sync", "--path", str(tmp_path), "--hosts", "claude", "--scope", "user"]
+        )
+        assert rc == 0
+        assert (fake_home / ".claude/CLAUDE.md").exists()
+        assert not (tmp_path / "CLAUDE.md").exists()
+
+    def test_sync_per_host_override(
+        self, tmp_path: Path, capsys, monkeypatch
+    ) -> None:
+        fake_home = self._fake_home(tmp_path, monkeypatch)
+        self._seed_decision(tmp_path)
+        rc = main(
+            ["sync", "--path", str(tmp_path), "--hosts", "claude:user,cursor:project"]
+        )
+        assert rc == 0
+        assert (fake_home / ".claude/CLAUDE.md").exists()
+        assert (tmp_path / ".cursor/rules/garage-context.mdc").exists()
+
+    def test_sync_force_overrides_skip(self, tmp_path: Path, capsys) -> None:
+        self._seed_decision(tmp_path)
+        # First sync
+        main(["sync", "--path", str(tmp_path), "--hosts", "claude"])
+        # User modifies marker block
+        claude_md = tmp_path / "CLAUDE.md"
+        edited = claude_md.read_text().replace("test", "USER_EDITED")
+        claude_md.write_text(edited)
+        # Second sync with --force overrides
+        rc = main(["sync", "--path", str(tmp_path), "--hosts", "claude", "--force"])
+        assert rc == 0
+        assert "USER_EDITED" not in claude_md.read_text()
+
+    def test_sync_stdout_marker_grep_compat(self, tmp_path: Path, capsys) -> None:
+        """FR-1008: stdout marker `Synced N knowledge entries + M experience records into hosts:`."""
+        self._seed_decision(tmp_path)
+        rc = main(["sync", "--path", str(tmp_path), "--hosts", "claude"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        import re
+        matches = re.findall(
+            r"^Synced [0-9]+ knowledge entries \+ [0-9]+ experience records into hosts:",
+            captured.out,
+            re.MULTILINE,
+        )
+        assert len(matches) == 1, (
+            f"FR-1008 marker grep hit count = {len(matches)}, expected 1; stdout: {captured.out!r}"
+        )
+
+    def test_sync_no_knowledge_no_section(self, tmp_path: Path, capsys) -> None:
+        """Empty .garage/knowledge/ → sync still OK with 'No Garage knowledge yet' message."""
+        rc = main(["sync", "--path", str(tmp_path), "--hosts", "claude"])
+        assert rc == 0
+        assert (tmp_path / "CLAUDE.md").exists()
+        assert "No Garage knowledge or experience yet" in (tmp_path / "CLAUDE.md").read_text()
+
+    def test_sync_unknown_scope_via_per_host_exits_1(self, tmp_path: Path, capsys) -> None:
+        rc = main(["sync", "--path", str(tmp_path), "--hosts", "claude:bad"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "Unknown scope: bad" in captured.err
+
+
+class TestStatusSyncSegment:
+    """F010 FR-1009 + ADR-D10-12 + CON-1001: status sync segment."""
+
+    def _seed_and_init(self, tmp_path: Path) -> None:
+        # Init garage to satisfy _status pre-check
+        main(["init", "--path", str(tmp_path), "--yes"])
+
+    def test_status_no_sync_manifest_no_segment(self, tmp_path: Path, capsys) -> None:
+        """CON-1001 fallback: sync-manifest.json absent → no sync-related output line."""
+        self._seed_and_init(tmp_path)
+        # Add some knowledge to ensure status doesn't return 'No data'
+        from garage_os.storage.file_storage import FileStorage
+        FileStorage(tmp_path / ".garage").write_text(
+            "knowledge/decisions/test.md", "---\nid: x\n---\n# x\n"
+        )
+        capsys.readouterr()  # clear
+        main(["status", "--path", str(tmp_path)])
+        out = capsys.readouterr().out
+        assert "Last synced" not in out
+
+    def test_status_with_sync_manifest_shows_segment(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        from datetime import datetime as _dt
+        from garage_os.knowledge.knowledge_store import KnowledgeStore
+        from garage_os.storage.file_storage import FileStorage
+        from garage_os.types import KnowledgeEntry, KnowledgeType
+
+        self._seed_and_init(tmp_path)
+        storage = FileStorage(tmp_path / ".garage")
+        KnowledgeStore(storage).store(
+            KnowledgeEntry(
+                id="d-001",
+                type=KnowledgeType.DECISION,
+                topic="test",
+                date=_dt(2026, 4, 24),
+                tags=[],
+                content="c",
+            )
+        )
+        # Sync to create sync-manifest.json
+        main(["sync", "--path", str(tmp_path), "--hosts", "claude"])
+        capsys.readouterr()
+
+        # Status should now include sync segment
+        main(["status", "--path", str(tmp_path)])
+        out = capsys.readouterr().out
+        assert "Last synced (per host):" in out
+        assert "claude" in out
