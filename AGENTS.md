@@ -36,20 +36,51 @@
 - 平台契约: .garage/contracts/
 - 技术栈: Python 3.11+ (Poetry)
 
-## Packs & Host Installer (F007)
+## Packs & Host Installer (F007/F008)
 
 Garage 自带的可分发 skills + agents 沉淀在仓库 `packs/<pack-id>/` 下；`garage init --hosts ...` 把它们物化到下游项目里 Claude Code / OpenCode / Cursor 三家宿主原生目录。
 
-入口指针（FR-710 5 分钟冷读链）：
+### 当前 packs（F008 落地后）
+
+| Pack | version | skills | agents | 用途 |
+|---|---|---|---|---|
+| `packs/garage/` | `0.2.0` | 3 | 1 | Getting-started 三件套：garage-hello（占位 sample）+ find-skills（发现新 skill）+ writing-skills（写新 skill）+ garage-sample-agent |
+| `packs/coding/` | `0.1.0` | 22 | 0 | HarnessFlow 工程工作流 family（21 hf-* + using-hf-workflow + 11 个 family-level 共享资产 docs/templates/principles）|
+| `packs/writing/` | `0.1.0` | 4 | 0 | 内容创作 family：blog-writing / humanizer-zh / hv-analysis / khazix-writer + family-level prompts/横纵分析法.md |
+
+合计 3 个 pack × 29 个 skill × 3 个宿主 = `garage init --hosts all` 物化 87 个 skill 文件 + 1 个 agent 文件（agent 仅装到 claude / opencode）。
+
+### 入口指针（FR-710 5 分钟冷读链）
 
 | 文档 | 角色 |
 |---|---|
 | `packs/README.md` | 顶层契约：pack 目录结构、`pack.json` schema、与宿主关系、不变量 |
 | `packs/<pack-id>/README.md` | 每个 pack 的概述 + skill/agent 清单（强制） |
 | `docs/guides/garage-os-user-guide.md` "Pack & Host Installer" 段 | 端到端用法（交互/非交互/extend mode、退出码、宿主路径表、风险） |
-| `docs/features/F007-garage-packs-and-host-installer.md` | 已批准规格 |
+| `docs/features/F007-garage-packs-and-host-installer.md` | F007 已批准规格（packs/ 目录契约 + `garage init --hosts ...` 安装管道） |
+| `docs/features/F008-garage-coding-pack-and-writing-pack.md` | F008 已批准规格（把 `.agents/skills/` 物化为 packs 内容物）|
 
 代码入口：`src/garage_os/adapter/installer/`（与 F001 `host_adapter.py` 同包但接口独立，详见 design ADR-D7-1）。三个 first-class host adapter 在 `src/garage_os/adapter/installer/hosts/{claude,opencode,cursor}.py`。
+
+### 本仓库自身 IDE 加载入口（F008 ADR-D8-2 候选 C）
+
+F008 cycle 把 `.agents/skills/` 整个删除，改为 dogfood 安装产物作为 IDE 加载入口。**首次 clone 本仓库的贡献者**必须在仓库根跑一次 dogfood 才能在 IDE 内加载到这 29 个 skill：
+
+```bash
+cd /path/to/garage-agent
+garage init --hosts cursor,claude
+# → 在仓库根 dogfood 出 .cursor/skills/ + .claude/skills/，IDE 即可加载 29 个 skill
+# 注：.cursor/skills/ + .claude/skills/ 已在 .gitignore 内排除，不入 git 追踪
+# → AGENTS.md / README.md 更新后无需再次跑 dogfood，但 packs/ 内容物变化时需要重跑
+```
+
+为什么这么设计？
+
+- 单源不变量最强：`packs/<pack-id>/` 是唯一权威源，`.cursor/skills/` 与 `.claude/skills/` 在 git 视角是 dogfood 安装产物（与下游用户体验完全一致）
+- 验证 D7 安装管道可用：本仓库自己跑 `garage init --hosts cursor,claude` 就是对 F007 + F008 联合最强证据
+- 无平台 symlink 风险（与 candidate A 的 git symlink 路径相比，跨平台兼容更强）
+
+详见 design ADR-D8-2（`docs/designs/2026-04-22-garage-coding-pack-and-writing-pack-design.md`）。
 
 ### Garage OS 开发者参考
 

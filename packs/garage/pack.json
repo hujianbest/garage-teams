@@ -1,8 +1,14 @@
 {
   "schema_version": 1,
   "pack_id": "garage",
-  "version": "0.1.0",
-  "description": "Garage 自带的占位 pack，提供 1 个 sample skill + 1 个 sample agent，验证 packs/ 目录契约与 host installer 端到端管道。F008 候选会把 .agents/skills/ 下的 HF workflow skills 搬到 packs/coding/，本 pack 在那之后将继续保留为 'getting started' 入口。",
-  "skills": ["garage-hello"],
-  "agents": ["garage-sample-agent"]
+  "version": "0.2.0",
+  "description": "Garage 自带的 'getting-started 三件套' pack：garage-hello（占位 sample，验证 packs/ 目录契约 + host installer 端到端管道，F007 落下）+ find-skills（发现新 skill 的 meta-skill）+ writing-skills（写新 skill 的 meta-skill）。下游用户挂载 Garage 后第一接触此 pack。F008 cycle 把 .agents/skills/{find-skills,writing-skills}/ 物化进来，version 0.1.0 → 0.2.0。",
+  "skills": [
+    "find-skills",
+    "garage-hello",
+    "writing-skills"
+  ],
+  "agents": [
+    "garage-sample-agent"
+  ]
 }

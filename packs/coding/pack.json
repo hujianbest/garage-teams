@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "pack_id": "coding",
+  "version": "0.1.0",
+  "description": "Garage 自带的 HarnessFlow 工程工作流 family pack：21 个 hf-* skills（spec / design / tasks / TDD / 各类 review / 各类 gate / hotfix / increment / finalize / discovery）+ 1 个 using-hf-workflow public entry，共 22 个 skill；外加 11 个 family-level 共享资产（packs/coding/skills/{docs,templates}/ 与 packs/coding/principles/）支撑 hf-* skill 内的相对引用。F008 cycle 把 .agents/skills/harness-flow/skills/ 物化为本 pack。",
+  "skills": [
+    "hf-bug-patterns",
+    "hf-code-review",
+    "hf-completion-gate",
+    "hf-design",
+    "hf-design-review",
+    "hf-discovery-review",
+    "hf-finalize",
+    "hf-hotfix",
+    "hf-increment",
+    "hf-product-discovery",
+    "hf-regression-gate",
+    "hf-spec-review",
+    "hf-specify",
+    "hf-tasks",
+    "hf-tasks-review",
+    "hf-test-driven-dev",
+    "hf-test-review",
+    "hf-traceability-review",
+    "hf-ui-design",
+    "hf-ui-review",
+    "hf-workflow-router",
+    "using-hf-workflow"
+  ],
+  "agents": []
+}

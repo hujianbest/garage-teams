@@ -44,23 +44,23 @@ packs/<pack-id>/
 
 ## 当前 packs
 
-| Pack | 用途 | 状态 |
-|---|---|---|
-| `packs/garage/` | 占位 pack，含 1 sample skill + 1 sample agent | ✅ 已落盘（F007 cycle T1） |
+| Pack | 用途 | skills | agents | 状态 |
+|---|---|---|---|---|
+| `packs/garage/` | Getting-started 三件套：占位 sample + find-skills（发现）+ writing-skills（写 skill）| 3 | 1 | ✅ 已落盘（F007 T1 + F008 T3 扩容到 0.2.0） |
+| `packs/coding/` | HarnessFlow 工程工作流 family：21 hf-* + using-hf-workflow + 11 family-level 共享资产（4 docs + 5 templates + 2 principles）| 22 | 0 | ✅ 已落盘（F008） |
+| `packs/writing/` | 内容创作 family：blog-writing / humanizer-zh / hv-analysis / khazix-writer + family-level prompts/横纵分析法.md | 4 | 0 | ✅ 已落盘（F008） |
 
-未来计划（F008+）：
+合计 3 个 pack × **29 个 skill** × 3 个宿主 = `garage init --hosts all` 物化 87 个 skill 文件 + 1 个 agent 文件（agent 仅装到 claude / opencode；cursor 无 agent surface）。
 
-- `packs/coding/` — HF workflow skills 搬迁目标（30 个 hf-* / using-hf-workflow 等）
-- `packs/product-insights/` — product discovery 系列 skill 搬迁目标
+未来计划（F009+）：
 
-## 与 `.agents/skills/` 的关系
+- `packs/product-insights/` — product discovery 系列 skill 沉淀目标（待真实内容物到位后开 cycle）
+- `garage uninstall` / `garage update` — 安装逆向操作 + packs 内容拉新流程
+- D7 安装管道扩展为递归 `references/` / `evals/` / `scripts/` 子目录（让下游宿主装后引用直接可达，闭合 design ADR-D8-4 接受的"文档级提示"工程边界）
 
-| 目录 | 角色 | 给谁用 |
-|---|---|---|
-| `.agents/skills/<name>/SKILL.md` | **本仓库内部**自身使用的 AHE workflow skills | 当前 Garage 仓库自身的 cursor / claude code 会话 |
-| `packs/<pack-id>/skills/<name>/SKILL.md` | **可分发**的 Garage-bundled 能力 | 任何下游用户项目，通过 `garage init --hosts ...` 安装 |
+## `.agents/skills/` 已删除（F008 ADR-D8-2 候选 C）
 
-短期内两者并存；F008 候选会把 `.agents/skills/` 下 30 个 HF skills 搬到 `packs/coding/skills/`，由本 cycle 提供的安装管道负责分发。
+F008 cycle 把 `.agents/skills/` 整个删除，本仓库自身贡献者首次 clone 后通过 dogfood `garage init --hosts cursor,claude` 在仓库根产生 `.cursor/skills/` + `.claude/skills/`（已在 `.gitignore` 排除）作为 IDE 加载入口。详见 `AGENTS.md "本仓库自身 IDE 加载入口"` 段。
 
 ## Dogfood 与下游用法
 
