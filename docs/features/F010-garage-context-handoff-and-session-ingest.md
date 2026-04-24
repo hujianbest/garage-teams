@@ -1,6 +1,6 @@
 # F010: Garage Context Handoff (`garage sync`) + Host Session Ingest (`garage session import`)
 
-- 状态: 草稿（待 hf-spec-review）
+- 状态: 草稿 r2 (回应 spec-review-F010-r1; 待 r2 hf-spec-review)
 - 主题: 让 F003-F006 build 的 memory 子系统**真正进入用户日常 host 对话**: (A) `garage sync` 把 top-N knowledge + recent experience 编译到三家宿主原生 context surface; (B) `garage session import --from <host>` 把日常 host 对话反向 ingest 成 Garage session 喂给 F003 自动提取链, 闭合 B4 飞轮
 - 日期: 2026-04-24
 - 关联:
@@ -104,8 +104,8 @@ ingest 路径:    用户必须 garage run <skill>                   garage sessi
    - `--scope user` → 装到 `~/.claude/CLAUDE.md` / `~/.cursor/rules/...` / `~/.config/opencode/AGENTS.md`
 4. **sync 幂等**: 第二次 `garage sync` 内容相同时, 文件 mtime 不刷新（NFR-1002 mtime stability）; 内容变化时只覆写 Garage 标记段, 用户在文件其它位置的内容字节级保留（NFR-1003 user content preservation）
 5. **`garage session import` 端到端可演示**:
-   - `garage session import --from claude-code` 列出最近 30 天 Claude Code 对话, 用户选 1 条 → Garage 创建 SessionState → archive_session() 自动 trigger F003 → 知识 candidate 入 `.garage/knowledge/.candidates/`
-   - 用户跑 `garage knowledge approve <candidate-id>` 后, 知识进入 `.garage/knowledge/decisions/`（或对应 kind 目录）
+   - `garage session import --from claude-code` 列出最近 30 天 Claude Code 对话, 用户选 1 条 → Garage 创建 SessionState → archive_session() 自动 trigger F003 → 知识 candidate 入 `.garage/memory/candidates/items/` (draft) + `.garage/memory/candidates/batches/` (queue) (复用 F003/F004 既有路径)
+   - 用户跑 `garage memory review <batch-id> --action accept --candidate-id <candidate-id>` 后, 知识 publisher 入 `.garage/knowledge/decisions/`（或对应 kind 目录）— 复用 F003/F004 既有审批链
    - 第一次 import 后立刻 `garage sync` → 新 ingest 的知识立刻出现在宿主 context surface
 6. **B5 user-pact 守门**: 默认 `garage session import --from <host>` 是 interactive 模式（列出对话让用户选）; `--all` 是 explicit opt-in; 任何 import 都不绕过 F003 既有 candidate 审批流（CON-1004）
 7. **F006 既有 `garage recall ...` pull 路径不变**: F010 加 push 但不删 pull; 二者并存, 不耦合
@@ -129,7 +129,7 @@ ingest 路径:    用户必须 garage run <skill>                   garage sessi
 | Metric ID | Outcome | Threshold | Measurement | Non-goal |
 |---|---|---|---|---|
 | **SM-1001** | sync 后用户 IDE 新对话能看到 Garage 知识 | 在 dogfood + tmp 双轨 manual smoke 中, 至少 1 个 Garage 标记段被 host 解析为 context（含 top-N 知识 + recent experience）| 目测 IDE 内新对话; sync-manifest.json content_hash 与 host context 文件实际内容一致 | 不衡量 host 解析后 AI 答得对不对 (那是 host 自己的事) |
-| **SM-1002** | session import 闭合 F003 飞轮 input 端 | 至少 1 条 host 对话被 import 成 SessionState → 触发 archive_session → F003 candidate 入库 | `.garage/knowledge/.candidates/` 出现至少 1 个新 entry; F003 提取 log 含 import 来源 anchor | 不衡量自动提取出来的知识质量 (那是 F003 既有 trust boundary) |
+| **SM-1002** | session import 闭合 F003 飞轮 input 端 | 至少 1 条 host 对话被 import 成 SessionState → 触发 archive_session → F003 candidate 入库 | `.garage/memory/candidates/items/` 出现至少 1 个新 candidate JSON + `.garage/memory/candidates/batches/` 出现新 batch; SessionState `provenance.imported_from = "claude-code:<conversation_id>"` 字段可读 (替代直接改 F003 提取链) | 不衡量自动提取出来的知识质量 (那是 F003 既有 trust boundary) |
 | **SM-1003** | 测试基线 + dogfood 不退绿 | F009 baseline 715 → F010 实施完成 ≥ 715 + 增量 | `pytest tests/ -q` + dogfood `garage init --hosts cursor,claude` stdout 字节级与 F009 baseline 一致 | 不衡量新增测试个数 |
 | **SM-1004** | 文档冷读 5 分钟可达 | `AGENTS.md` → user-guide → spec/design 链路完整 | 任意 cold reader 5 分钟内能回答 "garage sync 怎么用 / garage session import 怎么用 / 哪些 host 支持" | 不衡量文档字数 |
 
@@ -145,10 +145,10 @@ ingest 路径:    用户必须 garage run <skill>                   garage sessi
 | **HYP-1001** | Claude Code 的 `CLAUDE.md` 在 cwd / `~/.claude/` 都会被自动 read 进 context | F (feasibility) | sync 写出去也没人 read, F010-A 价值归零 | High | manual smoke Track 1 + 阅读 Anthropic 官方文档 § "Project context" 段 | **Yes** (Blocking — manual smoke 必须验证) |
 | **HYP-1002** | Cursor 的 `.cursor/rules/*.mdc` 配 `alwaysApply: true` 在新对话开始时自动注入 | F | 同上 (Cursor 视角) | High | manual smoke Track 2 + Cursor 官方文档 § "Rules" | **Yes** (Blocking) |
 | **HYP-1003** | OpenCode 的 `.opencode/AGENTS.md` + `~/.config/opencode/AGENTS.md` 同 Claude Code 模式 | F | 同上 (OpenCode 视角) | Medium-High | manual smoke Track 3 + OpenCode 官方 README | **Yes** (Blocking) |
-| **HYP-1004** | Claude Code conversation history 在 `~/.claude/conversations/<id>.json` 是稳定 NDJSON-like 路径 | F | session import --from claude-code 不可实现 | Medium | manual smoke + Anthropic 官方文档 + 本机实测 | **Yes** (Blocking) |
-| **HYP-1005** | Cursor conversation history 路径稳定可读 | F | session import --from cursor 不可实现 | **Low** | research 阶段 + design ADR 决定是否纳入本 cycle 或 deferred | **No** (allow deferred) |
-| **HYP-1006** | OpenCode conversation history 在 `~/.local/share/opencode/sessions/<id>.json` 稳定 | F | session import --from opencode 不可实现 | Medium | research 阶段 + 本机实测 | **Yes** (Blocking, 如不验证可降级 deferred) |
-| **HYP-1007** | top-N + size budget 选 ≤ 16KB 段, 用户日常 IDE 对话能受益 | V (value) | sync 出来的内容用户感知不到 | Medium | manual smoke Track 4 (import → sync → IDE 新对话) | No |
+| **HYP-1004** | Claude Code conversation history 在 `~/.claude/conversations/<id>.json` 是稳定 NDJSON-like 路径 | F | session import --from claude-code 不可实现 | Medium | (1) Anthropic 官方文档 https://code.claude.com/docs/en/cli-reference § "Local data" 段; (2) 本机 `ls -la ~/.claude/conversations/ \| head -3` evidence 截入 design § 调研锚点; (3) manual smoke Track 3 实测 import 链 | **Yes** (Blocking) |
+| **HYP-1005** | Cursor conversation history 路径稳定可读 | F | session import --from cursor 不可实现 | **Low** | research 阶段先看 Cursor 官方文档 (https://cursor.sh/docs/cli) + 本机 `find ~/Library/Application\ Support/Cursor -name '*.json' 2>/dev/null` (macOS) / `~/.config/Cursor/` (Linux); design ADR 决定是否纳入本 cycle 或降级 D-1010 | **No** (allow deferred per CON-1007) |
+| **HYP-1006** | OpenCode conversation history 在 `~/.local/share/opencode/sessions/<id>.json` 稳定 | F | session import --from opencode 不可实现 | Medium | (1) OpenCode 官方 README https://github.com/sst/opencode § "Storage" 段 (基于 XDG Base Dir Spec); (2) 本机 `ls -la ~/.local/share/opencode/sessions/ \| head -3` evidence; (3) manual smoke Track 3 | **Yes** (Blocking, 如不验证降级 deferred D-1011 候选) |
+| **HYP-1007** | top-N + size budget 选 ≤ 16KB 段, 用户日常 IDE 对话能受益 | V (value) | sync 出来的内容用户感知不到 | Medium | (1) manual smoke Track 4 (import → sync → IDE 新对话); (2) measurement: 在 IDE 内对至少 3 个真实 user query (与 sync 出来的 knowledge 主题相关) 的回答中, host 引用了 Garage 段内容; verdict 由 cycle owner 主观判定 (不追求量化阈值, 因 host 行为非 Garage 控制范围, ASM-1002) | No |
 | **HYP-1008** | F003 既有 archive_session() trigger 兼容 import 来源的 SessionState | F | F003 自动提取链断裂 | High | 单元测试 + manual smoke Track 3 | **Yes** (Blocking) |
 
 > **Blocking 假设阻塞规则**: HYP-1001 / 1002 / 1003 / 1004 / 1006 / 1008 必须在 manual smoke 阶段验证, 否则 cycle 不允许进 hf-finalize. HYP-1005 (Cursor history) 允许在 design ADR 阶段降级为 deferred (如官方文档不稳定)
@@ -160,9 +160,42 @@ ingest 路径:    用户必须 garage run <skill>                   garage sessi
 A. **`garage sync` 子命令**:
 - A1. CLI subcommand + `--hosts <list>` (复用 F009 解析) + `--scope <project|user>` (复用 F009)
 - A2. Sync compiler 模块（top-N knowledge + recent experience → 编译为 markdown 段）
-- A3. 三家 host context adapter method（`target_context_path` + `target_context_path_user`）
-- A4. Sync manifest（`.garage/config/sync-manifest.json`, schema_version=1）
+- A3. 三家 host context adapter method（`target_context_path` + `target_context_path_user`）+ Cursor `.mdc` front matter (alwaysApply: true)
+- A4. Sync manifest (`.garage/config/sync-manifest.json`, schema_version=1, 字段最小集见下表)
 - A5. 幂等 + user content preservation（用 begin/end marker 圈定 Garage 段, 用户其它内容字节级保留）
+
+#### A4 sync-manifest.json schema (最小字段表)
+
+```jsonc
+{
+  "schema_version": 1,
+  "synced_at": "2026-04-24T18:30:00Z",  // ISO 8601 UTC
+  "sources": {
+    "knowledge_count": 12,           // 编译时选中的 knowledge entry 数
+    "experience_count": 5,           // 编译时选中的 experience record 数
+    "knowledge_kinds": ["decision", "solution", "pattern"],  // 包含的 KnowledgeEntry kind
+    "size_bytes": 8192,              // Garage marker 段编译产物字节数 (不含 marker 自身)
+    "size_budget_bytes": 16384       // 实施时的 budget (来自 design ADR)
+  },
+  "targets": [                       // 每家 host 一个 entry, 与 .garage/config/host-installer.json schema 2 files[] 解耦
+    {
+      "host": "claude",
+      "scope": "project",
+      "path": "/abs/path/to/<cwd>/CLAUDE.md",       // absolute POSIX path (与 F009 schema 2 dst 同规则)
+      "content_hash": "<sha256 hex of the marker block content (excluding marker lines themselves)>",
+      "wrote_at": "2026-04-24T18:30:00Z"             // 等于 synced_at 当此 host 实际写入; 否则缺该 entry (skip-locally-modified 时)
+    }
+  ]
+}
+```
+
+字段语义说明:
+- `synced_at`: 一次 `garage sync` 调用的时间戳, 所有写入 host 的 wrote_at 等于此值
+- `sources.size_bytes` ≤ `sources.size_budget_bytes` (NFR-1004 + design ADR 决定)
+- `targets[].content_hash`: 用于幂等比对 (NFR-1002 mtime stability)
+- `targets[].path`: 与 F009 schema 2 `host-installer.json` `files[].dst` 同规则 (absolute POSIX)
+- 没有 `pack_id` 字段 (sync 不归属任何 pack; 与 host-installer.json files[] 完全解耦)
+- 没有 `installed_packs` 字段 (sync 不依赖任何 pack 存在; 知识源是 .garage/knowledge/ 而非 packs/)
 
 B. **`garage session import` 子命令**:
 - B1. CLI subcommand + `--from <host>` + `--all` 显式 batch
@@ -242,35 +275,69 @@ B. **`garage session import` 子命令**:
   And mtime 刷新
   ```
 
-### FR-1004 — 三家 host context adapter（claude / cursor / opencode）
+### FR-1004 — 三家 host context adapter（claude / cursor / opencode）+ .mdc front matter 契约
 
 - 优先级: Must
-- 来源: § 2.1 + 调研锚点
-- Statement (Ubiquitous): The system SHALL 提供三家 first-class host adapter 的 context surface 路径解析, 每家 adapter 加 `target_context_path` (project) + `target_context_path_user` (user) 两个 method, 路径如下:
-  - claude → project: `Path("CLAUDE.md")`; user: `Path.home() / ".claude" / "CLAUDE.md"`
-  - cursor → project: `Path(".cursor/rules/garage-context.mdc")`; user: `Path.home() / ".cursor" / "rules" / "garage-context.mdc"`
-  - opencode → project: `Path(".opencode/AGENTS.md")`; user: `Path.home() / ".config" / "opencode" / "AGENTS.md"`
+- 来源: § 2.1 + 调研锚点 + spec-review-F010-r1 important I-3
+- Statement (Ubiquitous): The system SHALL 提供三家 first-class host adapter 的 context surface 路径解析, 每家 adapter 加 `target_context_path` (project) + `target_context_path_user` (user) 两个 method, 路径如下 (字符串路径形态; 实际 Path 构造细节由 design / impl 决定):
+  - **claude** → project: `CLAUDE.md`; user: `~/.claude/CLAUDE.md`
+  - **cursor** → project: `.cursor/rules/garage-context.mdc`; user: `~/.cursor/rules/garage-context.mdc`
+  - **opencode** → project: `.opencode/AGENTS.md`; user: `~/.config/opencode/AGENTS.md` (XDG default)
+- 对 Cursor 的 `.mdc` 文件, sync compiler 必须**额外**写入 YAML front matter (放在文件最顶部, 早于 Garage marker 段), 让 Cursor 自动加载 (HYP-1002):
+  ```yaml
+  ---
+  alwaysApply: true
+  description: Garage 自动同步的项目知识与近期经验. 由 `garage sync` 写入. 不要手动编辑 garage:context-begin/end 之间内容.
+  ---
+  ```
+- Claude Code 的 `CLAUDE.md` 与 OpenCode 的 `AGENTS.md` 不需要 front matter (是纯 markdown 自动加载, 由文件名约定决定; HYP-1001 / HYP-1003)
 - Acceptance:
   ```
-  Given 三家 first-class adapter（F007 既有）
+  Given 三家 first-class adapter (F007 既有)
   When 实例化 + 调用 target_context_path("garage-context") / target_context_path_user("garage-context")
   Then 返回值与上表完全一致 (含分隔符与文件名)
   And HostInstallAdapter Protocol method 全部存在 (mypy 通过)
+  And cursor adapter 的 .mdc 写入产物含 alwaysApply: true front matter (YAML 解析合法)
+  And claude / opencode 的 CLAUDE.md / AGENTS.md 产物不含 YAML front matter (纯 markdown body)
   ```
 
 ### FR-1005 — `garage session import` 子命令
 
 - 优先级: Must
 - 来源: § 2.1 + SM-1002
-- Statement (Event-driven): When 用户执行 `garage session import --from <host> [--all]`, the system SHALL 读宿主 conversation history → 转 Garage SessionState → 触发既有 archive_session() → F003 自动提取链
-- Acceptance (BDD):
+- Statement (Event-driven): When 用户执行 `garage session import --from <host> [--all]`, the system SHALL 读宿主 conversation history → 转 Garage SessionState → 触发既有 `SessionManager.archive_session()` → F003 自动提取链 → candidate 入 `.garage/memory/candidates/items/` + `.garage/memory/candidates/batches/` (复用 F003/F004 既有路径)
+- Acceptance (BDD, happy path):
   ```
   Given fake_home/.claude/conversations/ 含 ≥ 1 条 conversation JSON 文件
   When 用户跑 `garage session import --from claude-code`
   Then stdout 列出可 import 的对话（按 mtime 倒序前 30）
-  And 用户选 1 条后, .garage/sessions/archived/ 出现新 SessionState
-  And F003 自动提取链被触发, .garage/knowledge/.candidates/ 出现新 candidate
+  And 用户选 1 条后, .garage/sessions/archived/ 出现新 SessionState (provenance.imported_from = "claude-code:<conversation_id>")
+  And F003 自动提取链被触发, .garage/memory/candidates/items/ 出现 ≥ 1 个新 candidate JSON
+  And .garage/memory/candidates/batches/ 出现 1 个新 batch (含 candidate_ids[])
   And exit code = 0
+  And 用户后续跑 `garage memory review <batch-id> --action accept --candidate-id <candidate-id>` 后 candidate publisher 入 `.garage/knowledge/<kind>/` (复用 F003/F004 publisher, F010 0 改动)
+  ```
+- Acceptance (BDD, 负路径):
+  ```
+  Given fake_home/.claude/conversations/ 是空目录
+  When 用户跑 `garage session import --from claude-code`
+  Then stdout 含 "No conversations found under <host history path>"
+  And exit code = 0 (与 F007 garage init 空 packs 行为同精神)
+
+  Given fake_home/.claude/conversations/abc.json 是损坏 JSON
+  When 用户跑 `garage session import --from claude-code`
+  Then stderr 含 "Skipped 1 unreadable conversation: abc.json (<json error detail>)" 并继续处理其它合法 conversation
+  And exit code = 0 (单个损坏不阻塞 batch)
+
+  Given 用户传未知 host
+  When 用户跑 `garage session import --from unknown-host`
+  Then stderr 含 "Unknown host: 'unknown-host'. Supported: claude-code, opencode (cursor deferred to D-1010 if HYP-1005 unconfirmed)"
+  And exit code = 1
+
+  Given interactive 模式列出 5 条对话
+  When 用户输入 'q' / Ctrl-C / EOF
+  Then 不创建任何 SessionState, 不触发任何 archive
+  And exit code = 0 (与 F009 prompt_hosts 'q' shortcut 同精神)
   ```
 
 ### FR-1006 — `garage session import --all` batch 模式
@@ -278,17 +345,26 @@ B. **`garage session import` 子命令**:
 - 优先级: Must (B5 user-pact 守门)
 - 来源: § 2.1 + B5 + CON-1004
 - Statement (Event-driven): When 用户显式传 `--all`, the system SHALL 把全部 history 一次性 import; 默认（不传 `--all`）必须 interactive 模式让用户选
-- Acceptance:
+- Acceptance (BDD, happy path):
   ```
   Given fake_home/.claude/conversations/ 含 5 条 conversation
   When 用户跑 `garage session import --from claude-code --all`
   Then 5 条全部 import 成 SessionState
-  And 5 个 candidate 入 .garage/knowledge/.candidates/
-  And stdout 含 "Imported 5 conversations from claude-code"
+  And ≥ 5 个 candidate 入 .garage/memory/candidates/items/
+  And 1 个 batch 入 .garage/memory/candidates/batches/ (与 F003/F004 既有 batching 一致)
+  And stdout 含 "Imported 5 conversations from claude-code (batch-id: <id>)"
+  ```
+- Acceptance (BDD, 负路径):
+  ```
+  Given fake_home/.claude/conversations/ 含 5 条, 其中第 3 条 schema 损坏
+  When 用户跑 `garage session import --from claude-code --all`
+  Then 4 条成功 import + 1 条 skip 并 stderr 报告
+  And stdout 含 "Imported 4 conversations from claude-code (1 skipped, batch-id: <id>)"
+  And exit code = 0 (partial success 不阻塞)
 
-  Given 同上, 但用户跑 `garage session import --from claude-code` (无 --all)
-  When stdin 是非 TTY (CI 场景)
-  Then 提示 "non-interactive shell detected; use --all to batch import" 并 exit 0 (与 F009 prompt_hosts 退化语义一致)
+  Given stdin 是非 TTY (CI 场景), 用户跑 `garage session import --from claude-code` (无 --all)
+  Then 提示 "non-interactive shell detected; use --all to batch import" 并 exit 0
+  And 不创建任何 SessionState (与 F009 prompt_hosts 非交互退化语义一致, FR-703 沿用)
   ```
 
 ### FR-1007 — sync compiler top-N 选择 + size budget
@@ -308,38 +384,57 @@ B. **`garage session import` 子命令**:
 ### FR-1008 — sync stdout marker (与 F007/F009 marker family 一致)
 
 - 优先级: Must
-- 来源: § 2.2 #2
+- 来源: § 2.2 #2 + spec-review-F010-r1 minor M-2
 - Statement (Ubiquitous): The system SHALL 在 sync 成功时输出 marker `Synced N knowledge entries + M experience records into hosts: <list>` (类比 F007 `Installed N skills, M agents into hosts: <list>`), 让下游脚本 grep 命中
 - Acceptance:
   ```
   Given sync 完成
   When 检查 stdout
   Then `grep -cE '^Synced [0-9]+ knowledge entries \+ [0-9]+ experience records into hosts:'` 命中 == 1
+  And 注意: marker 中 '+' 号在 ERE 模式下需要 escape 成 '\+' (本行已显式给出 escape 形态; 测试用 re.findall(r'^Synced [0-9]+ knowledge entries \+ ...', ...) Python re 模块默认非 POSIX ERE, 不需额外 escape; 本约定与 F009 FR-909 marker grep 习惯同精神)
   ```
 
 ### FR-1009 — `garage status` 显示 sync 状态 (复用 F009 status 段)
 
 - 优先级: Should
-- 来源: § 2.2 #2
-- Statement (Ubiquitous): The system SHALL 在 `garage status` 输出末尾追加 sync 状态段 (类似 F009 `Installed packs (project scope):` 段), 显示 sync_at + per-host context surface 路径
-- Acceptance:
+- 来源: § 2.2 #2 + spec-review-F010-r1 important I-4
+- Statement (Ubiquitous): The system SHALL 在 `garage status` 输出末尾追加 sync 状态段 (在 F009 既有 `Installed packs (project scope):` / `(user scope):` 段**之后**), 按 ISO 8601 倒序显示 sync_at + per-host context surface 路径; sync-manifest.json 不存在时**完全省略**本段, 不打印任何 sync 相关 wording (与 F009 status 段在 manifest 不存在时省略行为同精神, 保证 CON-1001 字节级守门)
+- Acceptance (BDD):
   ```
-  Given .garage/config/sync-manifest.json 存在
+  Given .garage/config/sync-manifest.json 存在 + F009 host-installer.json 存在
   When 用户跑 `garage status`
-  Then stdout 含 "Last synced: <ISO 8601 timestamp>" 行
-  And 按 host 列出 context surface 路径 + 文件大小
+  Then stdout 完整结构按以下 ordering 输出 (从上到下):
+    1. F002 既有 .garage/ 摘要行 (字节级与 F002 baseline 一致)
+    2. F009 既有 "Installed packs (project scope):" 段 (按 host 子分组, 字节级与 F009 baseline 一致)
+    3. F009 既有 "Installed packs (user scope):" 段 (如有)
+    4. F010 新增 "Last synced (per host):" 段 (按 sync_at ISO 8601 倒序, 每行 "<host>: <path> (<size>) at <sync_at>")
+  And exit code = 0
+
+  Given F009 host-installer.json 存在 + sync-manifest.json **不存在**
+  When 用户跑 `garage status`
+  Then stdout 仅输出 1-3 行段, 不出现任何 "Last synced" 字符串 (CON-1001 fallback 守门)
+  And 与 F009 baseline status 输出字节级一致
+
+  Given 同时 sync-manifest.json + host-installer.json 都不存在
+  When 用户跑 `garage status`
+  Then 输出与 F002 baseline status 字节级一致
   ```
 
 ### FR-1010 — 文档同步 (cold-read 5 分钟可达)
 
 - 优先级: Must
-- 来源: SM-1004
-- Statement (Ubiquitous): The system SHALL 同步 `AGENTS.md`（"Garage Memory Sync" 段）+ `docs/guides/garage-os-user-guide.md`（"Sync & Session Import" 段）+ `RELEASE_NOTES.md`（F010 段）, 让冷读用户 5 分钟内能回答 (a) `garage sync` 怎么用 (b) `garage session import` 怎么用 (c) 三家 host 路径
+- 来源: SM-1004 + spec-review-F010-r1 minor M-3
+- Statement (Ubiquitous): The system SHALL 同步以下 4 个入口文档:
+  1. `AGENTS.md` — 加 "Garage Memory Sync (F010)" 段 (在既有 "Packs & Host Installer" 之后), 含 sync + ingest 简介 + 三家 host context surface 路径表 + 5 min cold-read 链
+  2. `docs/guides/garage-os-user-guide.md` — 加 "Sync & Session Import" 段 (在既有 "Pack & Host Installer" 之后), 含端到端用法 + 决策树 + 已知限制
+  3. `RELEASE_NOTES.md` — 加 F010 段 (按 F009 同等结构: 用户可见变化 + 数据契约影响 + 验证证据 + 已知限制 + 5 项实测占位字段)
+  4. `packs/README.md` — **不需修改** (F010 不影响 packs 内容物; 与 F009 FR-910 边界一致)
 - Acceptance:
   ```
   Given F010 实施完成
   When cold reader 从 AGENTS.md 顶部入口开始读
   Then 5 分钟内能找到完整 sync + ingest 用法 + 路径表
+  And `packs/README.md` git diff 与 main 上的 packs/README.md 字节级一致 (F010 不动)
   ```
 
 ## 7. 非功能需求 (NFR)
@@ -407,23 +502,40 @@ B. **`garage session import` 子命令**:
 - 来源: § 2.2 #1 + F009 CON-901 沿用精神
 - Constraint: F010 不引入 `garage init` 任何变化; 既有 715 测试基线 0 退绿; dogfood stdout 字节级一致
 
-### CON-1002 — F003-F006 既有内核 0 改动
+### CON-1002 — F003-F006 既有内核 0 改动 (除 SessionState provenance 字段扩展)
 
 - 优先级: Must
-- 来源: § 2.3 + 设计原则 (扩展不修改)
-- Constraint: F010 sync 是 read 路径, F010 ingest 是 write 路径; 二者都通过既有 KnowledgeStore / ExperienceIndex / SessionManager / archive_session() public API, 不改 F003-F006 核心模块
+- 来源: § 2.3 + 设计原则 (扩展不修改) + spec-review-F010-r1 minor M-4
+- Constraint: F010 sync 是 read 路径, F010 ingest 是 write 路径; 二者都通过既有 KnowledgeStore / ExperienceIndex / SessionManager / archive_session() public API, 不改 F003-F006 核心模块算法
+- **唯一例外** (与 SM-1002 import 来源 anchor 协调): SessionState dataclass 加 optional `provenance: dict[str, str] | None = None` 字段 (默认 None 兼容 F003-F006 既有调用方), 用于记录 ingest 来源 ("imported_from": "claude-code:<conversation_id>"). 字段扩展同一类不引入新 dataclass (与 F009 CON-901 同精神). 既有 F003-F006 测试在 provenance=None 时行为字节级保留
 
 ### CON-1003 — host context surface 文件用 begin/end marker 圈定 Garage 段
 
 - 优先级: Must
-- 来源: NFR-1003 + B5 user-pact "你做主"
+- 来源: NFR-1003 + B5 user-pact "你做主" + spec-review-F010-r1 important I-3
 - Constraint: 三家 host 的 context 文件 (CLAUDE.md / .mdc / AGENTS.md) 都用 `<!-- garage:context-begin -->` + `<!-- garage:context-end -->` (HTML comment, 三家 markdown parser 都视为不可见) 圈定 Garage 写入段; marker 之外字节级保留 (用户手写优先)
+- 对 Cursor `.mdc` 文件: YAML front matter (FR-1004 alwaysApply: true) 写在文件**最顶部** (在 marker 段之上), 也归属 "Garage 写入段" 范畴; 用户在 marker / front matter 之外的内容 (如 `---` front matter 之后到 marker 之前的过渡说明) 字节级保留. 即文件结构:
+  ```
+  ---
+  alwaysApply: true
+  description: ...
+  ---
 
-### CON-1004 — session import 不绕过 F003 candidate 审批
+  [用户可手写过渡说明]
+
+  <!-- garage:context-begin -->
+  [Garage 写入的 top-N knowledge + recent experience]
+  <!-- garage:context-end -->
+
+  [用户可手写其它内容]
+  ```
+
+### CON-1004 — session import 不绕过 F003/F004 既有 candidate→memory review→publisher 审批链
 
 - 优先级: Must
-- 来源: B5 user-pact "你做主" + § 2.2 #6
-- Constraint: import 出来的 SessionState 走 F003 既有 archive_session() trigger, 提取出的知识进入 `.garage/knowledge/.candidates/` (而非直接 `.garage/knowledge/decisions/` 等正式目录); 用户必须显式 `garage knowledge approve <candidate-id>` 才入正式库
+- 来源: B5 user-pact "你做主" + § 2.2 #6 + spec-review-F010-r1 critical C-1
+- Constraint: import 出来的 SessionState 走 F003 既有 `SessionManager.archive_session()` trigger, 提取出的 candidate 进入 `.garage/memory/candidates/items/` (draft) + `.garage/memory/candidates/batches/` (queue) (复用 F003/F004 既有路径, 而非直接 `.garage/knowledge/<kind>/` 正式目录); 用户必须显式 `garage memory review <batch-id> --action accept --candidate-id <candidate-id>` 才让 candidate 经 `KnowledgePublisher` 入正式库
+- F010 不引入任何新 CLI 子命令做 candidate 审批 (`garage memory review` 是 F003/F004 既有入口); F010 不改 `KnowledgePublisher` 内部决策 (CON-1002)
 
 ### CON-1005 — manifest schema (sync-manifest.json) 独立, 不污染 host-installer.json
 
@@ -505,16 +617,24 @@ B. **`garage session import` 子命令**:
 - **由 design ADR 阶段决定具体行为 (warn-and-skip vs warn-and-force)**, spec 给框架
 - **不阻塞 spec 通过**
 
-## 12. 评审前自检 ✅ (供 hf-spec-review)
+## 12. 评审前自检 ✅ (供 hf-spec-review r2)
 
 - [x] FR/NFR/CON/ASM 都有 ID + Priority + Source + EARS/QAS/BDD
 - [x] HYP 全部含 Type + Impact + Confidence + Validation; Blocking 标注完整
 - [x] Success Metrics + Non-goal Metrics 显式
 - [x] § 5 deferred backlog 显式 (D-1010..1015)
 - [x] § 11 阻塞性开放问题分类 (BLK-1001..1004)
-- [x] CON-1001..1007 守门完整 (含 F009 carry-forward + B5 user-pact)
-- [x] CON-1004 + B5 user-pact "你做主" 显式
+- [x] CON-1001..1007 守门完整 (含 F009 carry-forward + B5 user-pact + r2 SessionState provenance 例外说明)
+- [x] CON-1004 + B5 user-pact "你做主" 显式 (r2: 已对齐 F003/F004 既有 `garage memory review` 真实入口 + `.garage/memory/candidates/` 真实路径)
 - [x] manifesto Promise ① + ③ + B4 飞轮 + Stage 2 → 3 升级路径全部 anchor
 - [x] 复用 F007 / F009 既有 host adapter pattern + 双 scope, 不重新发明
-- [x] F003 / F006 既有提取链 + ranking API 0 改动 (CON-1002)
+- [x] F003 / F006 既有提取链 + ranking API 0 改动 (CON-1002, 仅 SessionState dataclass 加 optional provenance 字段)
 - [x] 不超出 vision-gap planning § 2.1 范围 (A + B 一起, 不夹带 F011 内容)
+- [x] **r2 回修结果** (回应 spec-review-F010-r1 全部 12 finding):
+  - Critical C-1: ✓ 5 处 `garage knowledge approve` / `.garage/knowledge/.candidates/` 全部替换为真实 `garage memory review` / `.garage/memory/candidates/{items, batches}/`
+  - Important I-1: ✓ HYP-1004/1006 加 URL + 本机 ls evidence anchor
+  - Important I-2: ✓ FR-1005 + FR-1006 加 5 类负路径 acceptance (空目录 / schema 损坏 / unknown host / interactive 取消 / batch partial)
+  - Important I-3: ✓ FR-1004 + CON-1003 加 .mdc front matter 契约 (alwaysApply: true)
+  - Important I-4: ✓ FR-1009 加 ordering + fallback (sync-manifest 不存在时省略, CON-1001 守门)
+  - Important I-5: ✓ § 5.1 A4 加 sync-manifest.json schema 最小字段表
+  - Minor M-1..M-6: ✓ wording 同 batch 修 (FR-1006 non-TTY 对齐 F009 FR-703 / FR-1008 grep escape 注释 / FR-1010 packs/README 边界 / CON-1002 SessionState provenance 例外说明 / HYP-1007 measurement anchor / FR-1004 字符串路径形态)
