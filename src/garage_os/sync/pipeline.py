@@ -305,19 +305,28 @@ def _compose_mdc_content(dst: Path, new_marker_block_full: str) -> str:
     """For cursor .mdc: front matter on top + marker block.
 
     If file exists with user content between front matter and marker, preserve it.
-    If file exists WITHOUT marker, append marker block at end (preserve all user content).
+    If file exists WITHOUT marker, append marker block at end (preserve all user content),
+    BUT inject ``alwaysApply: true`` YAML front matter at the top if absent
+    (FR-1004 + HYP-1002 hard requirement; IMP-2 fix from code-review-F010-r1).
     If file does NOT exist, fresh: front matter + marker block.
     """
+    from garage_os.sync.render.mdc import MDC_FRONT_MATTER
+
     if not dst.exists():
         return render_mdc_with_front_matter(new_marker_block_full)
 
     existing = dst.read_text(encoding="utf-8")
     if not has_marker_block(existing):
-        # File exists, no marker yet → ensure front matter at top + append marker
-        # Simpler: just regenerate from scratch (user has no marker block to preserve)
-        # But preserve their content above + below new marker block
+        # File exists, no marker yet → preserve user content + ensure front matter at top
         if existing.strip():
-            return f"{existing.rstrip()}\n\n{new_marker_block_full}"
+            # IMP-2 fix: check if front matter already present; if not, prepend
+            has_front_matter = existing.lstrip().startswith("---\n")
+            if has_front_matter:
+                # User already has YAML front matter → preserve user content + append marker
+                return f"{existing.rstrip()}\n\n{new_marker_block_full}"
+            else:
+                # Inject front matter at top (FR-1004 + HYP-1002 hard requirement)
+                return f"{MDC_FRONT_MATTER}\n{existing.rstrip()}\n\n{new_marker_block_full}"
         return render_mdc_with_front_matter(new_marker_block_full)
 
     # Marker exists → replace just the marker block, preserve everything else

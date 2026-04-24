@@ -495,6 +495,7 @@ def _sync(
     force: bool = False,
 ) -> int:
     """F010 _sync entry: orchestrate `garage sync` CLI."""
+    from garage_os.sync.manifest import SyncManifestMigrationError
     from garage_os.sync.pipeline import sync_hosts as _sync_hosts_pipeline
 
     # Resolve hosts: default --hosts all when unspecified
@@ -524,6 +525,11 @@ def _sync(
         )
     except (UnknownHostError, UnknownScopeError) as exc:
         print(str(exc), file=sys.stderr)
+        return 1
+    except SyncManifestMigrationError as exc:
+        # IMP-1 fix (code-review-F010-r1): _sync catch sync-manifest migration error
+        # symmetric to F009 ManifestMigrationError handling in _init.
+        print(f"Sync manifest migration failed: {exc}", file=sys.stderr)
         return 1
     except RuntimeError as exc:
         print(f"Cannot determine user home directory: {exc}", file=sys.stderr)
