@@ -4015,3 +4015,91 @@ class TestPackUpdateCommand:
         assert rc == 1
         captured = capsys.readouterr()
         assert "update failed" in captured.err.lower()
+
+
+# ===========================================================================
+# F012-C T3: garage pack publish CLI tests
+# ===========================================================================
+
+
+class TestPackPublishCommand:
+    """F012-C FR-1207..1210 + ADR-D12-4 r2."""
+
+    @staticmethod
+    def _build_pack(workspace: Path, pack_id: str, with_sensitive: bool = False) -> None:
+        import json
+        pack_dir = workspace / "packs" / pack_id
+        pack_dir.mkdir(parents=True)
+        (pack_dir / "skills" / "h").mkdir(parents=True)
+        (pack_dir / "skills" / "h" / "SKILL.md").write_text(
+            "---\nname: h\ndescription: x\n---\n# H\n", encoding="utf-8",
+        )
+        if with_sensitive:
+            (pack_dir / "config.env").write_text("password=foo\n", encoding="utf-8")
+        (pack_dir / "pack.json").write_text(json.dumps({
+            "schema_version": 1, "pack_id": pack_id, "version": "0.1.0",
+            "description": "x", "skills": ["h"], "agents": [],
+        }), encoding="utf-8")
+
+    @staticmethod
+    def _bare_remote(tmp_path: Path) -> str:
+        import subprocess
+        bare = tmp_path / "bare.git"
+        subprocess.run(["git", "init", "--bare", "-q", str(bare)], check=True)
+        return f"file://{bare}"
+
+    def test_publish_yes_via_cli(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        self._build_pack(workspace, "cli-pub-test")
+        url = self._bare_remote(tmp_path)
+
+        rc = main([
+            "pack", "publish", "--path", str(workspace), "cli-pub-test",
+            "--to", url, "--yes",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Published pack 'cli-pub-test'" in captured.out
+
+    def test_publish_sensitive_aborts(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        self._build_pack(workspace, "cli-sens-test", with_sensitive=True)
+        url = self._bare_remote(tmp_path)
+
+        rc = main([
+            "pack", "publish", "--path", str(workspace), "cli-sens-test",
+            "--to", url, "--yes",
+        ])
+        assert rc == 1  # sensitive abort
+        captured = capsys.readouterr()
+        assert "Sensitive content detected" in captured.err
+
+    def test_publish_force_bypasses_sensitive(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        self._build_pack(workspace, "cli-fp-test", with_sensitive=True)
+        url = self._bare_remote(tmp_path)
+
+        rc = main([
+            "pack", "publish", "--path", str(workspace), "cli-fp-test",
+            "--to", url, "--yes", "--force",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Published pack" in captured.out
+
+    def test_publish_dry_run(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        self._build_pack(workspace, "cli-dr-test")
+        url = self._bare_remote(tmp_path)
+
+        rc = main([
+            "pack", "publish", "--path", str(workspace), "cli-dr-test",
+            "--to", url, "--dry-run",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "DRY RUN" in captured.out

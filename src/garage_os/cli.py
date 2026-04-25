@@ -721,6 +721,50 @@ def _pack_update(
     return 0
 
 
+def _pack_publish(
+    workspace_root: Path,
+    *,
+    pack_id: str,
+    to_url: str,
+    yes: bool = False,
+    force: bool = False,
+    dry_run: bool = False,
+    no_update_source_url: bool = False,
+    commit_author: str | None = None,
+    commit_message: str | None = None,
+) -> int:
+    """F012-C FR-1207..1210 _pack_publish entry."""
+    from garage_os.adapter.installer.pack_install import (
+        PackInstallError,
+        publish_pack,
+    )
+
+    try:
+        summary = publish_pack(
+            workspace_root,
+            pack_id,
+            to_url,
+            yes=yes,
+            force=force,
+            dry_run=dry_run,
+            no_update_source_url=no_update_source_url,
+            commit_author=commit_author,
+            commit_message=commit_message,
+        )
+    except PackInstallError as exc:
+        print(f"Pack publish failed: {exc}", file=sys.stderr)
+        return 1
+
+    if summary.skipped:
+        # Sensitive abort or interactive cancel; stderr already printed
+        return 1 if summary.sensitive_matches and not summary.pushed else 0
+    if summary.pushed:
+        print(
+            f"Published pack '{summary.pack_id}' v{summary.version} to {summary.to_url}"
+        )
+    return 0
+
+
 def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> int:
     """Run a Garage skill and record the experience.
 
@@ -1907,6 +1951,44 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Warn (no true 3-way merge yet, F013 D-1211); proceed with overwrite",
     )
+    # F012-C FR-1207..1210: publish
+    pack_publish_parser = pack_subparsers.add_parser(
+        "publish",
+        help="Publish a pack to a git URL (init + commit + force push)",
+        parents=[path_parser],
+    )
+    pack_publish_parser.add_argument("pack_id", help="Pack id to publish")
+    pack_publish_parser.add_argument(
+        "--to", dest="pack_publish_to_url", required=True,
+        help="Target git URL (https / ssh / file://; force-pushed)",
+    )
+    pack_publish_parser.add_argument(
+        "--yes", "-y", dest="pack_publish_yes", action="store_true",
+        help="Skip interactive confirmation (does NOT bypass sensitive scan)",
+    )
+    pack_publish_parser.add_argument(
+        "--force", dest="pack_publish_force", action="store_true",
+        help="Skip sensitive scan abort (B5 user-pact opt-in)",
+    )
+    pack_publish_parser.add_argument(
+        "--dry-run", dest="pack_publish_dry_run", action="store_true",
+        help="Build temp git + scan but don't push or update source_url",
+    )
+    pack_publish_parser.add_argument(
+        "--no-update-source-url", dest="pack_publish_no_update_source_url",
+        action="store_true",
+        help="Don't write back to_url to pack.json source_url after push",
+    )
+    pack_publish_parser.add_argument(
+        "--commit-author", dest="pack_publish_commit_author",
+        default=None,
+        help="Override commit author 'Name <email>' (default reads git config)",
+    )
+    pack_publish_parser.add_argument(
+        "--commit-message", "-m", dest="pack_publish_commit_message",
+        default=None,
+        help="Override commit message (default 'Publish <pack-id> v<ver> from Garage')",
+    )
 
     # F010 session import (FR-1005/1006 + ADR-D10-7/8/9/10/11)
     session_parser = subparsers.add_parser(
@@ -2309,6 +2391,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 pack_id=args.pack_id,
                 yes=args.pack_update_yes,
                 preserve_local_edits=args.pack_update_preserve,
+            )
+        if args.pack_command == "publish":
+            return _pack_publish(
+                root,
+                pack_id=args.pack_id,
+                to_url=args.pack_publish_to_url,
+                yes=args.pack_publish_yes,
+                force=args.pack_publish_force,
+                dry_run=args.pack_publish_dry_run,
+                no_update_source_url=args.pack_publish_no_update_source_url,
+                commit_author=args.pack_publish_commit_author,
+                commit_message=args.pack_publish_commit_message,
             )
         pack_parser.print_help()
         return 1

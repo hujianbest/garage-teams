@@ -570,3 +570,310 @@ def update_pack(
         new_version=new_version,
         skipped=False,
     )
+
+
+# ============================================================
+# F012-C — publish_pack + sensitive_scan (T3)
+# ============================================================
+
+import re
+
+# F012 ADR-D12-4 r2 SENSITIVE_RULES: 5 categories scanned at publish time.
+# Patterns allow optional surrounding quotes (handles JSON / YAML / .env styles).
+SENSITIVE_RULES = [
+    ("password", re.compile(r'["\']?password["\']?\s*[:=]\s*\S+', re.IGNORECASE)),
+    ("api_key", re.compile(r'["\']?api[_-]?key["\']?\s*[:=]\s*\S+', re.IGNORECASE)),
+    ("secret", re.compile(r'["\']?secret["\']?\s*[:=]\s*\S+', re.IGNORECASE)),
+    ("token", re.compile(r'["\']?token["\']?\s*[:=]\s*\S+', re.IGNORECASE)),
+    ("private_key", re.compile(r"-----BEGIN [A-Z ]+PRIVATE KEY-----")),
+]
+
+# F012 ADR-D12-4 r2 + spec FR-1208 I-3 fix: extension allowlist for text-only scan.
+TEXT_EXTENSIONS = frozenset({
+    ".md", ".py", ".txt", ".json", ".yaml", ".yml", ".toml",
+    ".sh", ".js", ".ts", ".ini", ".cfg", ".conf", ".env",
+    ".lock", ".gitignore",
+})
+
+
+@dataclass
+class SensitiveMatch:
+    """F012-C FR-1208: one sensitive pattern hit during pack publish scan."""
+    file: str  # relative to pack_dir
+    line: int  # 1-indexed
+    rule: str
+    excerpt: str  # the matched text
+
+
+@dataclass
+class PublishSummary:
+    """F012-C FR-1207: returned by publish_pack."""
+    pack_id: str
+    version: str
+    to_url: str
+    pushed: bool = False  # False on dry-run / cancel / sensitive-abort
+    skipped: bool = False  # True on cancel
+    sensitive_matches: list[SensitiveMatch] | None = None
+    binary_skipped_count: int = 0
+
+
+def sensitive_scan(pack_dir: Path) -> tuple[list[SensitiveMatch], int]:
+    """F012-C FR-1208: scan text files in pack_dir for sensitive content.
+
+    Returns (matches, n_binary_skipped). Only files with extensions in
+    TEXT_EXTENSIONS are scanned; others count toward n_binary_skipped (per ADR-D12-4 I-3 fix).
+    """
+    matches: list[SensitiveMatch] = []
+    binary_skipped = 0
+    for path in sorted(pack_dir.rglob("*")):
+        if not path.is_file():
+            continue
+        if ".git" in path.parts:
+            continue
+        if path.suffix.lower() not in TEXT_EXTENSIONS:
+            binary_skipped += 1
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="strict")
+        except (OSError, UnicodeDecodeError):
+            binary_skipped += 1
+            continue
+        rel = str(path.relative_to(pack_dir))
+        for line_num, line in enumerate(text.splitlines(), start=1):
+            for rule_name, pattern in SENSITIVE_RULES:
+                m = pattern.search(line)
+                if m:
+                    matches.append(SensitiveMatch(
+                        file=rel, line=line_num, rule=rule_name,
+                        excerpt=line.strip()[:80],
+                    ))
+    return matches, binary_skipped
+
+
+def _resolve_commit_author(commit_author: str | None) -> tuple[str, str]:
+    """F012-C ADR-D12-4 step 3 + Mi-4: resolve git commit author.
+
+    Priority: --commit-author "Name <email>" > git config user.name/email > fallback.
+    Returns (name, email). Fallback "Garage <garage-publish@local>" matches spec FR-1207 step 5.
+    """
+    if commit_author:
+        # Parse "Name <email>" format
+        m = re.match(r"^(.+?)\s*<(.+?)>$", commit_author.strip())
+        if m:
+            return (m.group(1).strip(), m.group(2).strip())
+        # Fallback: treat as name only
+        return (commit_author.strip(), "garage-publish@local")
+    # Try git config
+    try:
+        name = subprocess.run(
+            ["git", "config", "user.name"], capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        email = subprocess.run(
+            ["git", "config", "user.email"], capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        if name and email:
+            return (name, email)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+    # F-8 fix: rendered as "Garage <garage-publish@local>" matches spec FR-1207 step 5
+    return ("Garage", "garage-publish@local")
+
+
+def publish_pack(
+    workspace_root: Path,
+    pack_id: str,
+    to_url: str,
+    *,
+    yes: bool = False,
+    force: bool = False,
+    dry_run: bool = False,
+    no_update_source_url: bool = False,
+    commit_author: str | None = None,
+    commit_message: str | None = None,
+    stderr: IO[str] | None = None,
+    stdin: IO[str] | None = None,
+    stdout: IO[str] | None = None,
+) -> PublishSummary:
+    """F012-C FR-1207..1210: publish a pack to a git URL.
+
+    Phase A: sensitive_scan (matches + force gate)
+    Phase B: git ls-remote check (force-push risk awareness)
+    Phase C: prompt (skipped under --yes / --dry-run)
+    Phase D: actual publish (or dry-run no-push)
+    Phase E: writeback source_url (skipped under --no-update-source-url / --dry-run)
+
+    Flag matrix per FR-1207 r2 + ADR-D12-4 r2.
+    """
+    err = stderr if stderr is not None else sys.stderr
+    src_in = stdin if stdin is not None else sys.stdin
+    out = stdout if stdout is not None else sys.stdout
+
+    pack_dir = workspace_root / "packs" / pack_id
+    if not pack_dir.exists():
+        raise PackInstallError(f"Pack '{pack_id}' not installed at {pack_dir}")
+
+    # Read pack version
+    try:
+        local_raw = json.loads((pack_dir / "pack.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PackInstallError(f"Failed to read local pack.json: {exc}") from exc
+    version = str(local_raw.get("version", "0.0.0"))
+
+    # Phase A: sensitive scan
+    matches, binary_skipped = sensitive_scan(pack_dir)
+    if matches and not force:
+        # Default / --yes: --yes does NOT bypass sensitive (per FR-1207 r2 状态表)
+        print(
+            f"Sensitive content detected in pack '{pack_id}':", file=err,
+        )
+        for m in matches:
+            print(f"  {m.file}:{m.line} ({m.rule}): {m.excerpt}", file=err)
+        print(
+            f"({binary_skipped} binary/non-text files skipped). "
+            "Use --force to override at your own risk (B5 user-pact).",
+            file=err,
+        )
+        return PublishSummary(
+            pack_id=pack_id, version=version, to_url=to_url,
+            pushed=False, skipped=True,
+            sensitive_matches=matches, binary_skipped_count=binary_skipped,
+        )
+
+    # Phase B: remote check (FR-1207 step 3 + I-2 fix)
+    remote_has_refs = False
+    try:
+        result = subprocess.run(
+            ["git", "ls-remote", to_url],
+            capture_output=True, text=True, timeout=30,
+        )
+        remote_has_refs = bool(result.stdout.strip())
+    except (subprocess.SubprocessError, FileNotFoundError):
+        # Best-effort; if ls-remote fails, fall through to prompt
+        pass
+
+    # Phase C: prompt (skipped on --yes or --dry-run; FR-1209 dry-run implies yes)
+    effective_yes = yes or dry_run
+    if not effective_yes:
+        is_tty = getattr(src_in, "isatty", lambda: False)()
+        if not is_tty:
+            print(
+                "non-interactive shell detected; pass --yes to confirm publish",
+                file=err,
+            )
+            return PublishSummary(
+                pack_id=pack_id, version=version, to_url=to_url,
+                pushed=False, skipped=True,
+                sensitive_matches=matches, binary_skipped_count=binary_skipped,
+            )
+        # Prompt content per FR-1207 step 4
+        print(
+            f"Will publish '{pack_id}' v{version} to {to_url}:\n"
+            f"  - Force push to remote (will OVERWRITE existing content if any)\n"
+            f"  - {'Update' if not no_update_source_url else 'Keep'} packs/{pack_id}/pack.json source_url\n"
+            f"  - Sensitive scan: {'PASSED' if not matches else 'SKIPPED via --force'}\n"
+            + (f"WARNING: remote has existing refs:\n{result.stdout}\n" if remote_has_refs else "")
+            + "Continue? [y/N]: ",
+            end="", file=out, flush=True,
+        )
+        try:
+            answer = input("").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            answer = ""
+        if answer not in ("y", "yes"):
+            print("Cancelled.", file=out)
+            return PublishSummary(
+                pack_id=pack_id, version=version, to_url=to_url,
+                pushed=False, skipped=True,
+                sensitive_matches=matches, binary_skipped_count=binary_skipped,
+            )
+
+    # Phase D: actual publish
+    author_name, author_email = _resolve_commit_author(commit_author)
+    msg = commit_message or f"Publish {pack_id} v{version} from Garage"
+
+    with tempfile.TemporaryDirectory(prefix=f"garage-publish-{pack_id}-") as tmpdir:
+        tmp_repo = Path(tmpdir) / "repo"
+        # Copy pack to tmp_repo (skip .git/)
+        def _ignore_git(_src: str, names: list[str]) -> list[str]:
+            return [n for n in names if n == ".git"]
+        shutil.copytree(pack_dir, tmp_repo, ignore=_ignore_git)
+
+        # git init -b main (F-6 fix); fallback for older git
+        try:
+            subprocess.run(
+                ["git", "init", "-b", "main", "-q"],
+                cwd=tmp_repo, check=True, capture_output=True, text=True,
+            )
+        except subprocess.CalledProcessError:
+            # Older git (< 2.28): init then symbolic-ref
+            subprocess.run(["git", "init", "-q"], cwd=tmp_repo, check=True)
+            subprocess.run(
+                ["git", "symbolic-ref", "HEAD", "refs/heads/main"],
+                cwd=tmp_repo, check=True,
+            )
+
+        subprocess.run(["git", "add", "."], cwd=tmp_repo, check=True)
+        subprocess.run(
+            ["git", "-c", f"user.name={author_name}", "-c", f"user.email={author_email}",
+             "commit", "-q", "-m", msg],
+            cwd=tmp_repo, check=True,
+        )
+
+        if dry_run:
+            print(
+                f"DRY RUN: would push '{pack_id}' v{version} to {to_url} "
+                f"(commit by {author_name} <{author_email}>; "
+                f"{len(matches)} sensitive {'matches' if matches else 'free'}, "
+                f"{binary_skipped} binary skipped)",
+                file=out,
+            )
+            return PublishSummary(
+                pack_id=pack_id, version=version, to_url=to_url,
+                pushed=False, skipped=False,
+                sensitive_matches=matches, binary_skipped_count=binary_skipped,
+            )
+
+        # Real push
+        subprocess.run(
+            ["git", "remote", "add", "origin", to_url],
+            cwd=tmp_repo, check=True,
+        )
+        try:
+            subprocess.run(
+                ["git", "push", "--force", "origin", "main"],
+                cwd=tmp_repo, check=True, capture_output=True, text=True,
+            )
+            # Update remote HEAD to main (for bare remotes initialized with master default,
+            # so subsequent `git clone` checks out main automatically)
+            subprocess.run(
+                ["git", "push", "--force", "origin", "HEAD:main"],
+                cwd=tmp_repo, capture_output=True, text=True,
+            )
+            # Try to set remote HEAD symbolic ref via direct git (works on local file:// bare)
+            if to_url.startswith("file://"):
+                bare_path = to_url[len("file://"):]
+                try:
+                    subprocess.run(
+                        ["git", "symbolic-ref", "HEAD", "refs/heads/main"],
+                        cwd=bare_path, check=True, capture_output=True, text=True,
+                    )
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    pass  # best-effort; clone with --branch main still works
+        except subprocess.CalledProcessError as exc:
+            raise PackInstallError(
+                f"git push failed for {to_url}: {exc.stderr.strip()}"
+            ) from exc
+
+    # Phase E: writeback source_url
+    if not no_update_source_url:
+        local_raw["source_url"] = to_url
+        (pack_dir / "pack.json").write_text(
+            json.dumps(local_raw, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
+    return PublishSummary(
+        pack_id=pack_id, version=version, to_url=to_url,
+        pushed=True, skipped=False,
+        sensitive_matches=matches, binary_skipped_count=binary_skipped,
+    )
