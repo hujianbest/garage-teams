@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "pack_id": "coding",
-  "version": "0.2.0",
-  "description": "Garage 自带的 HarnessFlow 工程工作流 family pack：22 个 hf-* skills（discovery / experiment / spec / design / tasks / TDD / 各类 review / 各类 gate / hotfix / increment / finalize）+ 1 个 using-hf-workflow public entry，共 23 个 skill；外加 15 个 family-level 共享资产（packs/coding/skills/{docs,templates}/ 与 packs/coding/principles/）支撑 hf-* skill 内的相对引用。Phase 0 reverse-sync 自 hujianbest/harness-flow upstream（新增 hf-experiment skill + 3 篇 principles + feature-readme-template）。",
+  "version": "0.3.0",
+  "description": "Garage 自带的 HarnessFlow 工程工作流 family pack：23 个 hf-* skills（discovery / experiment / spec / design / tasks / TDD / 各类 review / 各类 gate / hotfix / increment / finalize / doc-freshness）+ 1 个 using-hf-workflow public entry，共 24 个 skill；外加 16 个 family-level 共享资产（packs/coding/skills/{docs,templates}/ 与 packs/coding/principles/）支撑 hf-* skill 内的相对引用。Phase 0 reverse-sync 自 hujianbest/harness-flow upstream（v0.3.0 同步：新增 hf-doc-freshness-gate skill + emergent-vs-upfront-patterns.md principle + ddd-tactical-modeling.md design reference）。",
   "skills": [
     "hf-bug-patterns",
     "hf-code-review",
@@ -10,6 +10,7 @@
     "hf-design",
     "hf-design-review",
     "hf-discovery-review",
+    "hf-doc-freshness-gate",
     "hf-experiment",
     "hf-finalize",
     "hf-hotfix",

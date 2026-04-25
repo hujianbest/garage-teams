@@ -45,10 +45,10 @@ Garage 自带的可分发 skills + agents 沉淀在仓库 `packs/<pack-id>/` 下
 | Pack | version | skills | agents | 用途 |
 |---|---|---|---|---|
 | `packs/garage/` | `0.2.0` | 3 | 1 | Getting-started 三件套：garage-hello（占位 sample）+ find-skills（发现新 skill）+ writing-skills（写新 skill）+ garage-sample-agent |
-| `packs/coding/` | `0.2.0` | 23 | 0 | HarnessFlow 工程工作流 family（22 hf-* + using-hf-workflow + 15 个 family-level 共享资产 docs/templates/principles；reverse-sync 自 hujianbest/harness-flow upstream Phase 0）|
+| `packs/coding/` | `0.3.0` | 24 | 0 | HarnessFlow 工程工作流 family（23 hf-* + using-hf-workflow + 16 个 family-level 共享资产 docs/templates/principles；reverse-sync 自 hujianbest/harness-flow upstream，v0.3.0 新增 hf-doc-freshness-gate）|
 | `packs/writing/` | `0.1.0` | 4 | 0 | 内容创作 family：blog-writing / humanizer-zh / hv-analysis / khazix-writer + family-level prompts/横纵分析法.md |
 
-合计 3 个 pack × 30 个 skill × 3 个宿主 = `garage init --hosts all` 物化 90 个 skill 文件 + 1 个 agent 文件（agent 仅装到 claude / opencode）。
+合计 3 个 pack × 31 个 skill × 3 个宿主 = `garage init --hosts all` 物化 93 个 skill 文件 + 1 个 agent 文件（agent 仅装到 claude / opencode）。
 
 ### 入口指针（FR-710 5 分钟冷读链）
 
