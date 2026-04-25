@@ -4103,3 +4103,91 @@ class TestPackPublishCommand:
         assert rc == 0
         captured = capsys.readouterr()
         assert "DRY RUN" in captured.out
+
+
+# ===========================================================================
+# F012-D T4: garage knowledge export --anonymize CLI tests
+# ===========================================================================
+
+
+class TestKnowledgeExportCommand:
+    """F012-D FR-1211..1213 + ADR-D12-5 r2."""
+
+    @staticmethod
+    def _seed(workspace: Path) -> None:
+        from datetime import datetime
+        from garage_os.knowledge.knowledge_store import KnowledgeStore
+        from garage_os.storage.file_storage import FileStorage
+        from garage_os.types import KnowledgeEntry, KnowledgeType
+        storage = FileStorage(workspace / ".garage")
+        KnowledgeStore(storage).store(KnowledgeEntry(
+            id="cli-001", type=KnowledgeType.DECISION, topic="t",
+            date=datetime(2026, 4, 25), tags=[],
+            content="email: alice@example.com api_key=sk-test123",
+        ))
+
+    def test_export_anonymize_via_cli(self, tmp_path: Path, capsys, monkeypatch) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        # Init garage
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed(workspace)
+
+        # Redirect HOME
+        fake_home = tmp_path / "fake-home"
+        fake_home.mkdir()
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+
+        rc = main([
+            "knowledge", "export", "--path", str(workspace), "--anonymize",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Exported 1 entries" in captured.out
+        assert "redacted" in captured.out
+        # Tarball exists in fake_home
+        exports_dir = fake_home / ".garage" / "exports"
+        tarballs = list(exports_dir.glob("*.tar.gz"))
+        assert len(tarballs) == 1
+
+    def test_export_dry_run_via_cli(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed(workspace)
+
+        rc = main([
+            "knowledge", "export", "--path", str(workspace),
+            "--anonymize", "--dry-run",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "DRY RUN" in captured.err
+
+    def test_export_without_anonymize_flag_argparse_required(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """--anonymize is argparse-required (FR-1211 only mode in F012)."""
+        with pytest.raises(SystemExit) as exc_info:
+            main(["knowledge", "export", "--path", str(tmp_path)])
+        assert exc_info.value.code != 0  # argparse rejects missing required arg
+
+    def test_export_custom_output_in_workspace_warns(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed(workspace)
+
+        output = workspace / "myexports"
+        rc = main([
+            "knowledge", "export", "--path", str(workspace),
+            "--anonymize", "--output", str(output),
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "WARNING" in captured.err

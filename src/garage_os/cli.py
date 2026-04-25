@@ -1730,6 +1730,52 @@ def _knowledge_link(
     return 0
 
 
+def _knowledge_export(
+    garage_root: Path,
+    *,
+    anonymize: bool,
+    output: str | None = None,
+    dry_run: bool = False,
+) -> int:
+    """F012-D FR-1211..1213 _knowledge_export entry."""
+    from garage_os.knowledge.exporter import export_anonymized
+
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    if not anonymize:
+        # F012 only supports --anonymize mode (other modes deferred D-1215+)
+        print(
+            "knowledge export requires --anonymize (other export modes deferred to F013+)",
+            file=sys.stderr,
+        )
+        return 1
+
+    output_dir = Path(output).resolve() if output else None
+
+    try:
+        summary = export_anonymized(
+            garage_root,
+            output_dir=output_dir,
+            dry_run=dry_run,
+        )
+    except OSError as exc:
+        print(f"Knowledge export failed: {exc}", file=sys.stderr)
+        return 1
+
+    total_redacted = sum(summary.rule_hit_counts.values())
+    if dry_run:
+        # stderr already printed details via export_anonymized
+        return 0
+    print(
+        f"Exported {summary.entry_count} entries ({total_redacted} sensitive matches redacted) "
+        f"to {summary.output_path}"
+    )
+    return 0
+
+
 def _knowledge_graph(garage_root: Path, *, eid: str) -> int:
     """Implement ``garage knowledge graph --id`` (FR-606)."""
     garage_dir = _require_garage(garage_root)
@@ -2082,6 +2128,26 @@ def build_parser() -> argparse.ArgumentParser:
     # knowledge list
     list_parser = knowledge_subparsers.add_parser(
         "list", help="List all knowledge entries", parents=[path_parser]
+    )
+
+    # F012-D FR-1211..1213: knowledge export --anonymize
+    knowledge_export_parser = knowledge_subparsers.add_parser(
+        "export",
+        help="Export knowledge to anonymized tarball",
+        parents=[path_parser],
+    )
+    knowledge_export_parser.add_argument(
+        "--anonymize", dest="knowledge_export_anonymize", action="store_true",
+        required=True,
+        help="Apply anonymize regex rules (currently the only supported export mode)",
+    )
+    knowledge_export_parser.add_argument(
+        "--output", dest="knowledge_export_output", default=None,
+        help="Output dir for tarball (default ~/.garage/exports/)",
+    )
+    knowledge_export_parser.add_argument(
+        "--dry-run", dest="knowledge_export_dry_run", action="store_true",
+        help="Print rule hit counts without writing tarball",
     )
 
     # F005: knowledge add / edit / show / delete (CLI authoring path)
@@ -2471,9 +2537,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
         if args.knowledge_command == "graph":
             return _knowledge_graph(root, eid=args.graph_id)
+        if args.knowledge_command == "export":
+            return _knowledge_export(
+                root,
+                anonymize=args.knowledge_export_anonymize,
+                output=args.knowledge_export_output,
+                dry_run=args.knowledge_export_dry_run,
+            )
         print(
             "Knowledge command requires one of: "
-            "search, list, add, edit, show, delete, link, graph",
+            "search, list, add, edit, show, delete, link, graph, export",
             file=sys.stderr,
         )
         return 1
