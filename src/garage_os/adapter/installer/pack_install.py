@@ -17,11 +17,13 @@ ADR-D11-7: ``garage pack ls`` output marker family with F007: ``Installed packs 
 
 from __future__ import annotations
 
+import contextlib
 import json
 import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO
@@ -30,6 +32,30 @@ from garage_os.adapter.installer.pack_discovery import (
     InvalidPackError,
     discover_packs,
 )
+
+
+@contextlib.contextmanager
+def _clone_pack_to_tempdir(git_url: str) -> Iterator[Path]:
+    """F012-B helper (ADR-D12-3 r2): shallow-clone a pack URL to temp dir, yield clone path,
+    auto-cleanup on exit (avoids dangling-Path bug from r1 design F-2)."""
+    with tempfile.TemporaryDirectory(prefix="garage-pack-clone-") as tmpdir:
+        clone_dst = Path(tmpdir) / "clone"
+        try:
+            subprocess.run(
+                ["git", "clone", "--depth=1", git_url, str(clone_dst)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError as exc:
+            raise PackInstallError(
+                f"git command not found in PATH (ASM-1101 requires git): {exc}"
+            ) from exc
+        except subprocess.CalledProcessError as exc:
+            raise PackInstallError(
+                f"git clone failed for {git_url}: {exc.stderr.strip()}"
+            ) from exc
+        yield clone_dst
 
 
 class PackInstallError(Exception):
@@ -71,25 +97,8 @@ def install_pack_from_url(
     """
     err = stderr if stderr is not None else sys.stderr
 
-    # Step 1: shallow clone to temp
-    with tempfile.TemporaryDirectory(prefix="garage-pack-clone-") as tmpdir:
-        clone_dst = Path(tmpdir) / "clone"
-        try:
-            subprocess.run(
-                ["git", "clone", "--depth=1", git_url, str(clone_dst)],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-        except FileNotFoundError as exc:
-            raise PackInstallError(
-                f"git command not found in PATH (ASM-1101 requires git): {exc}"
-            ) from exc
-        except subprocess.CalledProcessError as exc:
-            raise PackInstallError(
-                f"git clone failed for {git_url}: {exc.stderr.strip()}"
-            ) from exc
-
+    # Step 1: shallow clone to temp (T2 refactor: use _clone_pack_to_tempdir helper)
+    with _clone_pack_to_tempdir(git_url) as clone_dst:
         # Step 2: discover (treat clone_dst as a single pack root)
         pack_json_path = clone_dst / "pack.json"
         if not pack_json_path.is_file():
@@ -381,5 +390,183 @@ def uninstall_pack(
         n_files_removed=len(removed),
         n_hosts_affected=n_hosts,
         removed_paths=removed,
+        skipped=False,
+    )
+
+
+# ============================================================
+# F012-B — update_pack (T2)
+# ============================================================
+
+
+@dataclass
+class UpdateSummary:
+    """F012-B FR-1204: returned by update_pack."""
+
+    pack_id: str
+    old_version: str
+    new_version: str
+    skipped: bool = False  # True when already-up-to-date or interactive cancel
+    rolled_back: bool = False  # True on failure (rollback to old)
+
+
+def update_pack(
+    workspace_root: Path,
+    pack_id: str,
+    *,
+    yes: bool = False,
+    preserve_local_edits: bool = False,
+    stderr: IO[str] | None = None,
+    stdin: IO[str] | None = None,
+    stdout: IO[str] | None = None,
+) -> UpdateSummary:
+    """F012-B FR-1204..1206: re-clone from source_url + replace + sync host dirs.
+
+    Steps (ADR-D12-3 r2):
+    1. Read packs/<pack-id>/pack.json source_url
+    2. Shallow clone to temp via _clone_pack_to_tempdir
+    3. Compare versions; same → no-op; different → prompt or yes
+    4. Atomic replace packs/<pack-id>/ (tempdir backup + swap)
+    5. Re-run install_packs(force=True) to sync host dirs (ADR-D12-3 r2 F-5)
+    6. On failure: roll back from backup
+    """
+    from garage_os.adapter.installer.manifest import read_manifest
+    from garage_os.adapter.installer.pipeline import install_packs
+
+    err = stderr if stderr is not None else sys.stderr
+    src_in = stdin if stdin is not None else sys.stdin
+    out = stdout if stdout is not None else sys.stdout
+
+    pack_dir = workspace_root / "packs" / pack_id
+    if not pack_dir.exists():
+        raise PackInstallError(f"Pack '{pack_id}' not installed at {pack_dir}")
+
+    # Step 1: read local pack.json
+    local_pack_json_path = pack_dir / "pack.json"
+    try:
+        local_raw = json.loads(local_pack_json_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PackInstallError(f"Failed to read local pack.json: {exc}") from exc
+
+    source_url = local_raw.get("source_url")
+    old_version = str(local_raw.get("version", "0.0.0"))
+    if not source_url:
+        raise PackInstallError(
+            f"Pack '{pack_id}' has no source_url; was it installed via 'pack install'? "
+            "Local-only packs cannot be updated (use git pull / manual cp)."
+        )
+
+    # Step 2 + 3: clone + version compare
+    with _clone_pack_to_tempdir(source_url) as clone_dst:
+        new_pack_json_path = clone_dst / "pack.json"
+        if not new_pack_json_path.is_file():
+            raise PackInstallError(
+                f"Remote {source_url} no longer has pack.json"
+            )
+        try:
+            new_raw = json.loads(new_pack_json_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise PackInstallError(
+                f"Failed to parse remote pack.json: {exc}"
+            ) from exc
+
+        new_version = str(new_raw.get("version", "0.0.0"))
+        if new_version == old_version:
+            print(f"Pack '{pack_id}' already up to date (v{old_version})", file=out)
+            return UpdateSummary(
+                pack_id=pack_id,
+                old_version=old_version,
+                new_version=new_version,
+                skipped=True,
+            )
+
+        # Step 3.5: --preserve-local-edits warn (FR-1206)
+        if preserve_local_edits:
+            print(
+                "WARNING: --preserve-local-edits set; true 3-way merge deferred to "
+                "F013 D-1211. Proceeding with overwrite (your local edits will be lost).",
+                file=err,
+            )
+
+        # Step 3 prompt (FR-1204 BDD interactive cancel)
+        if not yes:
+            is_tty = getattr(src_in, "isatty", lambda: False)()
+            if not is_tty:
+                print(
+                    f"non-interactive shell detected; pass --yes to confirm update "
+                    f"v{old_version} → v{new_version}",
+                    file=err,
+                )
+                return UpdateSummary(
+                    pack_id=pack_id,
+                    old_version=old_version,
+                    new_version=new_version,
+                    skipped=True,
+                )
+            print(
+                f"Update '{pack_id}': v{old_version} → v{new_version}. "
+                "Continue? [y/N]: ",
+                end="",
+                file=out,
+                flush=True,
+            )
+            try:
+                answer = input("").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                answer = ""
+            if answer not in ("y", "yes"):
+                print("Cancelled.", file=out)
+                return UpdateSummary(
+                    pack_id=pack_id,
+                    old_version=old_version,
+                    new_version=new_version,
+                    skipped=True,
+                )
+
+        # Step 4: atomic replace (backup + swap)
+        backup_root = Path(tempfile.mkdtemp(prefix=f"garage-update-backup-{pack_id}-"))
+        backup_pack = backup_root / pack_id
+        shutil.copytree(pack_dir, backup_pack)
+
+        try:
+            # Remove old pack dir
+            shutil.rmtree(pack_dir)
+            # Copy new contents (clone_dst has fresh content; preserve source_url)
+            def _ignore_git(_src: str, names: list[str]) -> list[str]:
+                return [n for n in names if n == ".git"]
+            shutil.copytree(clone_dst, pack_dir, ignore=_ignore_git)
+            # Re-write source_url (preserved from local, in case remote pack.json doesn't have it)
+            new_installed_raw = json.loads((pack_dir / "pack.json").read_text(encoding="utf-8"))
+            new_installed_raw["source_url"] = source_url
+            (pack_dir / "pack.json").write_text(
+                json.dumps(new_installed_raw, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+
+            # Step 5: re-run install_packs(force=True) to sync host dirs
+            prior = read_manifest(workspace_root / ".garage")
+            if prior is not None and prior.installed_hosts:
+                install_packs(
+                    workspace_root,
+                    packs_root=workspace_root / "packs",
+                    hosts=list(prior.installed_hosts),
+                    force=True,
+                )
+        except Exception as exc:
+            # Roll back from backup
+            if pack_dir.exists():
+                shutil.rmtree(pack_dir)
+            shutil.copytree(backup_pack, pack_dir)
+            raise PackInstallError(
+                f"Update failed for {pack_id}, rolled back to v{old_version}: {exc}"
+            ) from exc
+        finally:
+            if backup_root.exists():
+                shutil.rmtree(backup_root)
+
+    return UpdateSummary(
+        pack_id=pack_id,
+        old_version=old_version,
+        new_version=new_version,
         skipped=False,
     )

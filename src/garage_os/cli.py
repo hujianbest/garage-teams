@@ -689,6 +689,38 @@ def _pack_uninstall(
     return 0
 
 
+def _pack_update(
+    workspace_root: Path,
+    *,
+    pack_id: str,
+    yes: bool = False,
+    preserve_local_edits: bool = False,
+) -> int:
+    """F012-B FR-1204..1206 _pack_update entry."""
+    from garage_os.adapter.installer.pack_install import (
+        PackInstallError,
+        update_pack,
+    )
+
+    try:
+        summary = update_pack(
+            workspace_root,
+            pack_id,
+            yes=yes,
+            preserve_local_edits=preserve_local_edits,
+        )
+    except PackInstallError as exc:
+        print(f"Pack update failed: {exc}", file=sys.stderr)
+        return 1
+
+    if summary.skipped:
+        return 0  # already up to date / interactive cancel
+    print(
+        f"Updated pack '{summary.pack_id}' from v{summary.old_version} to v{summary.new_version}"
+    )
+    return 0
+
+
 def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> int:
     """Run a Garage skill and record the experience.
 
@@ -1857,6 +1889,24 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run", dest="pack_uninstall_dry_run", action="store_true",
         help="Print what would be removed without changing any files",
     )
+    # F012-B FR-1204..1206: update
+    pack_update_parser = pack_subparsers.add_parser(
+        "update",
+        help="Update a pack from its source_url + sync host dirs",
+        parents=[path_parser],
+    )
+    pack_update_parser.add_argument(
+        "pack_id", help="Pack id to update (must have source_url in pack.json)"
+    )
+    pack_update_parser.add_argument(
+        "--yes", "-y", dest="pack_update_yes", action="store_true",
+        help="Skip interactive confirmation",
+    )
+    pack_update_parser.add_argument(
+        "--preserve-local-edits", dest="pack_update_preserve",
+        action="store_true",
+        help="Warn (no true 3-way merge yet, F013 D-1211); proceed with overwrite",
+    )
 
     # F010 session import (FR-1005/1006 + ADR-D10-7/8/9/10/11)
     session_parser = subparsers.add_parser(
@@ -2252,6 +2302,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 pack_id=args.pack_id,
                 yes=args.pack_uninstall_yes,
                 dry_run=args.pack_uninstall_dry_run,
+            )
+        if args.pack_command == "update":
+            return _pack_update(
+                root,
+                pack_id=args.pack_id,
+                yes=args.pack_update_yes,
+                preserve_local_edits=args.pack_update_preserve,
             )
         pack_parser.print_help()
         return 1

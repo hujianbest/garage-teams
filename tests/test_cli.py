@@ -3948,3 +3948,70 @@ class TestPackUninstallCommand:
         assert rc == 1
         captured = capsys.readouterr()
         assert "uninstall failed" in captured.err.lower()
+
+
+# ===========================================================================
+# F012-B T2: garage pack update CLI tests
+# ===========================================================================
+
+
+class TestPackUpdateCommand:
+    """F012-B FR-1204..1206 + ADR-D12-3 r2."""
+
+    @staticmethod
+    def _build_pack(repo: Path, pack_id: str, version: str) -> str:
+        import json, subprocess
+        (repo / "skills" / "h").mkdir(parents=True, exist_ok=True)
+        (repo / "skills" / "h" / "SKILL.md").write_text(
+            f"---\nname: h\ndescription: v{version}\n---\n# v{version}\n", encoding="utf-8",
+        )
+        (repo / "pack.json").write_text(json.dumps({
+            "schema_version": 1, "pack_id": pack_id, "version": version,
+            "description": f"v{version}", "skills": ["h"], "agents": [],
+        }), encoding="utf-8")
+        if not (repo / ".git").exists():
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+        subprocess.run(["git", "add", "."], cwd=repo, check=True)
+        subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=T", "commit", "-q",
+             "--allow-empty", "-m", f"v{version}"],
+            cwd=repo, check=True,
+        )
+        return f"file://{repo}"
+
+    def test_update_yes_via_cli(self, tmp_path: Path, capsys) -> None:
+        from garage_os.adapter.installer.pack_install import install_pack_from_url
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        repo = tmp_path / "src"
+        repo.mkdir()
+        url = self._build_pack(repo, "cli-update-test", "0.1.0")
+        install_pack_from_url(workspace, url)
+        # Bump remote
+        self._build_pack(repo, "cli-update-test", "0.2.0")
+
+        rc = main(["pack", "update", "--path", str(workspace), "cli-update-test", "--yes"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Updated pack 'cli-update-test'" in captured.out
+        assert "v0.1.0 to v0.2.0" in captured.out
+
+    def test_update_already_up_to_date(self, tmp_path: Path, capsys) -> None:
+        from garage_os.adapter.installer.pack_install import install_pack_from_url
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        repo = tmp_path / "src"
+        repo.mkdir()
+        url = self._build_pack(repo, "utd-test", "0.1.0")
+        install_pack_from_url(workspace, url)
+
+        rc = main(["pack", "update", "--path", str(workspace), "utd-test", "--yes"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "already up to date" in captured.out.lower()
+
+    def test_update_nonexistent_exits_1(self, tmp_path: Path, capsys) -> None:
+        rc = main(["pack", "update", "--path", str(tmp_path), "nonexistent", "--yes"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "update failed" in captured.err.lower()
