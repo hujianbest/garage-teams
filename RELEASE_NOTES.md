@@ -4,6 +4,85 @@
 
 ---
 
+## F012 — Pack Lifecycle 完整化 (uninstall + update + publish + knowledge export 脱敏 + F009 carry-forward)
+
+- 状态: ✅ 完成 (closed by hf-finalize 2026-04-25)
+- Workflow Profile: `full` (5 task T1-T5 + spec r2 + design r3 + tasks self-approved + post-implementation review chain)
+- Branch / PR: `cursor/f012-pack-lifecycle-bf33` / TBD
+
+### 用户可见变化
+
+**A. `garage pack uninstall <pack-id>`** (FR-1201..1203):
+- 三步 transaction (plan / confirm / execute) atomic, 反向 install + atomic rollback
+- B5 user-pact: 默认 prompt; `--yes` opt-in; `--dry-run` 仅 print plan
+- Touch boundary: 仅 `packs/<id>/` + host-installer.json + host 目录映射文件; 不读不写 sync-manifest / knowledge / experience / sessions / contracts / platform.json / host-adapter.json
+- 反向清 F010 sidecar (references/ assets/ evals/ scripts/)
+
+**B. `garage pack update <pack-id>`** (FR-1204..1206):
+- 从 source_url 重新 shallow clone, 比对版本; 同 → no-op; 不同 → atomic 替换 + `install_packs(force=True)` 反向同步 host
+- B5 user-pact: 默认 prompt; `--yes` opt-in; `--preserve-local-edits` 仅 warn (true 3-way merge deferred D-1211)
+- 失败滚回原版本 (atomic backup)
+- 复用 F011 install 内部 `_clone_pack_to_tempdir` contextmanager helper (refactor; F011 install 外部契约不变)
+
+**C. `garage pack publish <pack-id> --to <git-url>`** (FR-1207..1210):
+- shallow git init -b main + commit + push --force; bare remote HEAD update (best-effort)
+- **隐私自检 (sensitive_scan)**: 5 类 SENSITIVE_RULES (password / api_key / secret / token / private_key) 命中 → default abort + stderr 列出文件 + 行号 + 规则名
+- **9 行 flag 状态表**: `--yes` 不绕 sensitive (强约束); `--force` 仅绕 sensitive 不绕主 prompt (弱约束); `--dry-run` 隐含 `--yes`
+- **Force-push 风险告知**: `git ls-remote` 检测后 prompt WARNING 显式
+- **Author 决议**: `--commit-author "Name <email>"` > git config user.name/email > fallback `Garage <garage-publish@local>`
+- `--commit-message` 自定义 commit msg; `--no-update-source-url` 保留本地 source_url
+- 文本扩展 allowlist 16 类 (binary skip + 计数)
+
+**D. `garage knowledge export --anonymize`** (FR-1211..1213):
+- 7 类 ANONYMIZE_RULES (5 base 与 SENSITIVE_RULES 1:1 + email + sha1_hash 专属)
+- Mixed strategy (ADR-D12-5 r2): KnowledgeStore.list_entries 拿 metadata + filesystem read 拿原 markdown bytes; front matter 不动, 仅 body 脱敏
+- 默认 output `~/.garage/exports/knowledge-<ISO ts>.tar.gz` (workspace 外); workspace 内 path + .gitignore 不含 → stderr WARN
+- `--dry-run` 仅 print 命中规则统计
+- 用户 `~/.garage/anonymize-patterns.txt` 加 extra regex (一行一条 + `#` 注释, invalid skip)
+
+**E. F009 carry-forward — VersionManager registry** (FR-1214):
+- 注册 host-installer schema 1→2 migration 到 `_MIGRATION_REGISTRY[(1, 2)]` (与 F001 platform.json / host-adapter.json 同模式)
+- `VersionManager.SUPPORTED_VERSIONS = [1, 2]`
+- F009 既有 `read_manifest` fast-path 字节级不变 (双源等价: dict-form 用于 registry, dataclass-form 用于 fast-path)
+
+### 数据与契约影响
+
+- 新增 `src/garage_os/adapter/installer/pack_install.py`: + `UninstallSummary` / `UpdateSummary` / `PublishSummary` / `SensitiveMatch` dataclass + `uninstall_pack` / `update_pack` / `publish_pack` / `sensitive_scan` / `_resolve_commit_author` / `_clone_pack_to_tempdir` (refactor)
+- 新增 `src/garage_os/knowledge/exporter.py`: ANONYMIZE_RULES (7 类) + `load_user_extra_rules` + `ExportSummary` + `_split_front_matter` + `_anonymize_body` + `export_anonymized`
+- 改 `src/garage_os/adapter/installer/manifest.py`: 加 `_migrate_v1_to_v2_dict_form` + `@register_migration(1, 2)` decorator
+- 改 `src/garage_os/platform/version_manager.py`: `SUPPORTED_VERSIONS: List[int] = [1, 2]` (was [1])
+- 新增 CLI subcommands: `pack uninstall` / `pack update` / `pack publish` / `knowledge export --anonymize`
+- `pack.json` schema 不变 (F011 既有 source_url 字段沿用)
+- 新增测试: 5 文件 (test_pack_uninstall + test_pack_update + test_sensitive_scan + test_pack_publish + test_exporter + test_manifest_migration_registry) + 4 CLI test classes
+- 测试基线: 859 → **928 passed** (+69, 0 regressions)
+- `git diff main..HEAD -- pyproject.toml uv.lock` = 0 (CON-1206 零依赖变更)
+
+### 完整 review/gate 链路
+
+| Stage | Verdict |
+|---|---|
+| hf-spec-review (r1+r2) | r1 APPROVE_WITH_FINDINGS (11 finding) → r2 APPROVED (0 finding) |
+| hf-design-review (r1+r2) | r1 CHANGES_REQUESTED (10 finding incl. 1 critical) → r2 APPROVED (0 finding) |
+| hf-tasks-review | auto-streamlined (per F011 mode) |
+| hf-test-driven-dev T1-T5 | 5 task commits, ~69 new tests, 0 regression |
+| hf-test/code/traceability-review | post-implementation chain (T5 finalize stage) |
+| hf-regression-gate | PASS (928 passed; ruff baseline diff 0) |
+| hf-completion-gate | COMPLETE |
+| hf-finalize | ✅ closed |
+
+### Carry-forward (F013+)
+
+- D-1210: GitHub OAuth + GitLab token auto-detect
+- D-1211: 真实 3-way merge (`pack update --preserve-local-edits`)
+- D-1212: pack signature / GPG (F011 D-3 carry-over)
+- D-1213: monorepo (多 pack from 同 URL, F011 D-2)
+- D-1214: pack info / pack search (lifecycle add candidates)
+- D-1215: 反向 import + experience export (knowledge export 配套)
+- D-1216: publish 自动跑 hf-doc-freshness-gate skill (PR #32 evaluator pattern)
+- D-1217: publish multi-author / signed commit / GPG / commit footer template
+
+---
+
 ## F011 — KnowledgeType.STYLE + 2 production agents + `garage pack install` (P1 三合一)
 
 - 状态: ✅ 完成 (closed by hf-finalize 2026-04-24)

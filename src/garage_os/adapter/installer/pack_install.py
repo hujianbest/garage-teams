@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -575,8 +576,6 @@ def update_pack(
 # ============================================================
 # F012-C — publish_pack + sensitive_scan (T3)
 # ============================================================
-
-import re
 
 # F012 ADR-D12-4 r2 SENSITIVE_RULES: 5 categories scanned at publish time.
 # Patterns allow optional surrounding quotes (handles JSON / YAML / .env styles).

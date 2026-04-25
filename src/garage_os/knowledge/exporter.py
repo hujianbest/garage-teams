@@ -12,19 +12,17 @@ ANONYMIZE_RULES = 7 categories:
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 import tarfile
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import IO
 
 from garage_os.knowledge.knowledge_store import KnowledgeStore
 from garage_os.storage.file_storage import FileStorage
-
 
 # F012 ADR-D12-5 r2 + spec FR-1212: 7 categories
 # 5 base shared with SENSITIVE_RULES (pack_install.py, T3); 2 anonymize-specific (email, sha1_hash).
@@ -185,7 +183,7 @@ def export_anonymized(
 
     # Real export: write tarball
     output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).replace(microsecond=0, tzinfo=None).isoformat() + "Z"
+    timestamp = datetime.now(UTC).replace(microsecond=0, tzinfo=None).isoformat() + "Z"
     safe_ts = timestamp.replace(":", "")  # filename-safe
     tarball_path = output_dir / f"knowledge-{safe_ts}.tar.gz"
 
