@@ -3881,3 +3881,70 @@ class TestPackLsCommand:
             assert pack_id in captured.out
         # All show '[local]' since no source_url
         assert "[local]" in captured.out
+
+
+# ===========================================================================
+# F012-A T1: garage pack uninstall CLI tests
+# ===========================================================================
+
+
+class TestPackUninstallCommand:
+    """F012-A FR-1201..1203 + ADR-D12-2."""
+
+    @staticmethod
+    def _build_and_install(workspace: Path, repo: Path, pack_id: str = "cli-uninstall-test") -> None:
+        import json
+        import subprocess
+        from garage_os.adapter.installer.pack_install import install_pack_from_url
+        from garage_os.adapter.installer.pipeline import install_packs
+
+        (repo / "skills" / "h").mkdir(parents=True)
+        (repo / "skills" / "h" / "SKILL.md").write_text(
+            "---\nname: h\ndescription: minimal\n---\n# H\n", encoding="utf-8",
+        )
+        (repo / "pack.json").write_text(json.dumps({
+            "schema_version": 1, "pack_id": pack_id, "version": "0.1.0",
+            "description": "x", "skills": ["h"], "agents": [],
+        }), encoding="utf-8")
+        subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+        subprocess.run(["git", "add", "."], cwd=repo, check=True)
+        subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=T", "commit", "-q", "-m", "init"],
+            cwd=repo, check=True,
+        )
+        install_pack_from_url(workspace, f"file://{repo}")
+        install_packs(workspace, packs_root=workspace / "packs", hosts=["claude"])
+
+    def test_uninstall_yes_via_cli(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        repo = tmp_path / "src"
+        repo.mkdir()
+        self._build_and_install(workspace, repo, "cli-test")
+
+        rc = main(["pack", "uninstall", "--path", str(workspace), "cli-test", "--yes"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Uninstalled pack 'cli-test'" in captured.out
+        assert not (workspace / "packs" / "cli-test").exists()
+
+    def test_uninstall_dry_run_via_cli(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        repo = tmp_path / "src"
+        repo.mkdir()
+        self._build_and_install(workspace, repo, "dry-cli-test")
+
+        rc = main(["pack", "uninstall", "--path", str(workspace), "dry-cli-test", "--dry-run"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "DRY RUN" in captured.out
+        assert (workspace / "packs" / "dry-cli-test").exists()
+
+    def test_uninstall_nonexistent_exits_1(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        rc = main(["pack", "uninstall", "--path", str(workspace), "nonexistent", "--yes"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "uninstall failed" in captured.err.lower()

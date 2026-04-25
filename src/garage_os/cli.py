@@ -656,6 +656,39 @@ def _pack_ls(workspace_root: Path) -> int:
     return 0
 
 
+def _pack_uninstall(
+    workspace_root: Path,
+    *,
+    pack_id: str,
+    yes: bool = False,
+    dry_run: bool = False,
+) -> int:
+    """F012-A FR-1201..1203 _pack_uninstall entry."""
+    from garage_os.adapter.installer.pack_install import (
+        PackInstallError,
+        uninstall_pack,
+    )
+
+    try:
+        summary = uninstall_pack(
+            workspace_root,
+            pack_id,
+            dry_run=dry_run,
+            yes=yes,
+        )
+    except PackInstallError as exc:
+        print(f"Pack uninstall failed: {exc}", file=sys.stderr)
+        return 1
+
+    if summary.skipped:
+        return 0
+    print(
+        f"Uninstalled pack '{summary.pack_id}' from {summary.n_hosts_affected} hosts "
+        f"({summary.n_files_removed} files removed)"
+    )
+    return 0
+
+
 def _run(garage_root: Path, skill_name: str, timeout: int = 300) -> int:
     """Run a Garage skill and record the experience.
 
@@ -1807,6 +1840,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="List installed packs (id, version, source URL)",
         parents=[path_parser],
     )
+    # F012-A FR-1201..1203: uninstall
+    pack_uninstall_parser = pack_subparsers.add_parser(
+        "uninstall",
+        help="Uninstall a pack (reverse of install + garage init)",
+        parents=[path_parser],
+    )
+    pack_uninstall_parser.add_argument(
+        "pack_id", help="Pack id to uninstall (must be in packs/)"
+    )
+    pack_uninstall_parser.add_argument(
+        "--yes", "-y", dest="pack_uninstall_yes", action="store_true",
+        help="Skip interactive confirmation",
+    )
+    pack_uninstall_parser.add_argument(
+        "--dry-run", dest="pack_uninstall_dry_run", action="store_true",
+        help="Print what would be removed without changing any files",
+    )
 
     # F010 session import (FR-1005/1006 + ADR-D10-7/8/9/10/11)
     session_parser = subparsers.add_parser(
@@ -2196,6 +2246,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return _pack_install(root, git_url=args.git_url)
         if args.pack_command == "ls":
             return _pack_ls(root)
+        if args.pack_command == "uninstall":
+            return _pack_uninstall(
+                root,
+                pack_id=args.pack_id,
+                yes=args.pack_uninstall_yes,
+                dry_run=args.pack_uninstall_dry_run,
+            )
         pack_parser.print_help()
         return 1
 

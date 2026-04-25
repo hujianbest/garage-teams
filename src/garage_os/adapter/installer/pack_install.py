@@ -181,3 +181,205 @@ def list_installed_packs(workspace_root: Path) -> list[dict[str, str]]:
             }
         )
     return sorted(out, key=lambda d: d["pack_id"])
+
+
+# ============================================================
+# F012-A — uninstall_pack (T1)
+# ============================================================
+
+
+@dataclass
+class UninstallSummary:
+    """F012-A FR-1201: returned by uninstall_pack."""
+
+    pack_id: str
+    n_files_removed: int
+    n_hosts_affected: int
+    removed_paths: list[str]
+    skipped: bool = False  # True when --dry-run or interactive cancel
+
+
+def uninstall_pack(
+    workspace_root: Path,
+    pack_id: str,
+    *,
+    dry_run: bool = False,
+    yes: bool = False,
+    stderr: IO[str] | None = None,
+    stdin: IO[str] | None = None,
+    stdout: IO[str] | None = None,
+) -> UninstallSummary:
+    """F012-A FR-1201..1203: reverse of install_pack_from_url + garage init.
+
+    Three-step transaction (ADR-D12-2 r2):
+      1. Plan phase (read-only): list files to remove from host-installer.json files[]
+      2. Confirm phase: print plan + interactive prompt (unless --yes / --dry-run)
+      3. Execute phase: delete files + sidecars + empty parent dirs + packs/<id>/ + manifest update
+
+    Touch boundary (CON-1205 + HYP-1206 + INV-F12-9): only touches packs/<id>/,
+    .garage/config/host-installer.json, and host directory mapped files. Never reads
+    or writes sync-manifest.json, knowledge/, experience/, sessions/, contracts/,
+    platform.json, or host-adapter.json.
+    """
+    import sys
+    from garage_os.adapter.installer.manifest import (
+        Manifest,
+        ManifestFileEntry,
+        read_manifest,
+        write_manifest,
+    )
+
+    err = stderr if stderr is not None else sys.stderr
+    src_in = stdin if stdin is not None else sys.stdin
+    out = stdout if stdout is not None else sys.stdout
+
+    packs_dir = workspace_root / "packs"
+    pack_dir = packs_dir / pack_id
+    if not pack_dir.exists():
+        raise PackInstallError(f"Pack '{pack_id}' not installed at {pack_dir}")
+
+    # Phase 1: plan
+    garage_dir = workspace_root / ".garage"
+    manifest = read_manifest(garage_dir)
+    pack_entries: list[ManifestFileEntry] = []
+    if manifest is not None:
+        pack_entries = [e for e in manifest.files if e.pack_id == pack_id]
+
+    files_to_remove: list[Path] = [pack_dir]
+    sidecar_dirs_to_remove: list[Path] = []
+    skill_dirs_to_remove: set[Path] = set()
+    hosts_affected: set[str] = set()
+
+    for entry in pack_entries:
+        dst_path = Path(entry.dst)
+        files_to_remove.append(dst_path)
+        hosts_affected.add(entry.host)
+        # If SKILL.md, also remove skill dir + sidecars (references/ assets/ evals/ scripts/)
+        # F010 PR #30 _sync_skill_sidecars copies these; uninstall reverses
+        if dst_path.name == "SKILL.md":
+            skill_dir = dst_path.parent
+            for sidecar_name in ("references", "assets", "evals", "scripts"):
+                sidecar_dir = skill_dir / sidecar_name
+                if sidecar_dir.is_dir():
+                    sidecar_dirs_to_remove.append(sidecar_dir)
+            skill_dirs_to_remove.add(skill_dir)
+
+    plan_paths = (
+        [str(p) for p in files_to_remove]
+        + [str(d) for d in sidecar_dirs_to_remove]
+        + [str(d) for d in sorted(skill_dirs_to_remove)]
+    )
+    n_files = len(files_to_remove)
+    n_hosts = len(hosts_affected)
+
+    # Phase 2: confirm
+    if dry_run:
+        print(f"DRY RUN: would remove {n_files} files from {n_hosts} hosts:", file=out)
+        for path in plan_paths:
+            print(f"  would remove {path}", file=out)
+        return UninstallSummary(
+            pack_id=pack_id,
+            n_files_removed=0,
+            n_hosts_affected=n_hosts,
+            removed_paths=plan_paths,
+            skipped=True,
+        )
+
+    if not yes:
+        # Interactive prompt (B5 user-pact)
+        is_tty = getattr(src_in, "isatty", lambda: False)()
+        if not is_tty:
+            print(
+                "non-interactive shell detected; pass --yes to confirm uninstall",
+                file=err,
+            )
+            return UninstallSummary(
+                pack_id=pack_id,
+                n_files_removed=0,
+                n_hosts_affected=n_hosts,
+                removed_paths=[],
+                skipped=True,
+            )
+        print(
+            f"Will remove pack '{pack_id}': {n_files} files from {n_hosts} hosts. "
+            "Continue? [y/N]: ",
+            end="",
+            file=out,
+            flush=True,
+        )
+        try:
+            answer = input("").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            answer = ""
+        if answer not in ("y", "yes"):
+            print("Cancelled.", file=out)
+            return UninstallSummary(
+                pack_id=pack_id,
+                n_files_removed=0,
+                n_hosts_affected=n_hosts,
+                removed_paths=[],
+                skipped=True,
+            )
+
+    # Phase 3: execute (atomic — back up packs/<id>/ to temp, restore on failure)
+    backup_root: Path | None = None
+    if pack_dir.exists():
+        backup_root = Path(tempfile.mkdtemp(prefix=f"garage-uninstall-backup-{pack_id}-"))
+        backup_pack = backup_root / pack_id
+        shutil.copytree(pack_dir, backup_pack)
+
+    removed: list[str] = []
+    try:
+        # 1. Delete sidecar dirs
+        for sidecar in sidecar_dirs_to_remove:
+            if sidecar.exists():
+                shutil.rmtree(sidecar)
+                removed.append(str(sidecar))
+        # 2. Delete dst files
+        for dst in files_to_remove:
+            if dst == pack_dir:
+                continue  # delete pack_dir last
+            if dst.is_file() or dst.is_symlink():
+                dst.unlink()
+                removed.append(str(dst))
+        # 3. Remove empty skill dirs
+        for skill_dir in sorted(skill_dirs_to_remove, reverse=True):
+            if skill_dir.exists() and not any(skill_dir.iterdir()):
+                skill_dir.rmdir()
+                removed.append(str(skill_dir))
+        # 4. Remove packs/<pack-id>/
+        if pack_dir.exists():
+            shutil.rmtree(pack_dir)
+            removed.append(str(pack_dir))
+        # 5. Update host-installer.json (drop entries for this pack)
+        if manifest is not None and pack_entries:
+            new_files = [e for e in manifest.files if e.pack_id != pack_id]
+            new_packs = [p for p in manifest.installed_packs if p != pack_id]
+            new_manifest = Manifest(
+                schema_version=manifest.schema_version,
+                installed_hosts=manifest.installed_hosts,
+                installed_packs=new_packs,
+                installed_at=manifest.installed_at,
+                files=new_files,
+            )
+            write_manifest(garage_dir, new_manifest)
+    except Exception as exc:
+        # Restore backup if available
+        if backup_root is not None:
+            backup_pack = backup_root / pack_id
+            if backup_pack.exists():
+                if pack_dir.exists():
+                    shutil.rmtree(pack_dir)
+                shutil.copytree(backup_pack, pack_dir)
+        raise PackInstallError(f"Uninstall failed for {pack_id}, rolled back: {exc}") from exc
+    finally:
+        if backup_root is not None and backup_root.exists():
+            shutil.rmtree(backup_root)
+
+    return UninstallSummary(
+        pack_id=pack_id,
+        n_files_removed=len(removed),
+        n_hosts_affected=n_hosts,
+        removed_paths=removed,
+        skipped=False,
+    )
