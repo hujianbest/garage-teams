@@ -1,6 +1,6 @@
 # F014 Design — Workflow Recall (技术设计)
 
-- **状态**: 草稿 r1 (待 hf-design-review)
+- **状态**: 草稿 r2 (回应 design-review-F014-r1; 2 critical + 3 important + 1 minor + 2 nit 全部闭合; 待 r2 hf-design-review)
 - **关联 spec**: `docs/features/F014-workflow-recall.md` r2 (commit `46e9048`, APPROVED 2026-04-26)
 - **基线**: main `f5950b4` (989 passed, F013-A 已 merge)
 - **日期**: 2026-04-26
@@ -117,17 +117,24 @@ Hook 接入 (Cr-1 r2): 5 caller 末尾 try/except invoke `WorkflowRecallHook.inv
 - 5 个 caller 中失败任一不阻断 caller (try/except + best-effort)
 - 任意遗漏路径用户 `--rebuild-cache` 兜底
 
-### Caller 接入点 (5 处)
+### Caller 接入点 (4 处, r2 修订)
 
-| Caller 文件 | 行号 | 接入点描述 |
-|---|---|---|
-| `src/garage_os/runtime/session_manager.py` | `_trigger_memory_extraction` 末尾 (~ L271+) | F003 archive 路径; 在 F013-A SkillMiningHook 调用之后 |
-| `src/garage_os/cli.py` | `_experience_add` 在 `experience_index.store(record)` 后 | 用户显式 `garage experience add` |
-| `src/garage_os/memory/publisher.py` | `experience_index.store(record)` 后 (~ L136-138) | F003 publisher 路径 |
-| `src/garage_os/knowledge/integration.py` | `experience_index.store(record)` 后 (~ L222) | F006 integration 路径 |
-| `src/garage_os/ingest/pipeline.py` | F013-A SkillMiningHook 接入位置之后 | F010 ingest 路径 |
+设计 r1 写 5 处, reviewer 发现 (a) 还有第 6 处 `cli.py:1172` skill 执行路径 (Cr-1); (b) `ingest/pipeline.py` 实际不直接 store, 是 publisher 间接 (Cr-2); (c) `publisher.py` 既有 store 也有 update 路径 (Im-1). r2 重新锁定 4 个真实接入点:
 
-每处都是单行 try/except 包装 + 最多 5 行新代码; 不改 caller 既有 method 签名.
+| # | Caller 文件 | 行号 | 接入点描述 | 备注 |
+|---|---|---|---|---|
+| 1 | `src/garage_os/runtime/session_manager.py` | `_trigger_memory_extraction` 末尾 (~ L268-277, F013-A SkillMiningHook 之后) | F003 archive 路径 | 注: archive 自身不直接调 EI.store; 但 archive 触发 publisher → store, 这处 hook 是冗余的 archive-level 兜底 (确保 archive 后 cache 失效). 也可省略, 因为 publisher 已有 hook (条目 3) |
+| 2 | `src/garage_os/cli.py` `_experience_add` | `experience_index.store(record)` 后 (~ L1741) | 用户显式 `garage experience add` | 单行 try/except 包 |
+| 3 | `src/garage_os/memory/publisher.py` | `if-else 分支末尾` (~ L143 后, 覆盖 store + update 两路径) | F003 publisher 路径 | **r2 Im-1 修订**: 不在 L138 单行挂; 改在 if-else **共同末尾** (publisher 决策 store 还是 update 之后), 覆盖 update 内部调 self.store 的间接路径 |
+| 4 | `src/garage_os/knowledge/integration.py` | `experience_index.store(experience)` 后 (~ L222) | F006 integration 路径 | 单行 try/except 包 |
+
+**r2 删除的 r1 接入点**:
+- ~~`ingest/pipeline.py`~~ (Cr-2): 该文件无 `experience_index.store`; ingest 路径下游通过 publisher (条目 3) 间接触发 invalidate; 不需要重复挂
+
+**r2 排除的 caller** (Cr-1 USER-INPUT 决策, auto mode 默认锁定方案 b):
+- ~~`cli.py:1172`~~ (skill execution record path): 显式排除. **理由**: 该路径记录的是 single skill 调用本身 (例 `garage run hf-specify`), 不是 cycle-level task path. workflow recall 的 advisory 单位是 cycle-level 路径 (例 hf-specify → hf-design → hf-tasks → hf-test-driven-dev), 不是单 skill. 用户在该路径写的 record `task_type` 通常是 "skill_run" 或类似, 与 PathRecaller 的 (task_type, problem_domain) 聚类语义不匹配. 用户用 `--rebuild-cache` 兜底.
+
+每处都是 1-3 行 try/except 包装 + 不改 caller 既有 method 签名.
 
 ### 失败语义
 
@@ -218,12 +225,16 @@ def recall(records: list[ExperienceRecord], task_type, problem_domain, skill_id,
 - 既有 BDD 仍过 (router workflow 文档化无运行时测试, 但有 `tests/adapter/installer/test_dogfood_invariance_F009.py` SHA sentinel)
 - 改动局限 = 加约 30 行 SKILL.md 内容 (step 3.5 描述 + handoff 块 advisory 段说明)
 
-### Im-3 r2 dogfood SHA 同步流程
+### Im-3 r2 dogfood SHA 同步流程 (Im-2 design-r2 修订: 2 处而非 3 处)
 
-T5 必须更新 3 处 hash 在 `tests/adapter/installer/dogfood_baseline/skill_md_sha256.json`:
-1. `packs/coding/skills/hf-workflow-router/SKILL.md` (源)
-2. `.cursor/skills/hf-workflow-router/SKILL.md` (dogfood mirror, 由 `garage init --hosts cursor` 生成; T5 跑 `bash scripts/setup-agent-skills.sh` 重生)
-3. `.claude/skills/hf-workflow-router/SKILL.md` (dogfood mirror, 由 `garage init --hosts claude` 生成)
+reviewer 发现 `tests/adapter/installer/dogfood_baseline/skill_md_sha256.json` **只有** 2 个 hf-workflow-router 键 (`.claude/skills/hf-workflow-router/SKILL.md` + `.cursor/skills/hf-workflow-router/SKILL.md`), **不追踪** `packs/coding/skills/hf-workflow-router/SKILL.md` 源 hash. 与 F009 既有约定一致 (sentinel 验证的是 dogfood install 产物 byte 一致, 不是源).
+
+T5 流程:
+1. 改 `packs/coding/skills/hf-workflow-router/SKILL.md` (源, 加 step 3.5 内容)
+2. 跑 `garage init --hosts cursor,claude --yes` (重生 `.claude/` + `.cursor/` mirror)
+3. 计算 `.claude/skills/hf-workflow-router/SKILL.md` 与 `.cursor/skills/hf-workflow-router/SKILL.md` 的 SHA-256
+4. 更新 `tests/adapter/installer/dogfood_baseline/skill_md_sha256.json` 中**这 2 个键**的 hash
+5. 跑 `pytest tests/adapter/installer/test_dogfood_invariance_F009.py` 验证 PASS
 
 ## 8. ADR-D14-7 — 任务分块 (T1-T5 与 spec § 9 1:1)
 
@@ -235,7 +246,7 @@ T5 必须更新 3 处 hash 在 `tests/adapter/installer/dogfood_baseline/skill_m
 | **T2** | `workflow_recall/path_recaller.py` (Counter 算法 + 阈值 3 + window 10 + Im-4 --skill-id 子序列) + 12 测试 + 1 perf | 13 | T1 | FR-1401; INV-F14-1 (read-only on EI); CON-1403 (1000 record < 2s) |
 | **T3** | `workflow_recall/pipeline.py` (`WorkflowRecallHook.invalidate` + `compute_status_summary`) + 5 caller 接入 + `garage status` 集成 + 6 测试 | 6 | T1+T2 | FR-1404 (Cr-1 多 caller invalidate); FR-1405 (status 段); CON-1401 (caller try/except 不破 method 签名) |
 | **T4** | CLI `garage recall workflow` (含 --task-type / --problem-domain / --skill-id / --top-k / --json / --rebuild-cache) + 8 测试 | 8 | T1-T3 | FR-1402; CON-1405 (与 F006 recommend 独立) |
-| **T5** | hf-workflow-router/SKILL.md step 3.5 + references/recall-integration.md + dogfood SHA baseline 同步更新 + AGENTS / RELEASE_NOTES + manual smoke + 5 测试 | 5 | T1-T4 | FR-1403 (router 集成); INV-F14-5 (additive); CON-1404 (3 项守门: dogfood SHA + neutrality + 基线) |
+| **T5** | hf-workflow-router/SKILL.md step 3.5 + references/recall-integration.md + dogfood SHA baseline 同步更新 (**Mi-1 r2: 5 测试**) + AGENTS / RELEASE_NOTES + manual smoke | 5 | T1-T4 | FR-1403 (router 集成); INV-F14-5 (additive); CON-1404 (3 项守门: dogfood SHA + neutrality + 基线) |
 
 预估总测试: **~40** (基线 main `f5950b4` 989 → 1029 passed; 实施前再核 Mi-2 r2)
 
@@ -266,7 +277,7 @@ T5 必须更新 3 处 hash 在 `tests/adapter/installer/dogfood_baseline/skill_m
 | CON | spec 要求 | 设计守门方法 |
 |---|---|---|
 | **CON-1401** | F003-F013 既有 API + schema 字节级不变 | T3 caller 接入用 try/except 包不改 5 个 caller 既有 method 签名; T2 不改 ExperienceIndex |
-| **CON-1402** | 零依赖变更 | T1-T5 全 stdlib (collections.Counter / json / pathlib / dataclasses); 单测 sentinel: `git diff main..HEAD -- pyproject.toml uv.lock` = 0 |
+| **CON-1402** (Ni-1 r2 修订) | 零依赖变更 | 无新第三方依赖 (T1-T5 仅 import garage_os 本库 + stdlib `collections.Counter` / `json` / `pathlib` / `dataclasses`); 单测 sentinel: `git diff main..HEAD -- pyproject.toml uv.lock` = 0 |
 | **CON-1403** | 1000 record < 2s | T2 单测 `test_path_recaller_perf_100_records` < 0.2s; T4 finalize 前手工 `scripts/workflow_recall_perf_smoke.py` 1000 record < 2s |
 | **CON-1404** | router markdown 改不破 3 项守门 | T5 显式跑 (a) `pytest tests/adapter/installer/test_dogfood_invariance_F009.py` 在更新 baseline 后 PASS; (b) `pytest tests/adapter/installer/test_neutrality_exemption_list.py` PASS; (c) 全套基线 989 → 1029 0 regression |
 | **CON-1405** | recall workflow 与 F006 recommend 独立 | T4 `recall` 是新 top-level subparser, 与 `recommend` 平级; 不调用 recommend 任何 API; sentinel: `recall` handler 不 import recommend 模块 |
@@ -280,11 +291,15 @@ from dataclasses import dataclass, field
 
 @dataclass
 class WorkflowAdvisory:
-    """Single advisory: a (skills sequence) frequency hit."""
+    """Single advisory: a (skills sequence) frequency hit.
+
+    Im-3 r2: avg_duration_seconds is **per-sequence mean** (mean of records
+    whose skill_ids match this advisory's skills sequence; subset of bucket).
+    """
     skills: list[str]                    # ordered skill_ids sequence
-    count: int                           # frequency in bucket
-    avg_duration_seconds: float          # mean of bucket records' duration_seconds
-    top_lessons: list[tuple[str, int]]   # [(lesson, freq)] top 3
+    count: int                           # frequency in bucket (records matching this skills sequence)
+    avg_duration_seconds: float          # **per-sequence** mean duration_seconds (not bucket-wide)
+    top_lessons: list[tuple[str, int]]   # [(lesson, freq)] top 3 from records matching this sequence
     task_type: str | None
     problem_domain: str | None
 
@@ -356,4 +371,13 @@ garage status                                            # 末尾加 workflow-re
 
 ---
 
-> **本文档是 design r1**, 待 hf-design-review (subagent 派发). r2 起草由 review verdict 驱动.
+> **本文档是 design r2** (回应 design-review-F014-r1 的 2 critical + 3 important + 1 minor + 2 nit; 全部 8 finding 已闭合, 详见 `docs/reviews/design-review-F014-r1-2026-04-26.md`).
+>
+> r2 关键修订:
+> - **Cr-1** (USER-INPUT 选项 b 锁定): 显式排除 `cli.py:1172` skill execution path; advisory 单位是 cycle-level task path, 不是 single skill record. r2 caller 表从 5 处缩为 4 处真实接入点
+> - **Cr-2**: 删除 r1 的 `ingest/pipeline.py` 接入点 (该文件无 `experience_index.store`; 通过 publisher 间接 invalidate)
+> - **Im-1**: publisher.py hook 从 L138 (仅 store 分支) 改为 if-else 末尾 (~ L143 后, 覆盖 store + update 两路径)
+> - **Im-2**: dogfood SHA 同步从 "3 处 hash" 改为 "**2 处** hash" (与 F009 baseline JSON 实际只追踪 .claude/ + .cursor/ mirror 一致, 不追源 hash)
+> - **Im-3**: `WorkflowAdvisory.avg_duration_seconds` 语义明确为 per-sequence mean (advisory 是 skills 序列粒度, 不是桶级)
+> - **Mi-1**: T5 测试数 5 (与 §14 验证策略一致); spec §9.1 的 6 是 preview, 不需 backport
+> - **Ni-1**: CON-1402 改 "无新第三方依赖" (不是 "全 stdlib", 因为新模块必然 import garage_os 本库)
