@@ -461,6 +461,32 @@ def _status(garage_root: Path) -> None:
     # for users who never ran `garage sync`).
     _print_sync_status(garage_dir)
 
+    # F013-A ADR-D13-6: append skill mining status section
+    # (always emits metadata line per Im-6 r2)
+    _print_skill_mining_status(garage_dir)
+
+
+def _print_skill_mining_status(garage_dir: Path) -> None:
+    """F013-A FR-1305 + Im-6 r2: emit skill mining status section.
+
+    Always print metadata line (RSK-1301: never silent so users see the pipe is
+    working even at proposed=0). 💡 hint line emitted only when proposed > 0.
+    """
+    from garage_os.skill_mining.pipeline import compute_status_summary, run_audit
+
+    # Run audit first so expired counts reflect current time
+    try:
+        run_audit(garage_dir)
+    except Exception:
+        pass  # best-effort
+    try:
+        summary = compute_status_summary(garage_dir)
+    except Exception:
+        return
+    print(summary.metadata_line)
+    if summary.hint_line:
+        print(summary.hint_line)
+
 
 def _print_sync_status(garage_dir: Path) -> None:
     """F010 ADR-D10-12: print sync status section in `garage status` output.
@@ -762,6 +788,262 @@ def _pack_publish(
         print(
             f"Published pack '{summary.pack_id}' v{summary.version} to {summary.to_url}"
         )
+    return 0
+
+
+def _skill_suggest(
+    garage_root: Path,
+    *,
+    sg_id: str | None,
+    status_filter: str,
+    rescan: bool,
+    threshold: int | None,
+    purge_expired: bool,
+    yes: bool,
+) -> int:
+    """F013-A FR-1302 _skill_suggest entry."""
+    from garage_os.skill_mining.pipeline import (
+        SkillMiningHook,
+        _load_user_config,
+        run_audit,
+    )
+    from garage_os.skill_mining.suggestion_store import SuggestionStore
+    from garage_os.skill_mining.template_generator import render, render_minimal
+    from garage_os.skill_mining.types import SkillSuggestionStatus
+    from garage_os.knowledge.experience_index import ExperienceIndex
+    from garage_os.knowledge.knowledge_store import KnowledgeStore
+
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    ss = SuggestionStore(garage_dir)
+
+    # Audit first (move expired)
+    run_audit(garage_dir)
+
+    # Purge expired
+    if purge_expired:
+        expired = ss.list_by_status(SkillSuggestionStatus.EXPIRED)
+        if not expired:
+            print("No expired suggestions to purge.")
+            return 0
+        if not yes:
+            print(f"Found {len(expired)} expired suggestions. Purge them all? [y/N]: ", end="", flush=True)
+            try:
+                ans = input("").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                ans = ""
+            if ans not in ("y", "yes"):
+                print("Cancelled.")
+                return 0
+        for s in expired:
+            ss.delete(SkillSuggestionStatus.EXPIRED, s.id)
+        print(f"Purged {len(expired)} expired suggestions.")
+        return 0
+
+    # Rescan
+    if rescan:
+        cfg = _load_user_config()
+        eff_threshold = threshold if threshold is not None else int(cfg.get("threshold", 5))
+        result = SkillMiningHook.run_after_extraction(
+            session_id="cli-rescan",
+            garage_dir=garage_dir,
+            threshold=eff_threshold,
+        )
+        if result.error:
+            print(f"Rescan failed: {result.error}", file=sys.stderr)
+            return 1
+        if result.skipped_reason:
+            print(f"Rescan skipped: {result.skipped_reason}")
+            return 0
+        print(f"Rescan complete: {result.new_suggestions_count} new proposals.")
+        # Fall through to listing
+
+    # Detail view (--id)
+    if sg_id:
+        s = ss.find(sg_id)
+        if s is None:
+            print(f"Suggestion '{sg_id}' not found.", file=sys.stderr)
+            return 1
+        print(f"ID: {s.id}")
+        print(f"Status: {s.status.value}")
+        print(f"Suggested name: {s.suggested_name}")
+        print(f"Description: {s.suggested_description}")
+        print(f"Problem domain: {s.problem_domain_key}")
+        print(f"Tag bucket: {', '.join(s.tag_bucket) or '(none)'}")
+        print(f"Suggested pack: {s.suggested_pack}")
+        print(f"Score: {s.score:.4f}")
+        print(f"Evidence entries: {len(s.evidence_entries)}")
+        print(f"Evidence records: {len(s.evidence_records)}")
+        print(f"Created: {s.created_at.isoformat()}")
+        print(f"Expires: {s.expires_at.isoformat()}")
+        print()
+        print("--- SKILL.md preview ---")
+        try:
+            storage = FileStorage(garage_dir)
+            ks = KnowledgeStore(storage)
+            ei = ExperienceIndex(storage)
+            preview = render(s, ks, ei)
+        except Exception:
+            preview = render_minimal(s)
+        print(preview)
+        return 0
+
+    # List
+    if status_filter == "all":
+        listing = ss.list_all()
+    else:
+        listing = ss.list_by_status(SkillSuggestionStatus(status_filter))
+
+    # Threshold display filter (without rescan)
+    if threshold is not None and not rescan:
+        listing = [
+            s for s in listing
+            if (len(s.evidence_entries) + len(s.evidence_records)) >= threshold
+        ]
+
+    if not listing:
+        print(
+            f"No skill suggestions yet (status={status_filter}). "
+            "Try `garage skill suggest --rescan --threshold 3` to lower the bar."
+        )
+        return 0
+
+    listing.sort(key=lambda s: s.score, reverse=True)
+    print(f"{'ID':<25} {'NAME':<30} {'EVIDENCE':<10} {'SCORE':<8} {'PACK':<10} {'STATUS'}")
+    for s in listing:
+        n_ev = len(s.evidence_entries) + len(s.evidence_records)
+        print(
+            f"{s.id:<25} {s.suggested_name[:30]:<30} {n_ev:<10} "
+            f"{s.score:<8.4f} {s.suggested_pack:<10} {s.status.value}"
+        )
+    return 0
+
+
+def _skill_promote(
+    garage_root: Path,
+    *,
+    suggestion_id: str,
+    yes: bool,
+    dry_run: bool,
+    target_pack: str | None,
+    reject: bool,
+) -> int:
+    """F013-A FR-1304 _skill_promote entry."""
+    from garage_os.skill_mining.suggestion_store import SuggestionStore
+    from garage_os.skill_mining.template_generator import render, render_minimal
+    from garage_os.skill_mining.types import SkillSuggestionStatus
+    from garage_os.knowledge.experience_index import ExperienceIndex
+    from garage_os.knowledge.knowledge_store import KnowledgeStore
+
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    ss = SuggestionStore(garage_dir)
+    suggestion = ss.find(suggestion_id)
+    if suggestion is None:
+        print(f"Suggestion '{suggestion_id}' not found.", file=sys.stderr)
+        return 1
+
+    # Reject path
+    if reject:
+        if suggestion.status not in (SkillSuggestionStatus.PROPOSED, SkillSuggestionStatus.ACCEPTED):
+            print(
+                f"Cannot reject suggestion in status '{suggestion.status.value}'.",
+                file=sys.stderr,
+            )
+            return 1
+        reason = ""
+        if not yes:
+            print("Brief reason for rejection (≤ 500 chars; press Enter to skip): ", end="", flush=True)
+            try:
+                reason = input("").strip()[:500]
+            except (EOFError, KeyboardInterrupt):
+                reason = ""
+        suggestion.rejected_reason = reason or None
+        ss.write(suggestion)  # write current status to ensure rejected_reason persists
+        ss.move_to_status(suggestion.id, SkillSuggestionStatus.REJECTED)
+        print(f"Rejected suggestion {suggestion.id}.")
+        return 0
+
+    # Promote path
+    target_pack_id = target_pack or suggestion.suggested_pack
+    target_dir = garage_root / "packs" / target_pack_id
+    if not target_dir.is_dir():
+        print(
+            f"Target pack '{target_pack_id}' not installed at {target_dir}.",
+            file=sys.stderr,
+        )
+        return 1
+    skill_dir = target_dir / "skills" / suggestion.suggested_name
+    skill_md_path = skill_dir / "SKILL.md"
+
+    # Build preview
+    try:
+        storage = FileStorage(garage_dir)
+        ks = KnowledgeStore(storage)
+        ei = ExperienceIndex(storage)
+        preview = render(suggestion, ks, ei)
+    except Exception:
+        preview = render_minimal(suggestion)
+
+    if dry_run:
+        print(f"DRY RUN: would create {skill_md_path}")
+        print()
+        print("--- SKILL.md preview ---")
+        print(preview)
+        return 0
+
+    # Overwrite check
+    if skill_md_path.exists() and not yes:
+        print(
+            f"WARNING: {skill_md_path} already exists. Overwrite? [y/N]: ",
+            end="",
+            flush=True,
+        )
+        try:
+            ans = input("").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            ans = ""
+        if ans not in ("y", "yes"):
+            print("Cancelled.")
+            return 0
+
+    # Confirmation
+    if not yes:
+        print(f"About to create {skill_md_path}")
+        print(f"Target pack: {target_pack_id}")
+        print()
+        print("--- SKILL.md preview ---")
+        print(preview)
+        print()
+        print("Continue? [y/N]: ", end="", flush=True)
+        try:
+            ans = input("").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            ans = ""
+        if ans not in ("y", "yes"):
+            print("Cancelled.")
+            return 0
+
+    # Write SKILL.md (sole writer to packs/, INV-F13-1)
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    skill_md_path.write_text(preview, encoding="utf-8")
+
+    # Update suggestion status (CON-1304: do NOT touch packs/<id>/pack.json)
+    suggestion.promoted_to_path = str(skill_md_path.relative_to(garage_root))
+    ss.write(suggestion)
+    ss.move_to_status(suggestion.id, SkillSuggestionStatus.PROMOTED)
+
+    print(
+        f"Created skill at {skill_md_path}.\n"
+        f"Run 'garage run {suggestion.suggested_name}' to test, or "
+        f"'garage run hf-test-driven-dev' to refine via the workflow."
+    )
     return 0
 
 
@@ -2067,6 +2349,74 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # F013-A: skill mining (suggest + promote)
+    skill_parser = subparsers.add_parser(
+        "skill",
+        help="Skill mining (F013-A): suggest patterns to promote, promote to packs/",
+        parents=[path_parser],
+    )
+    skill_subparsers = skill_parser.add_subparsers(dest="skill_command")
+    # skill suggest
+    skill_suggest_parser = skill_subparsers.add_parser(
+        "suggest",
+        help="List proposed skill suggestions from pattern mining",
+        parents=[path_parser],
+    )
+    skill_suggest_parser.add_argument(
+        "--id", dest="skill_suggest_id", default=None,
+        help="Show detail for a specific suggestion id (with SKILL.md preview)",
+    )
+    skill_suggest_parser.add_argument(
+        "--status", dest="skill_suggest_status",
+        choices=["proposed", "accepted", "promoted", "rejected", "expired", "all"],
+        default="proposed",
+        help="Filter by status (default: proposed)",
+    )
+    skill_suggest_parser.add_argument(
+        "--rescan", dest="skill_suggest_rescan", action="store_true",
+        help="Force a full re-scan of KnowledgeStore + ExperienceIndex (writes new proposals)",
+    )
+    skill_suggest_parser.add_argument(
+        "--threshold", dest="skill_suggest_threshold", type=int, default=None,
+        help=(
+            "Display threshold N (filters this list only). With --rescan: "
+            "use N as the rescan threshold (writes new proposals at N)."
+        ),
+    )
+    skill_suggest_parser.add_argument(
+        "--purge-expired", dest="skill_suggest_purge_expired", action="store_true",
+        help="Physically delete expired suggestions",
+    )
+    skill_suggest_parser.add_argument(
+        "--yes", "-y", dest="skill_suggest_yes", action="store_true",
+        help="Skip interactive confirmation (for --purge-expired)",
+    )
+    # skill promote
+    skill_promote_parser = skill_subparsers.add_parser(
+        "promote",
+        help="Promote a suggestion to packs/<target-pack>/skills/<name>/SKILL.md",
+        parents=[path_parser],
+    )
+    skill_promote_parser.add_argument(
+        "suggestion_id", help="Suggestion id (sg-yyyymmdd-xxxxxx)"
+    )
+    skill_promote_parser.add_argument(
+        "--yes", "-y", dest="skill_promote_yes", action="store_true",
+        help="Skip interactive confirmation",
+    )
+    skill_promote_parser.add_argument(
+        "--dry-run", dest="skill_promote_dry_run", action="store_true",
+        help="Preview SKILL.md without writing",
+    )
+    skill_promote_parser.add_argument(
+        "--target-pack", dest="skill_promote_target_pack", default=None,
+        help="Override the target pack (default: suggestion's suggested_pack, usually 'garage')",
+    )
+    skill_promote_parser.add_argument(
+        "--reject", dest="skill_promote_reject", action="store_true",
+        help="Reject the suggestion (mark status=rejected with a reason)",
+    )
+
     # run
     run_parser = subparsers.add_parser("run", help="Run a Garage skill", parents=[path_parser])
     run_parser.add_argument(
@@ -2471,6 +2821,30 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 commit_message=args.pack_publish_commit_message,
             )
         pack_parser.print_help()
+        return 1
+
+    if args.command == "skill":
+        root = args.path if args.path else _find_garage_root()
+        if args.skill_command == "suggest":
+            return _skill_suggest(
+                root,
+                sg_id=args.skill_suggest_id,
+                status_filter=args.skill_suggest_status,
+                rescan=args.skill_suggest_rescan,
+                threshold=args.skill_suggest_threshold,
+                purge_expired=args.skill_suggest_purge_expired,
+                yes=args.skill_suggest_yes,
+            )
+        if args.skill_command == "promote":
+            return _skill_promote(
+                root,
+                suggestion_id=args.suggestion_id,
+                yes=args.skill_promote_yes,
+                dry_run=args.skill_promote_dry_run,
+                target_pack=args.skill_promote_target_pack,
+                reject=args.skill_promote_reject,
+            )
+        skill_parser.print_help()
         return 1
 
     if args.command == "run":

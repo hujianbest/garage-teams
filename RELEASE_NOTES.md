@@ -4,6 +4,80 @@
 
 ---
 
+## F013-A — Skill Mining Push 信号
+
+- 状态: ✅ 完成 (closed by hf-finalize 2026-04-26)
+- Workflow Profile: `full` (5 task T1-T5 + spec r2 + design r2 + post-implementation review chain auto-streamlined)
+- Branch / PR: `cursor/f013-skill-mining-bf33` / TBD
+
+### 用户可见变化
+
+**A. `garage skill suggest`** (FR-1302):
+- `garage skill suggest [--status ...] [--id ...] [--rescan] [--threshold N] [--purge-expired]`
+- 列出系统从 KnowledgeStore + ExperienceIndex 自动识别的 (problem_domain, tag-bucket) 重复模式 (默认 N ≥ 5)
+- `--id` 显示候选完整 detail + SKILL.md preview (skill-anatomy 6 章节)
+- `--rescan` 全量重新扫描 (写新 proposal); `--threshold N` 仅本次 list 显示过滤 (不写)
+
+**B. `garage skill promote <sg-id>`** (FR-1304):
+- `--yes` / `--dry-run` / `--target-pack <id>` / `--reject [reason]`
+- 唯一通道写 `packs/<target>/skills/<name>/SKILL.md` (INV-F13-1)
+- B5 user-pact: 默认 prompt; --yes opt-in; 不自动改 packs/<id>/pack.json (CON-1304); echo `Run 'garage run hf-test-driven-dev'` 不自动跳 (CON-1305)
+
+**C. `garage status` 加 skill mining 段** (FR-1305 + Im-6 r2):
+- 始终显 元数据行 "Skill mining: scanned X / Y / Z (last scan: ...)" (RSK-1301: Z=0 也显, 用户看见管道在工作)
+- proposed > 0 时额外显 💡 提示行
+
+**D. Audit / Decay** (FR-1305):
+- proposed 30 天后归 expired; rejected/promoted 永久; expired 可 `--purge-expired` 物理清
+
+**E. Pattern Detection 双 caller hook** (FR-1301 + ADR-D13-3 r2 Cr-1):
+- 自动在 `SessionManager._trigger_memory_extraction` 末尾 + `ingest/pipeline.py:120-128` 之后 try/except invoke `SkillMiningHook.run_after_extraction`
+- 失败不阻断 archive / import (best-effort, 与 F010 ingest 同精神)
+- ADR-D13-3 Im-4 fallback: `platform.json skill_mining.hook_enabled: bool` (默认 true) gate
+
+### 数据与契约影响
+
+- 新增 `src/garage_os/skill_mining/` 顶级包 (5 模块: types / suggestion_store / pattern_detector / template_generator / pipeline)
+- 新增 CLI subcommand `skill {suggest, promote}`
+- 新增 .garage 目录: `.garage/skill-suggestions/{proposed/, accepted/, promoted/, rejected/, expired/}/<sg-id>.json` + `.last-scan.json`
+- 新增用户配置 `~/.garage/skill-mining-config.json` (threshold / expiry_days / hook_enabled / exclude_domains)
+- 新增 platform.json schema: `skill_mining.hook_enabled: bool` (默认 true)
+- F003-F011 既有 API + schema 字节级不变 (CON-1301: caller 改动是 try/except hook 调用 = 非 breaking 扩展)
+- 新增测试: 5 模块 + 4 CLI test classes + 3 sentinel
+- 测试基线: 930 → **989 passed** (+59, 0 regressions)
+- `git diff main..HEAD -- pyproject.toml uv.lock` = 0 (CON-1302 零依赖变更)
+- ruff baseline diff = 0 (与 F012 同预算)
+- Performance: pattern detection 1000+1000 entries = 0.803s (CON-1303 5s 预算余 84%)
+
+### 完整 review/gate 链路
+
+| Stage | Verdict |
+|---|---|
+| hf-spec-review (r1+r2) | r1 CHANGES_REQUESTED (4 critical + 6 important + 2 minor + 1 nit; 12 LLM-FIXABLE + 1 USER-INPUT) → r2 APPROVED |
+| hf-design-review (r1+r2) | r1 APPROVE_WITH_FINDINGS (1 critical + 4 important + 2 minor + 1 nit; 全 LLM-FIXABLE) → r2 APPROVED |
+| hf-tasks-review | auto-streamlined (per F011/F012 mode) |
+| hf-test-driven-dev T1-T5 | 5 task commits, ~59 new tests, 0 regression |
+| hf-test/code/traceability-review | post-implementation chain (auto-streamlined) |
+| hf-regression-gate | PASS (989 passed; ruff baseline diff 0; perf smoke 0.803s) |
+| hf-completion-gate | COMPLETE |
+| hf-finalize | ✅ closed |
+
+### Vision 杠杆
+
+- Stage 3 工匠: ~65% → ~85% (skill mining 信号闭环)
+- growth-strategy.md § 1.3 表第 4 行 "系统能指出 pattern → skill" ❌ → ✅
+- B4 人机共生 5/5 维持, 由形式上的 production agents 进展为 "系统主动为你提炼能力"
+
+### Carry-forward (F014+)
+
+- D-1310: 真实 3-way merge / 真 NLP 相似度模式检测 (本 cycle 仅启发式)
+- D-1311: 增量扫 (避免每次 archive 全量扫; 当前 1000+1000 0.8s 远低于 5s 预算, 不紧迫)
+- D-1312: experience export + 反向 import (与 F012 knowledge export --anonymize 配套)
+- D-1313: skill mining `--target-pack` 自动建议 (基于 evidence 来源跨 pack 推断)
+- D-1314: KnowledgeType.STYLE 反向产 style skill (基于 F011 既有数据)
+
+---
+
 ## F012 — Pack Lifecycle 完整化 (uninstall + update + publish + knowledge export 脱敏 + F009 carry-forward)
 
 - 状态: ✅ 完成 (closed by hf-finalize 2026-04-25)

@@ -225,6 +225,67 @@ F012-E 注册 host-installer schema 1→2 migration 到 `_MIGRATION_REGISTRY[(1,
 
 详见 spec `docs/features/F012-pack-lifecycle-completion.md` + design `docs/designs/2026-04-25-pack-lifecycle-completion-design.md` (7 ADR + 9 INV)。
 
+## Skill Mining Push (F013-A)
+
+F013-A 把 F003-F006 的 memory 提取管道闭环上 **push 端** — 当系统在 N 次 session 里看见同一类 (problem_domain, tag-bucket) 重复出现, 主动建议 "这个 pattern 可以变成 skill", 半自动产 SKILL.md 草稿 + 嵌 hf-test-driven-dev 走完 promote.
+
+### `garage skill suggest` (FR-1302)
+
+```bash
+garage skill suggest                            # list status=proposed by score desc
+garage skill suggest --status promoted          # filter by status
+garage skill suggest --id sg-XXX                # detail + SKILL.md preview
+garage skill suggest --rescan                   # full re-scan + write new proposals
+garage skill suggest --rescan --threshold 3     # rescan with custom N
+garage skill suggest --threshold 3              # display filter only (no rescan)
+garage skill suggest --purge-expired --yes      # physical delete expired
+```
+
+### `garage skill promote <suggestion-id>` (FR-1304)
+
+```bash
+garage skill promote sg-XXX                     # interactive [y/N] prompt + preview
+garage skill promote sg-XXX --yes               # skip prompt
+garage skill promote sg-XXX --dry-run           # preview only, no write
+garage skill promote sg-XXX --target-pack coding  # default 'garage'
+garage skill promote sg-XXX --reject [--yes]    # status=rejected with reason prompt
+```
+
+- 写入唯一通道 (INV-F13-1): `packs/<target>/skills/<suggested-name>/SKILL.md` 由 promote 生成
+- **CON-1304 守门**: promote 不动 `packs/<target>/pack.json` 的 `skills[]` 列表; 用户走 `garage run hf-test-driven-dev` 路径自己加 (sentinel 测试守 byte-level)
+- **CON-1305 守门**: promote echo `Run 'garage run <name>' to test, or 'garage run hf-test-driven-dev' to refine` 仅给路径, 不自动 invoke
+
+### Pattern Detection (FR-1301)
+
+聚类规则: 按 (problem_domain_key, frozenset(tag-bucket)) 分组; 同组内 unique session_id ≥ N (默认 5) 触发. 双源 problem_domain_key:
+- ExperienceRecord: 直读 `record.problem_domain` (F004 既有顶层字段)
+- KnowledgeEntry: 优先 `entry.front_matter["problem_domain"]`; fallback `entry.topic.split()[0]`
+
+Hook 接入两个 caller 路径 (ADR-D13-3 r2 Cr-1):
+- `SessionManager._trigger_memory_extraction` 末尾 (普通归档路径)
+- `ingest/pipeline.py` 在 `extract_for_archived_session_id` 后 (`garage session import` 路径)
+- 两路径都 try/except, hook 失败不阻断 archive / import (best-effort)
+
+### Audit / Decay + `garage status` 显示
+
+- proposed 30 天后归 expired (`run_audit` 自动跑); rejected 永久; promoted 永久; expired 可 purge
+- `garage status` **始终**显 metadata 行 "Skill mining: scanned X / Y / Z (last scan: <ts>)" — 即使 Z=0 也显 (RSK-1301 兜底; 用户看见管道在工作)
+- proposed > 0 时**额外**显 💡 提示行 (Im-6 r2)
+
+### 配置 (Mi-1 r2 双根)
+
+- 项目根 `.garage/skill-suggestions/{proposed/, accepted/, promoted/, rejected/, expired/}/<sg-id>.json` — suggestion 数据
+- 用户根 `~/.garage/skill-mining-config.json` — 用户偏好 (threshold / expiry_days / hook_enabled / exclude_domains)
+- platform 配置 `.garage/config/platform.json` `skill_mining.hook_enabled: bool` — fallback gate (默认 true; 设 false 可关 hook 仅留 CLI rescan)
+
+### Carry-forward (F014+)
+
+- 增量扫 (避免每次 archive 全量扫 1000+1000)
+- NLP-based 模式相似度 (P1 启发式仅 frozenset(tags 前 2))
+- 系统反向产 style skill (基于 KnowledgeType.STYLE 既有数据)
+
+详见 spec `docs/features/F013-skill-mining-push.md` + design `docs/designs/2026-04-26-skill-mining-push-design.md` (7 ADR + 5 INV + 5 CON)。
+
 ### Garage OS 开发者参考
 
 #### 模块概览
