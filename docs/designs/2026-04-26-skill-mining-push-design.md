@@ -1,10 +1,10 @@
 # F013-A Design — Skill Mining Push (技术设计)
 
-- **状态**: 草稿 r1 (待 hf-design-review)
+- **状态**: 草稿 r2 (回应 design-review-F013-r1; 1 critical + 4 important + 2 minor + 1 nit 全部闭合; 待 r2 hf-design-review)
 - **关联 spec**: `docs/features/F013-skill-mining-push.md` r2 (commit `8bcb8dc`, APPROVED 2026-04-26)
 - **关联 planning**: `docs/planning/2026-04-25-post-f012-next-cycle-plan.md` § 3 Path A
-- **基线**: main `65701af` (930 passed, 33 SKILL.md, 3 production agents)
-- **日期**: 2026-04-26
+- **基线 (Ni-1 r2 修订: 实施前再核 `uv run pytest`)**: main `65701af` 当前快照 930 passed, 33 SKILL.md, 3 production agents. T1 起步前会再跑一次 `uv run pytest tests/ -q --ignore=tests/sync/test_baseline_no_regression.py` 校准, 实际 baseline 以那时为准
+- **日期**: 2026-04-26 (r1 → r2 同日)
 
 ## 0. 设计概览
 
@@ -88,43 +88,55 @@ CLI 改动: `src/garage_os/cli.py` 加 `skill` subparser (`suggest` + `promote`)
 
 ### 决策: A — 5 子目录 mv
 
-**理由**:
-- 与 F003 `.garage/memory/candidates/items/` (按 status 分子目录) 同 pattern
-- `garage skill suggest --status promoted` 直接 ls 子目录, 无需扫所有文件读 JSON
-- mv 比 read-modify-write 更原子 (单个 syscall)
+**Status: Accepted r2** (Im-1 修订: F003 类比修正)
+
+**理由 (r2 修订: 不再借 F003 类比, 仅论证 skill-suggestions 自身需求)**:
+- `garage skill suggest --status promoted` 直接 ls 子目录, 无需扫所有文件读 JSON 过滤 (避免 O(N total) read 解析 status 字段)
+- mv 比 read-modify-write 更原子 (单个 `os.rename` syscall vs 3 步 read-modify-write)
 - audit/decay 扫 `proposed/` 即可计 expiry, O(N proposed) 而非 O(N total)
+- 注: F003 `candidate_store.py` 实际是 **单 ITEMS_DIR + status 在 front_matter 过滤** (verifier 修正), F013-A 的 5 子目录是 **独立设计**, 因为 status 转换更频繁且 audit 路径需要快速 ls
 
 ### 影响
 
 - `suggestion_store.py` 实现 `move_to_status(sg_id, new_status)` 用 `os.rename`
-- `~/.garage/skill-suggestions/{proposed/, accepted/, promoted/, rejected/, expired/}/` 5 子目录在首次写时 lazy mkdir
+- 项目根 `.garage/skill-suggestions/{proposed/, accepted/, promoted/, rejected/, expired/}/` 5 子目录在首次写时 lazy mkdir (Mi-1 r2 修订: 项目根 `.garage/`, 不是 `~/.garage/`)
+- **Im-2 修订**: spec § 2.1 行 138 写「4 子目录」是笔误, 实现以本设计 5 子目录为准 (proposed + accepted + promoted + rejected + expired). spec r3 一并修, 但本设计 r2 已对齐
 
 ## 4. ADR-D13-3 — Pattern Detector 触发 (sync vs async vs explicit hook)
 
 ### 选项
 
-- A. **同步 hook**: caller (`SessionManager.archive_session` 链) 在 `MemoryExtractionOrchestrator.extract_for_archived_session_id` 返回后立即调用 `SkillMiningHook.run_after_extraction(session_id)`. 用户感知到 archive_session 多耗 X 秒 (CON-1303 ≤ 5s for 1000+1000)
-- B. **异步 spawn**: hook 起后台线程跑 detector, archive_session 立即返回. 风险: detector 写 proposal 时 `garage status` 可能读到中间态
+- A. **同步 hook**: caller 在 extraction 返回后立即调用 `SkillMiningHook.run_after_extraction(session_id)`. 用户感知到 archive 多耗 X 秒 (CON-1303 ≤ 5s for 1000+1000)
+- B. **异步 spawn**: hook 起后台线程跑 detector, archive 立即返回. 风险: detector 写 proposal 时 `garage status` 可能读到中间态
 - C. **显式 CLI only**: hook 不自动调; 用户必须 `garage skill suggest --rescan` 手动触发. 风险: 用户感知不到 push 端, vision 触发信号不闭环
 
 ### 决策: A — 同步 hook (caller 自行调用)
 
+**Status: Accepted r2** (Cr-1 修订: 双 caller 接点显式)
+
 **理由**:
 - vision: "系统主动指出 pattern → skill" 必须在 archive 后自动跑 (Option C 等于不存在 push 端)
 - Option B 异步带来的并发复杂性 (中间态 read / race 文件锁) 不值得为 5 秒延迟避免
-- CON-1303 性能预算 5s 对 archive_session 路径可接受 (archive 本身就是 1-2s 量级 IO)
+- CON-1303 性能预算 5s 对 archive 路径可接受 (archive 本身就是 1-2s 量级 IO)
 - caller 自行调用 = 非 breaking 扩展 (CON-1301 + Im-2 修订一致): F003 既有方法签名不动, hook 只是 sibling callback
 
-### 影响
+### 影响 (Cr-1 r2 修订: 双 caller 接点显式)
 
-- `SessionManager.archive_session` 内 `extract_for_archived_session_id` 调用之后, **可选** invoke `SkillMiningHook.run_after_extraction(session_id, storage)` (try/except 包住, hook 失败不阻断 archive)
-- `garage session import` 同样 caller 路径添加可选 invoke
-- `SkillMiningHook` 在 `pipeline.py`, run() 内部串行: list_entries + list_records → cluster → score → 写 proposal
+F003 extraction 在仓库内有 **两条独立 caller 路径**, hook 必须双覆盖:
+
+| Caller 路径 | 文件:行 | 调用方法 | hook 接入点 |
+|---|---|---|---|
+| **Path 1 — 普通会话归档** | `src/garage_os/runtime/session_manager.py:262-263` | `orchestrator.extract_for_archived_session(archived_session)` (字典签名) | `_trigger_memory_extraction()` 末尾 try/except 内追加 `SkillMiningHook.run_after_extraction(session_id, storage)` |
+| **Path 2 — `garage session import` (F010 ingest)** | `src/garage_os/ingest/pipeline.py:120-128` | `orchestrator.extract_for_archived_session_id(session_id)` (id 签名; 绕过 extraction_enabled) | extract 调用之后 try/except 内追加同一 `SkillMiningHook.run_after_extraction(session_id, storage)` |
+
+两路径调用同一 hook 函数, 不重复实现 (DRY). hook 内部幂等: 同 session_id 短时间内重复触发会聚类相同结果, suggestion 去重 (FR-1301 已有 status 检查) 兜底.
+
+失败策略: 两 caller 都用 try/except + log, hook 失败 **不阻断** archive / import (与 F010 ingest 既有 "best-effort archive_session" 同精神).
 
 ### 风险
 
-- R-D13-3a: 1000+1000 entry 性能 > 5s → fallback 到 Option C (CLI only) 走 F014+ 增量扫
-- R-D13-3b: archive_session 异常中断时 hook 残留状态 → try/except + log; 下次 status 自动 reconcile
+- R-D13-3a: 1000+1000 entry 性能 > 5s → fallback 到 Option C (CLI only) 走 F014+ 增量扫. **Im-4 r2 验收钉死**: T2 单测 `test_pattern_detector_perf_100_entries < 0.5s`; T2/T4 完成 gate **手工 prof 1 次 1000+1000** (`uv run python scripts/skill_mining_perf_smoke.py`); 若 > 5s 则在 caller 处加 platform.json `skill_mining.hook_enabled: false` config gate (默认 true), 用户可关; CLI rescan 始终可用. 不在 F013-A 内做增量扫 (留 F014+).
+- R-D13-3b: archive 异常中断时 hook 残留状态 → try/except + log; 下次 status 自动 reconcile
 
 ## 5. ADR-D13-4 — problem_domain_key 来源 (Cr-3 USER-INPUT 落地)
 
@@ -147,14 +159,15 @@ CLI 改动: `src/garage_os/cli.py` 加 `skill` subparser (`suggest` + `promote`)
 - `pattern_detector._extract_problem_domain_key(item)` 实现:
   ```python
   if isinstance(item, ExperienceRecord):
-      return item.problem_domain or "unknown"
+      key = item.problem_domain  # F004 既有顶层 str
+      return key if key else None
   elif isinstance(item, KnowledgeEntry):
       key = item.front_matter.get("problem_domain")
       if not key and item.topic:
           key = item.topic.split()[0]
-      return key or "unknown"
+      return key if key else None
   ```
-- "unknown" 桶下的 entry 不参与聚类 (评分时 `if domain == "unknown": continue`)
+- **Im-3 修订**: 返回 `None` 的 item **直接跳过, 不进任何 bucket**, 与 spec FR-1301 Edge "跳过该 entry 不归类" 字面一致 (不再用 "unknown" 桶语义). 这条 entry 不计入任何 (domain, tag-bucket) 的 N 阈值; 不影响其他归类成功的 entry 的 N 计数
 
 ## 6. ADR-D13-5 — SKILL.md 模板生成 (静态拼接 vs Jinja2)
 
@@ -238,8 +251,8 @@ CLI 改动: `src/garage_os/cli.py` 加 `skill` subparser (`suggest` + `promote`)
 |---|---|---|
 | **CON-1301** | F003-F011 既有 API + schema 字节级不变 | 设计内 sentinel: T1 不动 `src/garage_os/types/__init__.py` `KnowledgeEntry` / `ExperienceRecord` 定义; T4 caller 改动用 try/except 包 (hook 失败不阻断) |
 | **CON-1302** | 零依赖变更 (`pyproject.toml + uv.lock` diff = 0) | ADR-D13-5 f-string 拼接; 全 stdlib (json / collections / pathlib / dataclasses / re / os / datetime) |
-| **CON-1303** | 性能 ≤ 5s for 1000+1000 entry | T2 implementation: 避免 O(N²) (聚类用 `defaultdict(list)` O(N)); 评分公式简单 (log10 + 加法); 单测 `test_pattern_detector_performance` 跑 100 entry 应 < 0.5s, extrapolate 1000 < 5s |
-| **CON-1304** | promote 不动 packs/<id>/pack.json | T5 `_skill_promote` 不调用 `pack_install` 任何 mutation API; 仅 `Path("packs/...").write_text(...)`; 守门 sentinel: `tests/skill_mining/test_promote_no_pack_json_mutation.py` |
+| **CON-1303** | 性能 ≤ 5s for 1000+1000 entry | T2 implementation: 避免 O(N²) (聚类用 `defaultdict(list)` O(N)); 评分公式简单 (log10 + 加法); **Im-4 r2 验收门**: T2 单测 `test_pattern_detector_perf_100_entries` < 0.5s; T2/T4 完成 gate 必须手工跑一次 `uv run python scripts/skill_mining_perf_smoke.py` 验 1000+1000 < 5s; 若 > 5s, T4 在 caller `try/except` 外加 `platform.json: skill_mining.hook_enabled` config gate (默认 true), 用户可关 hook 仅留 CLI rescan; 不在 F013-A 内做增量扫 (留 F014+) |
+| **CON-1304** | promote 不动 packs/<id>/pack.json | T5 `_skill_promote` 不调用 `pack_install` 任何 mutation API; 仅 `Path("packs/...").write_text(...)`; **Mi-2 r2 修订**: 守门 sentinel 文件名统一为 `tests/skill_mining/test_promote_no_pack_json_mutation.py` (CON 表与 § 14 验证策略一致) |
 | **CON-1305** | hf-test-driven-dev 路径仅 echo 不自动 invoke | T5 `_skill_promote` print echo 后 return 0; 不 spawn subprocess / 不 import hf-test-driven-dev module |
 
 ## 11. 关键 dataclass 设计
@@ -323,9 +336,14 @@ garage status                                   # 末尾加 skill mining 段
   - Track 2: promote happy path → packs/garage/skills/<name>/SKILL.md 创建
   - Track 3: reject + reason record
   - Track 4: audit 30 days expiry + purge
-- Sentinel: `tests/skill_mining/test_baseline_no_regression.py` (复用 F010 sentinel pattern)
-- Performance: `test_pattern_detector_performance` 跑 100 entry < 0.5s
+- Sentinel (Mi-2 r2 统一命名):
+  - `tests/sync/test_baseline_no_regression.py` 既有 (F010 sentinel, 跑全套测试 ≥ baseline) — F013-A 复用, 不新建
+  - `tests/skill_mining/test_promote_no_pack_json_mutation.py` (CON-1304 守门, 新建)
+- Performance:
+  - `tests/skill_mining/test_pattern_detector_perf_100_entries.py` (CON-1303 单测门, 100 entry < 0.5s)
+  - `scripts/skill_mining_perf_smoke.py` (CON-1303 手工 prof, 1000+1000 < 5s; T4 finalize 前必须跑一次)
 - ruff baseline diff = 0 (与 F012 一样的预算)
+- 配置文件路径 (Mi-1 r2 修订): suggestion 数据写**项目根** `.garage/skill-suggestions/`; 用户偏好读**用户根** `~/.garage/skill-mining-config.json` (例: 全局阈值 N, 排除 domain). 两根不冲突, T1 `suggestion_store` 接 `FileStorage(garage_dir)` 项目根; T4 `pipeline._load_user_config()` 单独读 `Path.home() / ".garage" / "skill-mining-config.json"` 提供默认
 
 ## 15. 与 vision 对照 (deliverable check)
 
@@ -336,4 +354,13 @@ garage status                                   # 末尾加 skill mining 段
 
 ---
 
-> **本文档是 design r1**, 待 hf-design-review (subagent 派发). r2 起草由 review verdict 驱动.
+> **本文档是 design r2** (回应 design-review-F013-r1 的 1 critical + 4 important + 2 minor + 1 nit; 全部 8 finding 已闭合, 详见 `docs/reviews/design-review-F013-r1-2026-04-26.md`). r2 关键修订:
+>
+> - **Cr-1**: ADR-D13-3 双 caller 接点显式 (Path 1 = `session_manager._trigger_memory_extraction`; Path 2 = `ingest/pipeline.py:120-128`)
+> - **Im-1**: ADR-D13-2 不再借 F003 类比, 仅论证自身需求
+> - **Im-2**: spec § 2.1 "4 子目录" 笔误标记
+> - **Im-3**: `unknown` 桶改为 "返回 None 直接跳过", 与 spec FR-1301 Edge 字面一致
+> - **Im-4**: CON-1303 性能 fallback 钉死: 单测 < 0.5s + 手工 1000+1000 < 5s + config gate `skill_mining.hook_enabled`
+> - **Mi-1**: `.garage/skill-suggestions/` (项目) vs `~/.garage/skill-mining-config.json` (用户) 双根说明
+> - **Mi-2**: sentinel 命名统一
+> - **Ni-1**: 基线 930 实施前再核
