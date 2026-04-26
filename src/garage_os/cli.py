@@ -465,6 +465,26 @@ def _status(garage_root: Path) -> None:
     # (always emits metadata line per Im-6 r2)
     _print_skill_mining_status(garage_dir)
 
+    # F014 ADR-D14-5: append workflow recall status section
+    # (always emits metadata line per Im-6 pattern; appended after skill mining)
+    _print_workflow_recall_status(garage_dir)
+
+
+def _print_workflow_recall_status(garage_dir: Path) -> None:
+    """F014 FR-1405 + ADR-D14-5: emit workflow recall status section.
+
+    Always print metadata line (RSK-1401: never silent so users see the pipe is
+    working even at advisory_count=0). cache stale → "(stale, will rebuild on
+    next recall call)" suffix.
+    """
+    from garage_os.workflow_recall.pipeline import compute_status_summary
+
+    try:
+        summary = compute_status_summary(garage_dir)
+    except Exception:
+        return
+    print(summary.metadata_line)
+
 
 def _print_skill_mining_status(garage_dir: Path) -> None:
     """F013-A FR-1305 + Im-6 r2: emit skill mining status section.
@@ -1739,6 +1759,12 @@ def _experience_add(
         updated_at=now,
     )
     experience_index.store(record)
+    # F014 ADR-D14-3 Path 2/4: workflow recall cache invalidate
+    try:
+        from garage_os.workflow_recall.pipeline import WorkflowRecallHook
+        WorkflowRecallHook.invalidate(garage_dir)
+    except Exception:
+        pass  # best-effort; --rebuild-cache 兜底
     print(EXPERIENCE_ADDED_FMT.format(rid=rid))
     return 0
 
