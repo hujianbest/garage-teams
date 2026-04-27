@@ -140,6 +140,23 @@ def test_readmes_list_f006_cli_subcommands() -> None:
             )
 
 
+# F014 / FR-1402: AGENTS.md must document the new recall workflow CLI subcommand.
+
+def test_agents_md_mentions_workflow_recall_cli() -> None:
+    """F014: AGENTS.md must mention `garage recall workflow` CLI."""
+    agents_md = REPO_ROOT / "AGENTS.md"
+    content = agents_md.read_text(encoding="utf-8")
+    for token in (
+        "recall workflow",
+        "Workflow Recall (F014)",
+        "WorkflowRecallHook",
+        "step 3.5",
+    ):
+        assert token in content, (
+            f"expected AGENTS.md to mention F014 token '{token}'; not found"
+        )
+
+
 # F007 / FR-710: user guide must document the Pack & Host Installer.
 
 def test_user_guide_documents_pack_and_host_installer() -> None:

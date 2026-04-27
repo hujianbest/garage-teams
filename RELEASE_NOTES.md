@@ -4,6 +4,86 @@
 
 ---
 
+## F014 — Workflow Recall 信号 (hf-workflow-router 历史路径建议)
+
+- 状态: ✅ 完成 (closed by hf-finalize 2026-04-26)
+- Workflow Profile: `full` (5 task T1-T5 + spec r2 + design r2 + post-implementation review chain auto-streamlined)
+- Branch / PR: `cursor/f014-workflow-recall-bf33` / TBD
+
+### 用户可见变化
+
+**A. `garage recall workflow`** (FR-1402):
+- `garage recall workflow [--task-type X] [--problem-domain Y] [--skill-id Z] [--top-k N] [--json] [--rebuild-cache]`
+- 列出系统从 ExperienceIndex 自动识别的 (task_type, problem_domain) 同类 cycle 的 top-K 历史 skill_ids 序列 (默认 N=3 阈值, top-K=3, window=10)
+- `--json` 输出供 hf-workflow-router step 3.5 自动调用
+- `--skill-id Z` (Im-4 r2): 取 Z 第一次出现位置之后的子序列; Z 是序列最后一项 → 跳过
+- 与 F006 `garage recommend` 完全独立 (CON-1405): recommend 推内容, recall workflow 推路径
+
+**B. hf-workflow-router step 3.5 (additive)** (FR-1403):
+- 在既有 step 3 (支线信号) 与 step 4 (Profile 决策) 之间插入 step 3.5 "查历史路径"
+- handoff 块附 `Historical advisory: based on N similar cycles, the typical path is <seq>` — advisory only
+- INV-F14-5 守门: 既有 step 1-10 不变 + dogfood SHA baseline 同步 (.cursor/ + .claude/ 2 keys)
+
+**C. `garage status` 加 workflow-recall 段** (FR-1405 + Im-6 pattern):
+- 始终显 "Workflow recall: scanned X records / Y buckets / Z advisories (last scan: ...)" (RSK-1401: Z=0 也显)
+- cache stale 时附 "(stale, will rebuild on next recall call)"; platform.json `workflow_recall.enabled=false` 时附 "(disabled)"
+
+**D. WorkflowRecallHook 多 caller 接入** (FR-1404 + Cr-1+Cr-2+Im-1 r2):
+- 4 个 ExperienceRecord 写入 caller 路径末尾 try/except invoke `WorkflowRecallHook.invalidate`:
+  - `session_manager._trigger_memory_extraction` 末尾 (F003 archive 路径)
+  - `cli.py _experience_add` 在 store 后
+  - `publisher.py` if-else 末尾 (覆盖 store + update; Im-1 r2 修订)
+  - `knowledge/integration.py` 在 store 后
+- 显式排除 (Cr-1 r2 USER-INPUT 选项 b): `cli.py:1172` skill execution path (record 单位是 single skill, 不是 cycle-level task path); 用户用 `--rebuild-cache` 兜底
+- 失败不阻断 caller (best-effort, 与 F013-A SkillMiningHook 同精神)
+- ADR-D14-3 fallback: `platform.json skill_mining.hook_enabled` 同 pattern 的 `workflow_recall.enabled: bool` (默认 true) gate
+
+### 数据与契约影响
+
+- 新增 `src/garage_os/workflow_recall/` 顶级包 (4 模块: types / cache / path_recaller / pipeline)
+- 新增 CLI subcommand `recall workflow` (与 F006 recommend 平级 sibling)
+- 新增 .garage 目录: `.garage/workflow-recall/{cache.json, last-indexed.json}`
+- 新增 platform.json schema: `workflow_recall.enabled: bool` (默认 true)
+- 修改 `packs/coding/skills/hf-workflow-router/SKILL.md` (additive step 3.5; 既有 step 1-10 不变)
+- 新增 `packs/coding/skills/hf-workflow-router/references/recall-integration.md`
+- 更新 `tests/adapter/installer/dogfood_baseline/skill_md_sha256.json` 中 2 个 hf-workflow-router 键 hash (.cursor/ + .claude/)
+- F003-F013 既有 API + schema 字节级不变 (CON-1401: caller 改动是 try/except hook 调用 = 非 breaking 扩展)
+- 新增测试: 4 模块 (cache + path_recaller + pipeline + perf) + 1 CLI test class
+- 测试基线: 989 → **~1045 passed** (+56, 0 regressions)
+- `git diff main..HEAD -- pyproject.toml uv.lock` = 0 (CON-1402 零依赖变更)
+- ruff baseline diff = 0 (与 F013-A 同预算)
+- Performance: pattern recall 1000 records = 0.064s (CON-1403 2s 预算余 97%)
+
+### 完整 review/gate 链路
+
+| Stage | Verdict |
+|---|---|
+| using-hf-workflow → hf-workflow-router (entry) | full profile + auto-streamlined review |
+| hf-spec-review (r1+r2) | r1 CHANGES_REQUESTED (3 critical + 5 important + 3 minor + 1 nit; 11 LLM-FIXABLE + 1 USER-INPUT) → r2 APPROVED |
+| hf-design-review (r1+r2) | r1 CHANGES_REQUESTED (2 critical + 3 important + 1 minor + 2 nit; 7 LLM-FIXABLE + 1 USER-INPUT) → r2 APPROVED |
+| hf-tasks-review | auto-streamlined |
+| hf-test-driven-dev T1-T5 | 5 task commits, ~56 new tests, 0 regression |
+| hf-test/code/traceability-review | post-implementation chain (auto-streamlined) |
+| hf-regression-gate | PASS (~1045 passed; ruff baseline diff 0; perf 0.064s) |
+| hf-completion-gate | COMPLETE |
+| hf-finalize | ✅ closed |
+
+### Vision 杠杆
+
+- Stage 3 工匠: ~85% → ~95% (workflow 半自动编排闭环)
+- growth-strategy.md § Stage 3 第 68 行 "工作流编排从手动变成半自动" ❌ → ✅
+- B4 人机共生 5/5 维持 (具象化: router 不仅 read state, 还 read history)
+
+### Carry-forward (F015+)
+
+- D-1410: 增量扫 cache (当前全量重算 1000 record < 0.064s, 不紧迫)
+- D-1411: NLP-based skill_ids 序列相似度 (当前启发式 tuple equality)
+- D-1412: agent 自动组装 (`garage agent compose`)
+- D-1413: skill_ids 序列变化追踪 (例 "近 3 次 cycle 把 hf-spec-review 后 review 节奏从 r1→r2 改为 r1→r2→r3"; 时间维度的 trend)
+- D-1414: cross-user advisory aggregation (与 user-pact 不承诺多用户协作冲突, deferred)
+
+---
+
 ## F013-A — Skill Mining Push 信号
 
 - 状态: ✅ 完成 (closed by hf-finalize 2026-04-26)

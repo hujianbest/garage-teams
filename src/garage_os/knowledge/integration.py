@@ -221,6 +221,12 @@ class KnowledgeIntegration:
         # Store both records
         self._experience_index.store(experience)
         self._knowledge_store.store(knowledge)
+        # F014 ADR-D14-3 Path 4/4: workflow recall cache invalidate
+        try:
+            from garage_os.workflow_recall.pipeline import WorkflowRecallHook
+            WorkflowRecallHook.invalidate(self._experience_index._storage.base_path)
+        except Exception:
+            pass
 
         return {
             "experience_record_id": experience_id,

@@ -114,6 +114,13 @@ class TestDogfoodLayout:
         assert "packs/coding/skills" in content, "setup script must symlink coding pack"
         assert "packs/garage/skills" in content, "setup script must symlink garage pack"
 
+    def test_workflow_recall_module_exists(self) -> None:
+        """F014 T5 sentinel: workflow_recall package + CLI subcommand registered."""
+        wr_dir = REPO_ROOT / "src" / "garage_os" / "workflow_recall"
+        assert wr_dir.is_dir(), "F014: src/garage_os/workflow_recall/ missing"
+        for module in ("__init__.py", "types.py", "cache.py", "path_recaller.py", "pipeline.py"):
+            assert (wr_dir / module).is_file(), f"F014: workflow_recall/{module} missing"
+
     def test_agents_readme_explains_mount(self) -> None:
         """.agents/README.md MUST explain why .agents/skills/ exists as symlinks
         and how to regenerate it (companion doc to setup-agent-skills.sh).

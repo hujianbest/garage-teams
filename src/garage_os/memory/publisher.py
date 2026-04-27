@@ -141,6 +141,13 @@ class KnowledgePublisher:
                 # is preserved by carrying it over from the existing record.
                 record.created_at = existing_record.created_at
                 self._experience_index.update(record)
+            # F014 ADR-D14-3 Im-1 r2 Path 3/4: workflow recall cache invalidate
+            # (covers store + update both branches; best-effort)
+            try:
+                from garage_os.workflow_recall.pipeline import WorkflowRecallHook
+                WorkflowRecallHook.invalidate(self._experience_index._storage.base_path)
+            except Exception:
+                pass
             return {
                 "published_id": record.record_id,
                 "knowledge_type": None,

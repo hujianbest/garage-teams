@@ -276,6 +276,14 @@ class SessionManager:
         except Exception:
             pass  # never block archive on skill-mining hook failure
 
+        # F014 ADR-D14-3 Cr-1 r2 Path 1/4: workflow recall cache invalidate
+        # (archive-level safety net; best-effort, must not block archive)
+        try:
+            from garage_os.workflow_recall.pipeline import WorkflowRecallHook
+            WorkflowRecallHook.invalidate(self._storage.base_path)
+        except Exception:
+            pass  # never block archive on workflow-recall hook failure
+
     def _persist_extraction_error(
         self, session_id: str, phase: str, exc: BaseException
     ) -> None:

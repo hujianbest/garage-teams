@@ -4461,3 +4461,199 @@ class TestSkillPromoteCommand:
         assert rc == 1
         captured = capsys.readouterr()
         assert "not installed" in captured.err
+
+
+# ===========================================================================
+# F014 T4: garage recall workflow CLI tests
+# ===========================================================================
+
+
+class TestRecallWorkflowCommand:
+    """F014 FR-1402 + Im-4 r2 sub-sequence + CON-1405."""
+
+    @staticmethod
+    def _seed(workspace: Path, n: int = 5) -> None:
+        from garage_os.knowledge.experience_index import ExperienceIndex
+        from garage_os.storage.file_storage import FileStorage
+        from garage_os.types import ExperienceRecord
+        storage = FileStorage(workspace / ".garage")
+        ei = ExperienceIndex(storage)
+        for i in range(n):
+            ei.store(ExperienceRecord(
+                record_id=f"r-{i:03d}",
+                task_type="implement",
+                skill_ids=["hf-specify", "hf-design", "hf-tasks", "hf-test-driven-dev"],
+                tech_stack=["python"],
+                domain="dev",
+                problem_domain="cli-design",
+                outcome="success",
+                duration_seconds=3600 + i * 100,
+                complexity="medium",
+                session_id=f"ses-{i:03d}",
+                lessons_learned=["先 read spec 再 design"],
+            ))
+
+    def test_no_filter_errors(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+
+        rc = main(["recall", "workflow", "--path", str(workspace)])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "at least one of" in captured.err
+
+    def test_problem_domain_filter(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed(workspace, n=5)
+
+        rc = main([
+            "recall", "workflow", "--path", str(workspace),
+            "--problem-domain", "cli-design",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "SEQUENCE" in captured.out
+        assert "hf-specify" in captured.out
+        assert "5" in captured.out  # 5 hits
+
+    def test_task_type_filter(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed(workspace, n=3)
+
+        rc = main([
+            "recall", "workflow", "--path", str(workspace),
+            "--task-type", "implement",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "hf-specify" in captured.out
+
+    def test_skill_id_filter_subsequence(self, tmp_path: Path, capsys) -> None:
+        """Im-4 r2: --skill-id Z 取 Z 后子序列."""
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed(workspace, n=3)
+
+        rc = main([
+            "recall", "workflow", "--path", str(workspace),
+            "--skill-id", "hf-design",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        # After hf-design subseq is "hf-tasks → hf-test-driven-dev"
+        assert "hf-tasks" in captured.out
+        assert "hf-test-driven-dev" in captured.out
+        # hf-specify and hf-design should NOT appear in the sequence column
+        # (they're before the cut)
+        assert "hf-specify" not in captured.out
+
+    def test_top_k_override(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        # Seed 4 distinct sequences
+        from garage_os.knowledge.experience_index import ExperienceIndex
+        from garage_os.storage.file_storage import FileStorage
+        from garage_os.types import ExperienceRecord
+        storage = FileStorage(workspace / ".garage")
+        ei = ExperienceIndex(storage)
+        for j in range(4):
+            for i in range(3):
+                ei.store(ExperienceRecord(
+                    record_id=f"r-{j}-{i}",
+                    task_type="implement",
+                    skill_ids=[f"skill-{j}", "hf-tasks"],
+                    tech_stack=[],
+                    domain="d",
+                    problem_domain="cli-design",
+                    outcome="success",
+                    duration_seconds=60,
+                    complexity="low",
+                    session_id=f"ses-{j}-{i}",
+                ))
+
+        rc = main([
+            "recall", "workflow", "--path", str(workspace),
+            "--problem-domain", "cli-design",
+            "--top-k", "2",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        # Only 2 of 4 sequences shown
+        sequence_lines = [l for l in captured.out.splitlines() if "skill-" in l]
+        assert len(sequence_lines) == 2
+
+    def test_json_output_schema(self, tmp_path: Path, capsys) -> None:
+        import json
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed(workspace, n=5)
+
+        rc = main([
+            "recall", "workflow", "--path", str(workspace),
+            "--problem-domain", "cli-design",
+            "--json",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        payload = json.loads(captured.out)
+        assert "advisories" in payload
+        assert "scanned_count" in payload
+        assert "bucket_size" in payload
+        assert "threshold_met" in payload
+        assert payload["threshold_met"] is True
+        assert payload["bucket_size"] == 5
+        assert len(payload["advisories"]) == 1
+        adv = payload["advisories"][0]
+        assert adv["skills"] == ["hf-specify", "hf-design", "hf-tasks", "hf-test-driven-dev"]
+        assert adv["count"] == 5
+
+    def test_below_threshold_friendly_msg(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed(workspace, n=2)  # below threshold 3
+
+        rc = main([
+            "recall", "workflow", "--path", str(workspace),
+            "--problem-domain", "cli-design",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "No workflow advisory yet" in captured.out
+        assert "current N for bucket: 2" in captured.out
+
+    def test_rebuild_cache_flag(self, tmp_path: Path, capsys) -> None:
+        from garage_os.workflow_recall.cache import WorkflowRecallCache
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed(workspace, n=5)
+
+        cache = WorkflowRecallCache(workspace / ".garage")
+        cache.write_last_indexed(scanned_count=999)  # fake stale cache
+        assert cache.last_indexed_path.is_file()
+
+        rc = main([
+            "recall", "workflow", "--path", str(workspace),
+            "--problem-domain", "cli-design",
+            "--rebuild-cache",
+        ])
+        assert rc == 0
+        # last-indexed.json should have been invalidated by --rebuild-cache
+        assert not cache.last_indexed_path.is_file()

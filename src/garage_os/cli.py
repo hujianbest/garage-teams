@@ -465,6 +465,26 @@ def _status(garage_root: Path) -> None:
     # (always emits metadata line per Im-6 r2)
     _print_skill_mining_status(garage_dir)
 
+    # F014 ADR-D14-5: append workflow recall status section
+    # (always emits metadata line per Im-6 pattern; appended after skill mining)
+    _print_workflow_recall_status(garage_dir)
+
+
+def _print_workflow_recall_status(garage_dir: Path) -> None:
+    """F014 FR-1405 + ADR-D14-5: emit workflow recall status section.
+
+    Always print metadata line (RSK-1401: never silent so users see the pipe is
+    working even at advisory_count=0). cache stale → "(stale, will rebuild on
+    next recall call)" suffix.
+    """
+    from garage_os.workflow_recall.pipeline import compute_status_summary
+
+    try:
+        summary = compute_status_summary(garage_dir)
+    except Exception:
+        return
+    print(summary.metadata_line)
+
 
 def _print_skill_mining_status(garage_dir: Path) -> None:
     """F013-A FR-1305 + Im-6 r2: emit skill mining status section.
@@ -1739,6 +1759,12 @@ def _experience_add(
         updated_at=now,
     )
     experience_index.store(record)
+    # F014 ADR-D14-3 Path 2/4: workflow recall cache invalidate
+    try:
+        from garage_os.workflow_recall.pipeline import WorkflowRecallHook
+        WorkflowRecallHook.invalidate(garage_dir)
+    except Exception:
+        pass  # best-effort; --rebuild-cache 兜底
     print(EXPERIENCE_ADDED_FMT.format(rid=rid))
     return 0
 
@@ -1959,6 +1985,108 @@ def _recommend(
 
     for item in merged:
         _print_recommendation_block(item)
+    return 0
+
+
+def _recall_workflow(
+    garage_root: Path,
+    *,
+    task_type: str | None,
+    problem_domain: str | None,
+    skill_id: str | None,
+    top_k: int,
+    output_json: bool,
+    rebuild_cache: bool,
+) -> int:
+    """F014 FR-1402 _recall_workflow handler.
+
+    CON-1405: Independent of F006 _recommend (no shared imports beyond stdlib).
+    """
+    import json as _json
+
+    from garage_os.knowledge.experience_index import ExperienceIndex
+    from garage_os.storage.file_storage import FileStorage
+    from garage_os.workflow_recall.cache import WorkflowRecallCache
+    from garage_os.workflow_recall.path_recaller import recall
+
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    # Validate at least one filter
+    if task_type is None and problem_domain is None and skill_id is None:
+        print(
+            "at least one of --task-type / --problem-domain / --skill-id required",
+            file=sys.stderr,
+        )
+        return 1
+
+    # Force-rebuild path: invalidate cache (lazy; next read recomputes)
+    if rebuild_cache:
+        WorkflowRecallCache(garage_dir).invalidate()
+
+    storage = FileStorage(garage_dir)
+    ei = ExperienceIndex(storage)
+
+    try:
+        result = recall(
+            ei,
+            task_type=task_type,
+            problem_domain=problem_domain,
+            skill_id=skill_id,
+            top_k=top_k,
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    if output_json:
+        payload = {
+            "advisories": [
+                {
+                    "skills": adv.skills,
+                    "count": adv.count,
+                    "avg_duration_seconds": adv.avg_duration_seconds,
+                    "top_lessons": [list(t) for t in adv.top_lessons],
+                    "task_type": adv.task_type,
+                    "problem_domain": adv.problem_domain,
+                }
+                for adv in result.advisories
+            ],
+            "scanned_count": result.scanned_count,
+            "bucket_size": result.bucket_size,
+            "threshold_met": result.threshold_met,
+        }
+        print(_json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0
+
+    if not result.threshold_met:
+        from garage_os.workflow_recall.path_recaller import DEFAULT_THRESHOLD
+        print(
+            f"No workflow advisory yet ({DEFAULT_THRESHOLD} records minimum; "
+            f"current N for bucket: {result.bucket_size})"
+        )
+        return 0
+
+    if not result.advisories:
+        # Threshold met but all sequences filtered out (e.g. --skill-id at last)
+        print(
+            f"No workflow advisory available "
+            f"(bucket has {result.bucket_size} records but no surviving sequences)"
+        )
+        return 0
+
+    # Tabular output
+    print(f"{'SEQUENCE':<60} {'HITS':<6} {'AVG (s)':<10} {'TOP LESSON'}")
+    for adv in result.advisories:
+        seq_str = " → ".join(adv.skills) if adv.skills else "(empty)"
+        if len(seq_str) > 58:
+            seq_str = seq_str[:55] + "..."
+        top_lesson = adv.top_lessons[0][0] if adv.top_lessons else "(none)"
+        if len(top_lesson) > 40:
+            top_lesson = top_lesson[:37] + "..."
+        print(f"{seq_str:<60} {adv.count:<6} {adv.avg_duration_seconds:<10.1f} {top_lesson}")
     return 0
 
 
@@ -2428,6 +2556,47 @@ def build_parser() -> argparse.ArgumentParser:
         help="Timeout in seconds (default: 300)",
     )
 
+    # F014: recall (top-level; sibling of recommend; recommend pushes content,
+    # recall pushes workflow paths — CON-1405 strict separation)
+    recall_parser = subparsers.add_parser(
+        "recall",
+        help="Recall historical patterns from ExperienceIndex (F014: workflow paths)",
+        parents=[path_parser],
+    )
+    recall_subparsers = recall_parser.add_subparsers(dest="recall_command")
+    recall_workflow_parser = recall_subparsers.add_parser(
+        "workflow",
+        help="Recall historical workflow paths (skill_ids sequences) by task_type / problem_domain",
+        parents=[path_parser],
+    )
+    recall_workflow_parser.add_argument(
+        "--task-type", dest="recall_task_type", default=None,
+        help="Filter by ExperienceRecord.task_type (e.g. 'implement', 'review')",
+    )
+    recall_workflow_parser.add_argument(
+        "--problem-domain", dest="recall_problem_domain", default=None,
+        help="Filter by ExperienceRecord.problem_domain (e.g. 'cli-design')",
+    )
+    recall_workflow_parser.add_argument(
+        "--skill-id", dest="recall_skill_id", default=None,
+        help=(
+            "Take subsequence after this skill's first occurrence in record.skill_ids "
+            "(Im-4 r2: skill at last position skipped)"
+        ),
+    )
+    recall_workflow_parser.add_argument(
+        "--top-k", dest="recall_top_k", type=int, default=3,
+        help="Max advisories to display (default 3)",
+    )
+    recall_workflow_parser.add_argument(
+        "--json", dest="recall_json", action="store_true",
+        help="Output JSON (machine-readable; for hf-workflow-router consumption)",
+    )
+    recall_workflow_parser.add_argument(
+        "--rebuild-cache", dest="recall_rebuild_cache", action="store_true",
+        help="Force full recompute (skip cache)",
+    )
+
     # F006: recommend (top-level; cross-domain active recall)
     recommend_parser = subparsers.add_parser(
         "recommend",
@@ -2860,6 +3029,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             domain=args.recommend_domain,
             top=args.recommend_top,
         )
+
+    if args.command == "recall":
+        root = args.path if args.path else _find_garage_root()
+        if args.recall_command == "workflow":
+            return _recall_workflow(
+                root,
+                task_type=args.recall_task_type,
+                problem_domain=args.recall_problem_domain,
+                skill_id=args.recall_skill_id,
+                top_k=args.recall_top_k,
+                output_json=args.recall_json,
+                rebuild_cache=args.recall_rebuild_cache,
+            )
+        recall_parser.print_help()
+        return 1
 
     if args.command == "knowledge":
         root = args.path if args.path else _find_garage_root()

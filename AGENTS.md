@@ -286,6 +286,62 @@ Hook 接入两个 caller 路径 (ADR-D13-3 r2 Cr-1):
 
 详见 spec `docs/features/F013-skill-mining-push.md` + design `docs/designs/2026-04-26-skill-mining-push-design.md` (7 ADR + 5 INV + 5 CON)。
 
+## Workflow Recall (F014)
+
+F014 把 hf-workflow-router 从 "纯静态决策" 升级到 "查历史路径主动建议": 当 ExperienceIndex 里有 ≥ 3 条同 (task_type, problem_domain) record 时, router step 3.5 (新插入, additive 不破坏既有 step 1-10) 调 `garage recall workflow --json`, 在 handoff 块附 advisory 段 — advisory only, 不改 router authoritative routing 决策权.
+
+### `garage recall workflow` (FR-1402)
+
+```bash
+garage recall workflow --task-type implement                       # filter by task_type
+garage recall workflow --problem-domain cli-design                 # filter by problem_domain
+garage recall workflow --skill-id hf-design                        # take subseq after Z (Im-4 r2)
+garage recall workflow --task-type X --problem-domain Y --top-k 5  # combined
+garage recall workflow --problem-domain X --json                   # for router consumption
+garage recall workflow --rebuild-cache                             # force full recompute
+```
+
+- 唯一通道写 `.garage/workflow-recall/{cache,last-indexed}.json` (INV-F14-2; 不动 packs/)
+- 与 F006 `garage recommend` 完全独立 (CON-1405): recommend 推内容, recall workflow 推路径
+- 阈值 N ≥ 3, 桶内 record 数不足时返回空 + 友好 msg
+- `--skill-id Z` (Im-4 r2): 取 Z 第一次出现位置之后的子序列; Z 是序列最后一项 → 跳过
+
+### Pattern Detection (FR-1401)
+
+聚类规则: 按 (task_type, problem_domain) 配对分桶; 同桶内按 created_at desc 取最近 10 条; 提取 skill_ids 序列频率 (Counter); top-K (默认 3) 序列输出.
+
+聚类源: `experience_index.list_records()` + Python filter on `record.task_type / record.problem_domain` (不调 `search(domain=)`, 因为 F004 的 search domain 过滤 `record.domain` 而非 `record.problem_domain`).
+
+### WorkflowRecallHook 多 caller 接入 (Cr-1+Cr-2+Im-1 r2)
+
+cache invalidate 在 4 处 ExperienceRecord 写入 caller 末尾 try/except invoke (与 F013-A SkillMiningHook 多 caller 接入同 pattern, best-effort 不阻断 caller):
+
+| # | Caller | 接入位置 |
+|---|---|---|
+| 1 | `session_manager._trigger_memory_extraction` | 末尾 (F013-A SkillMiningHook 之后); F003 archive 路径兜底 |
+| 2 | `cli.py _experience_add` | `experience_index.store(record)` 后 |
+| 3 | `publisher.py` | if-else 末尾 (覆盖 store + update 两路径; Im-1 r2 修订) |
+| 4 | `knowledge/integration.py` | `experience_index.store(experience)` 后 |
+
+显式排除 (Cr-1 r2 USER-INPUT 选项 b): `cli.py:1172` (skill execution path; record 单位是 single skill 不是 cycle-level task); 用户用 `--rebuild-cache` 兜底.
+
+### hf-workflow-router step 3.5 (FR-1403)
+
+router 在既有 step 3 (支线信号) 与 step 4 (Profile) 之间插入 step 3.5 (additive, INV-F14-5 守门: 既有 step 1-10 + dogfood SHA baseline 一并守门). 详见 `packs/coding/skills/hf-workflow-router/SKILL.md` step 3.5 + `packs/coding/skills/hf-workflow-router/references/recall-integration.md`.
+
+### `garage status` 显示 + 配置 (FR-1405)
+
+- `garage status` 末尾加段: "Workflow recall: scanned X records / Y buckets / Z advisories (last scan: ...)" — 始终显 (RSK-1401: Z=0 也显, 用户看见管道在工作); cache stale 时附 "(stale, will rebuild on next recall call)"
+- 配置: `~/.garage/skill-mining-config.json` (用户根, 与 F013-A 共享配置文件结构) 或 `.garage/config/platform.json` `workflow_recall.enabled: bool` (默认 true; 设 false 关 hook 仅留 CLI rescan)
+
+### Carry-forward (F015+)
+
+- D-1410: 增量扫 cache (当前全量重算 1000 record < 0.064s, 极不紧迫)
+- D-1411: NLP-based skill_ids 序列相似度 (P1 启发式: tuple equality)
+- D-1412: agent 自动组装 (`garage agent compose`); 当前 production agents 仍手写
+
+详见 spec `docs/features/F014-workflow-recall.md` + design `docs/designs/2026-04-26-workflow-recall-design.md` (7 ADR + 5 INV + 5 CON)。
+
 ### Garage OS 开发者参考
 
 #### 模块概览
