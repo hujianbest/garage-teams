@@ -32,3 +32,8 @@ build/
 
 # F008 ADR-D8-2: dogfood 安装清单 (运行时产物, 不入 git)
 .garage/config/host-installer.json
+
+# Cloud-agent runtime skill mount: relative symlinks into packs/<pack-id>/skills/
+# 由 scripts/setup-agent-skills.sh 在 fresh clone 时再生; packs/ 是 single source of truth.
+# 详见 .agents/README.md.
+.agents/skills/

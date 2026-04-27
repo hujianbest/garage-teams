@@ -39,7 +39,7 @@
 - `humanizer-zh` — Humanizer-zh 项目（https://github.com/op7418/Humanizer-zh）的 Garage skill 适配
 - `hv-analysis` — 横纵分析法（数字生命卡兹克提出）
 - `khazix-writer` — 数字生命卡兹克公众号风格
-- `magazine-web-ppt` — [guizang-ppt-skill](https://github.com/op7418/guizang-ppt-skill)（MIT；`skills/magazine-web-ppt/LICENSE`）
+- `magazine-web-ppt` — [guizang-ppt-skill](https://github.com/op7418/guizang-ppt-skill)（MIT；`skills/magazine-web-ppt/LICENSE`；本仓库内容物最后与上游 `a593cf4` 对齐）
 
 ## 安装样板
 

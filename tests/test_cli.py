@@ -3881,3 +3881,583 @@ class TestPackLsCommand:
             assert pack_id in captured.out
         # All show '[local]' since no source_url
         assert "[local]" in captured.out
+
+
+# ===========================================================================
+# F012-A T1: garage pack uninstall CLI tests
+# ===========================================================================
+
+
+class TestPackUninstallCommand:
+    """F012-A FR-1201..1203 + ADR-D12-2."""
+
+    @staticmethod
+    def _build_and_install(workspace: Path, repo: Path, pack_id: str = "cli-uninstall-test") -> None:
+        import json
+        import subprocess
+        from garage_os.adapter.installer.pack_install import install_pack_from_url
+        from garage_os.adapter.installer.pipeline import install_packs
+
+        (repo / "skills" / "h").mkdir(parents=True)
+        (repo / "skills" / "h" / "SKILL.md").write_text(
+            "---\nname: h\ndescription: minimal\n---\n# H\n", encoding="utf-8",
+        )
+        (repo / "pack.json").write_text(json.dumps({
+            "schema_version": 1, "pack_id": pack_id, "version": "0.1.0",
+            "description": "x", "skills": ["h"], "agents": [],
+        }), encoding="utf-8")
+        subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+        subprocess.run(["git", "add", "."], cwd=repo, check=True)
+        subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=T", "commit", "-q", "-m", "init"],
+            cwd=repo, check=True,
+        )
+        install_pack_from_url(workspace, f"file://{repo}")
+        install_packs(workspace, packs_root=workspace / "packs", hosts=["claude"])
+
+    def test_uninstall_yes_via_cli(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        repo = tmp_path / "src"
+        repo.mkdir()
+        self._build_and_install(workspace, repo, "cli-test")
+
+        rc = main(["pack", "uninstall", "--path", str(workspace), "cli-test", "--yes"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Uninstalled pack 'cli-test'" in captured.out
+        assert not (workspace / "packs" / "cli-test").exists()
+
+    def test_uninstall_dry_run_via_cli(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        repo = tmp_path / "src"
+        repo.mkdir()
+        self._build_and_install(workspace, repo, "dry-cli-test")
+
+        rc = main(["pack", "uninstall", "--path", str(workspace), "dry-cli-test", "--dry-run"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "DRY RUN" in captured.out
+        assert (workspace / "packs" / "dry-cli-test").exists()
+
+    def test_uninstall_nonexistent_exits_1(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        rc = main(["pack", "uninstall", "--path", str(workspace), "nonexistent", "--yes"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "uninstall failed" in captured.err.lower()
+
+
+# ===========================================================================
+# F012-B T2: garage pack update CLI tests
+# ===========================================================================
+
+
+class TestPackUpdateCommand:
+    """F012-B FR-1204..1206 + ADR-D12-3 r2."""
+
+    @staticmethod
+    def _build_pack(repo: Path, pack_id: str, version: str) -> str:
+        import json, subprocess
+        (repo / "skills" / "h").mkdir(parents=True, exist_ok=True)
+        (repo / "skills" / "h" / "SKILL.md").write_text(
+            f"---\nname: h\ndescription: v{version}\n---\n# v{version}\n", encoding="utf-8",
+        )
+        (repo / "pack.json").write_text(json.dumps({
+            "schema_version": 1, "pack_id": pack_id, "version": version,
+            "description": f"v{version}", "skills": ["h"], "agents": [],
+        }), encoding="utf-8")
+        if not (repo / ".git").exists():
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+        subprocess.run(["git", "add", "."], cwd=repo, check=True)
+        subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=T", "commit", "-q",
+             "--allow-empty", "-m", f"v{version}"],
+            cwd=repo, check=True,
+        )
+        return f"file://{repo}"
+
+    def test_update_yes_via_cli(self, tmp_path: Path, capsys) -> None:
+        from garage_os.adapter.installer.pack_install import install_pack_from_url
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        repo = tmp_path / "src"
+        repo.mkdir()
+        url = self._build_pack(repo, "cli-update-test", "0.1.0")
+        install_pack_from_url(workspace, url)
+        # Bump remote
+        self._build_pack(repo, "cli-update-test", "0.2.0")
+
+        rc = main(["pack", "update", "--path", str(workspace), "cli-update-test", "--yes"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Updated pack 'cli-update-test'" in captured.out
+        assert "v0.1.0 to v0.2.0" in captured.out
+
+    def test_update_already_up_to_date(self, tmp_path: Path, capsys) -> None:
+        from garage_os.adapter.installer.pack_install import install_pack_from_url
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        repo = tmp_path / "src"
+        repo.mkdir()
+        url = self._build_pack(repo, "utd-test", "0.1.0")
+        install_pack_from_url(workspace, url)
+
+        rc = main(["pack", "update", "--path", str(workspace), "utd-test", "--yes"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "already up to date" in captured.out.lower()
+
+    def test_update_nonexistent_exits_1(self, tmp_path: Path, capsys) -> None:
+        rc = main(["pack", "update", "--path", str(tmp_path), "nonexistent", "--yes"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "update failed" in captured.err.lower()
+
+
+# ===========================================================================
+# F012-C T3: garage pack publish CLI tests
+# ===========================================================================
+
+
+class TestPackPublishCommand:
+    """F012-C FR-1207..1210 + ADR-D12-4 r2."""
+
+    @staticmethod
+    def _build_pack(workspace: Path, pack_id: str, with_sensitive: bool = False) -> None:
+        import json
+        pack_dir = workspace / "packs" / pack_id
+        pack_dir.mkdir(parents=True)
+        (pack_dir / "skills" / "h").mkdir(parents=True)
+        (pack_dir / "skills" / "h" / "SKILL.md").write_text(
+            "---\nname: h\ndescription: x\n---\n# H\n", encoding="utf-8",
+        )
+        if with_sensitive:
+            (pack_dir / "config.env").write_text("password=foo\n", encoding="utf-8")
+        (pack_dir / "pack.json").write_text(json.dumps({
+            "schema_version": 1, "pack_id": pack_id, "version": "0.1.0",
+            "description": "x", "skills": ["h"], "agents": [],
+        }), encoding="utf-8")
+
+    @staticmethod
+    def _bare_remote(tmp_path: Path) -> str:
+        import subprocess
+        bare = tmp_path / "bare.git"
+        subprocess.run(["git", "init", "--bare", "-q", str(bare)], check=True)
+        return f"file://{bare}"
+
+    def test_publish_yes_via_cli(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        self._build_pack(workspace, "cli-pub-test")
+        url = self._bare_remote(tmp_path)
+
+        rc = main([
+            "pack", "publish", "--path", str(workspace), "cli-pub-test",
+            "--to", url, "--yes",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Published pack 'cli-pub-test'" in captured.out
+
+    def test_publish_sensitive_aborts(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        self._build_pack(workspace, "cli-sens-test", with_sensitive=True)
+        url = self._bare_remote(tmp_path)
+
+        rc = main([
+            "pack", "publish", "--path", str(workspace), "cli-sens-test",
+            "--to", url, "--yes",
+        ])
+        assert rc == 1  # sensitive abort
+        captured = capsys.readouterr()
+        assert "Sensitive content detected" in captured.err
+
+    def test_publish_force_bypasses_sensitive(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        self._build_pack(workspace, "cli-fp-test", with_sensitive=True)
+        url = self._bare_remote(tmp_path)
+
+        rc = main([
+            "pack", "publish", "--path", str(workspace), "cli-fp-test",
+            "--to", url, "--yes", "--force",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Published pack" in captured.out
+
+    def test_publish_dry_run(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        self._build_pack(workspace, "cli-dr-test")
+        url = self._bare_remote(tmp_path)
+
+        rc = main([
+            "pack", "publish", "--path", str(workspace), "cli-dr-test",
+            "--to", url, "--dry-run",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "DRY RUN" in captured.out
+
+
+# ===========================================================================
+# F012-D T4: garage knowledge export --anonymize CLI tests
+# ===========================================================================
+
+
+class TestKnowledgeExportCommand:
+    """F012-D FR-1211..1213 + ADR-D12-5 r2."""
+
+    @staticmethod
+    def _seed(workspace: Path) -> None:
+        from datetime import datetime
+        from garage_os.knowledge.knowledge_store import KnowledgeStore
+        from garage_os.storage.file_storage import FileStorage
+        from garage_os.types import KnowledgeEntry, KnowledgeType
+        storage = FileStorage(workspace / ".garage")
+        KnowledgeStore(storage).store(KnowledgeEntry(
+            id="cli-001", type=KnowledgeType.DECISION, topic="t",
+            date=datetime(2026, 4, 25), tags=[],
+            content="email: alice@example.com api_key=sk-test123",
+        ))
+
+    def test_export_anonymize_via_cli(self, tmp_path: Path, capsys, monkeypatch) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        # Init garage
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed(workspace)
+
+        # Redirect HOME
+        fake_home = tmp_path / "fake-home"
+        fake_home.mkdir()
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+
+        rc = main([
+            "knowledge", "export", "--path", str(workspace), "--anonymize",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Exported 1 entries" in captured.out
+        assert "redacted" in captured.out
+        # Tarball exists in fake_home
+        exports_dir = fake_home / ".garage" / "exports"
+        tarballs = list(exports_dir.glob("*.tar.gz"))
+        assert len(tarballs) == 1
+
+    def test_export_dry_run_via_cli(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed(workspace)
+
+        rc = main([
+            "knowledge", "export", "--path", str(workspace),
+            "--anonymize", "--dry-run",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "DRY RUN" in captured.err
+
+    def test_export_without_anonymize_flag_argparse_required(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        """--anonymize is argparse-required (FR-1211 only mode in F012)."""
+        with pytest.raises(SystemExit) as exc_info:
+            main(["knowledge", "export", "--path", str(tmp_path)])
+        assert exc_info.value.code != 0  # argparse rejects missing required arg
+
+    def test_export_custom_output_in_workspace_warns(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed(workspace)
+
+        output = workspace / "myexports"
+        rc = main([
+            "knowledge", "export", "--path", str(workspace),
+            "--anonymize", "--output", str(output),
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "WARNING" in captured.err
+
+
+# ===========================================================================
+# F013-A T4: garage skill suggest CLI tests
+# ===========================================================================
+
+
+class TestSkillSuggestCommand:
+    """F013-A FR-1302."""
+
+    @staticmethod
+    def _seed_records(workspace: Path, n: int = 5) -> None:
+        from garage_os.knowledge.experience_index import ExperienceIndex
+        from garage_os.storage.file_storage import FileStorage
+        from garage_os.types import ExperienceRecord
+        storage = FileStorage(workspace / ".garage")
+        ei = ExperienceIndex(storage)
+        for i in range(n):
+            ei.store(ExperienceRecord(
+                record_id=f"r-{i:03d}",
+                task_type="review",
+                skill_ids=[],
+                tech_stack=[],
+                domain="dev",
+                problem_domain="review-verdict",
+                outcome="success",
+                duration_seconds=60,
+                complexity="low",
+                session_id=f"ses-{i:03d}",
+                key_patterns=["verdict-format", "5-section"],
+            ))
+
+    def test_skill_suggest_empty_friendly_msg(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+
+        rc = main(["skill", "suggest", "--path", str(workspace)])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "No skill suggestions yet" in captured.out
+
+    def test_skill_suggest_rescan_writes_proposals(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed_records(workspace)
+
+        rc = main(["skill", "suggest", "--path", str(workspace), "--rescan"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Rescan complete" in captured.out
+        assert "1 new proposals" in captured.out
+
+    def test_skill_suggest_lists_proposed(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed_records(workspace)
+        # First rescan
+        main(["skill", "suggest", "--path", str(workspace), "--rescan"])
+        capsys.readouterr()
+
+        # Then list
+        rc = main(["skill", "suggest", "--path", str(workspace)])
+        assert rc == 0
+        captured = capsys.readouterr()
+        # Header table
+        assert "ID" in captured.out
+        assert "NAME" in captured.out
+        assert "SCORE" in captured.out
+
+    def test_skill_suggest_id_shows_detail_with_preview(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed_records(workspace)
+        main(["skill", "suggest", "--path", str(workspace), "--rescan"])
+        capsys.readouterr()
+
+        # Find suggestion id from suggestion store
+        from garage_os.skill_mining.suggestion_store import SuggestionStore
+        from garage_os.skill_mining.types import SkillSuggestionStatus
+        ss = SuggestionStore(workspace / ".garage")
+        suggestions = ss.list_by_status(SkillSuggestionStatus.PROPOSED)
+        assert len(suggestions) == 1
+        sg_id = suggestions[0].id
+
+        rc = main(["skill", "suggest", "--path", str(workspace), "--id", sg_id])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "SKILL.md preview" in captured.out
+        assert "## When to Use" in captured.out
+
+    def test_skill_suggest_id_not_found(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+
+        rc = main(["skill", "suggest", "--path", str(workspace), "--id", "sg-nonexistent"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "not found" in captured.err
+
+    def test_skill_suggest_status_filter(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        self._seed_records(workspace)
+        main(["skill", "suggest", "--path", str(workspace), "--rescan"])
+        capsys.readouterr()
+
+        # status=promoted should be empty
+        rc = main([
+            "skill", "suggest", "--path", str(workspace),
+            "--status", "promoted",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "No skill suggestions yet (status=promoted)" in captured.out
+
+
+# ===========================================================================
+# F013-A T5: garage skill promote CLI tests
+# ===========================================================================
+
+
+class TestSkillPromoteCommand:
+    """F013-A FR-1304 + INV-F13-1 + INV-F13-2 + CON-1304."""
+
+    @staticmethod
+    def _seed_and_propose(workspace: Path) -> str:
+        from garage_os.knowledge.experience_index import ExperienceIndex
+        from garage_os.skill_mining.suggestion_store import SuggestionStore
+        from garage_os.skill_mining.types import SkillSuggestionStatus
+        from garage_os.storage.file_storage import FileStorage
+        from garage_os.types import ExperienceRecord
+        storage = FileStorage(workspace / ".garage")
+        ei = ExperienceIndex(storage)
+        for i in range(5):
+            ei.store(ExperienceRecord(
+                record_id=f"r-{i:03d}",
+                task_type="review",
+                skill_ids=[],
+                tech_stack=[],
+                domain="dev",
+                problem_domain="review-verdict",
+                outcome="success",
+                duration_seconds=60,
+                complexity="low",
+                session_id=f"ses-{i:03d}",
+                key_patterns=["verdict-format", "5-section"],
+                lessons_learned=[f"lesson {i}"],
+            ))
+        # Trigger via rescan
+        main(["skill", "suggest", "--path", str(workspace), "--rescan"])
+        ss = SuggestionStore(workspace / ".garage")
+        return ss.list_by_status(SkillSuggestionStatus.PROPOSED)[0].id
+
+    def test_promote_yes_writes_skill_md(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        # Need packs/garage/ to exist for target validation
+        (workspace / "packs" / "garage").mkdir(parents=True)
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        sg_id = self._seed_and_propose(workspace)
+        capsys.readouterr()
+
+        rc = main(["skill", "promote", "--path", str(workspace), sg_id, "--yes"])
+        assert rc == 0
+        captured = capsys.readouterr()
+
+        # SKILL.md exists in the suggestion's name dir
+        from garage_os.skill_mining.suggestion_store import SuggestionStore
+        from garage_os.skill_mining.types import SkillSuggestionStatus
+        ss = SuggestionStore(workspace / ".garage")
+        # status moved to promoted
+        promoted = ss.list_by_status(SkillSuggestionStatus.PROMOTED)
+        assert len(promoted) == 1
+        skill_md = workspace / "packs" / "garage" / "skills" / promoted[0].suggested_name / "SKILL.md"
+        assert skill_md.is_file()
+        # Echo line per FR-1304
+        assert "Created skill at" in captured.out
+        assert "garage run" in captured.out
+
+    def test_promote_dry_run_no_write(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        (workspace / "packs" / "garage").mkdir(parents=True)
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        sg_id = self._seed_and_propose(workspace)
+        capsys.readouterr()
+
+        rc = main(["skill", "promote", "--path", str(workspace), sg_id, "--dry-run"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "DRY RUN" in captured.out
+
+        # Status still proposed
+        from garage_os.skill_mining.suggestion_store import SuggestionStore
+        from garage_os.skill_mining.types import SkillSuggestionStatus
+        ss = SuggestionStore(workspace / ".garage")
+        assert len(ss.list_by_status(SkillSuggestionStatus.PROPOSED)) == 1
+
+    def test_promote_reject_with_reason(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        (workspace / "packs" / "garage").mkdir(parents=True)
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        sg_id = self._seed_and_propose(workspace)
+        capsys.readouterr()
+
+        rc = main(["skill", "promote", "--path", str(workspace), sg_id, "--reject", "--yes"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Rejected" in captured.out
+
+        from garage_os.skill_mining.suggestion_store import SuggestionStore
+        from garage_os.skill_mining.types import SkillSuggestionStatus
+        ss = SuggestionStore(workspace / ".garage")
+        assert len(ss.list_by_status(SkillSuggestionStatus.REJECTED)) == 1
+
+    def test_promote_target_pack_override(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        (workspace / "packs" / "coding").mkdir(parents=True)
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        sg_id = self._seed_and_propose(workspace)
+        capsys.readouterr()
+
+        rc = main([
+            "skill", "promote", "--path", str(workspace), sg_id,
+            "--yes", "--target-pack", "coding",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        # Skill went to coding/, not garage/
+        from garage_os.skill_mining.suggestion_store import SuggestionStore
+        from garage_os.skill_mining.types import SkillSuggestionStatus
+        ss = SuggestionStore(workspace / ".garage")
+        promoted = ss.list_by_status(SkillSuggestionStatus.PROMOTED)
+        skill_md = workspace / "packs" / "coding" / "skills" / promoted[0].suggested_name / "SKILL.md"
+        assert skill_md.is_file()
+
+    def test_promote_nonexistent_target_pack(self, tmp_path: Path, capsys) -> None:
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        (workspace / "packs" / "garage").mkdir(parents=True)
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+        sg_id = self._seed_and_propose(workspace)
+        capsys.readouterr()
+
+        rc = main([
+            "skill", "promote", "--path", str(workspace), sg_id,
+            "--yes", "--target-pack", "nonexistent-pack",
+        ])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "not installed" in captured.err

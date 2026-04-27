@@ -302,3 +302,39 @@ def _to_posix(path_str: str) -> str:
     """Convert any OS-native path string to POSIX form (forward slashes)."""
     # PurePosixPath cannot accept '\' on its own, so normalize first.
     return PurePosixPath(*Path(path_str).parts).as_posix()
+
+
+# ============================================================
+# F012-E (FR-1214 + ADR-D12-6 r2): VersionManager registration
+# ============================================================
+#
+# F009 finalize approval carry-forward I-2: register host-installer schema 1→2
+# migration in VersionManager._MIGRATION_REGISTRY (parallel to F001 platform.json /
+# host-adapter.json registrations).
+#
+# ADR-D12-6 r2 (scheme C, dict-level equivalent): wrapper signature compatible
+# with VersionManager.migrate() single-arg call convention (`migrator(data)`,
+# version_manager.py:323). The dataclass-form `migrate_v1_to_v2(prior_v1: Manifest,
+# workspace_root: Path)` requires workspace_root which VersionManager.migrate() does
+# not provide; this dict-level wrapper performs equivalent schema field transformations
+# (schema_version 1 → 2 + add `scope: "project"` default to each file entry) but
+# does NOT touch the `dst` field (that conversion remains in `read_manifest` fast-path
+# which has workspace_root context).
+from garage_os.platform.version_manager import register_migration
+
+
+@register_migration(1, 2)
+def _migrate_v1_to_v2_dict_form(data: dict[str, Any]) -> dict[str, Any]:
+    """F012-E (ADR-D12-6 r2 scheme C): dict-level v1→v2 migration for VersionManager registry.
+
+    Compatible with ``VersionManager.migrate()`` single-arg call (line 323).
+    Equivalent semantics with ``migrate_v1_to_v2(Manifest, workspace_root)`` for
+    schema_version + files[].scope; ``dst`` field is left as-is here (read_manifest
+    fast-path is the canonical absolute-dst conversion path with workspace_root context).
+    """
+    out = dict(data)
+    out["schema_version"] = 2
+    out["files"] = [
+        {**f, "scope": f.get("scope", "project")} for f in out.get("files", [])
+    ]
+    return out

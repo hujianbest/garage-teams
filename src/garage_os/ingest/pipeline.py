@@ -121,6 +121,16 @@ def import_conversations(
             batch = orchestrator.extract_for_archived_session_id(session.session_id)
             if summary.batch_id is None:
                 summary.batch_id = batch.get("batch_id") if isinstance(batch, dict) else None
+            # F013-A ADR-D13-3 Cr-1 r2: skill mining hook (Path 2 of 2 caller sites)
+            # Best-effort; failure must not block import
+            try:
+                from garage_os.skill_mining.pipeline import SkillMiningHook
+                SkillMiningHook.run_after_extraction(
+                    session_id=session.session_id,
+                    garage_dir=storage.base_path,
+                )
+            except Exception:
+                pass
         except Exception as exc:
             print(
                 f"Extraction failed for session {session.session_id}: {exc}",

@@ -143,7 +143,9 @@ class VersionManager:
     """
 
     # Versions that this build can natively understand (major numbers).
-    SUPPORTED_VERSIONS: List[int] = [1]
+    # F012-E (FR-1214 + ADR-D12-6 r2): added 2 to support host-installer.json schema 2
+    # (registered via @register_migration(1, 2) in manifest.py at import time)
+    SUPPORTED_VERSIONS: List[int] = [1, 2]
 
     # The *current* schema version produced by this build.
     CURRENT_SCHEMA_VERSION: int = 1

@@ -461,6 +461,32 @@ def _status(garage_root: Path) -> None:
     # for users who never ran `garage sync`).
     _print_sync_status(garage_dir)
 
+    # F013-A ADR-D13-6: append skill mining status section
+    # (always emits metadata line per Im-6 r2)
+    _print_skill_mining_status(garage_dir)
+
+
+def _print_skill_mining_status(garage_dir: Path) -> None:
+    """F013-A FR-1305 + Im-6 r2: emit skill mining status section.
+
+    Always print metadata line (RSK-1301: never silent so users see the pipe is
+    working even at proposed=0). 💡 hint line emitted only when proposed > 0.
+    """
+    from garage_os.skill_mining.pipeline import compute_status_summary, run_audit
+
+    # Run audit first so expired counts reflect current time
+    try:
+        run_audit(garage_dir)
+    except Exception:
+        pass  # best-effort
+    try:
+        summary = compute_status_summary(garage_dir)
+    except Exception:
+        return
+    print(summary.metadata_line)
+    if summary.hint_line:
+        print(summary.hint_line)
+
 
 def _print_sync_status(garage_dir: Path) -> None:
     """F010 ADR-D10-12: print sync status section in `garage status` output.
@@ -653,6 +679,371 @@ def _pack_ls(workspace_root: Path) -> int:
     for p in packs:
         source = p["source_url"] if p["source_url"] != "local" else "local"
         print(f"  {p['pack_id']} v{p['version']} [{source}]")
+    return 0
+
+
+def _pack_uninstall(
+    workspace_root: Path,
+    *,
+    pack_id: str,
+    yes: bool = False,
+    dry_run: bool = False,
+) -> int:
+    """F012-A FR-1201..1203 _pack_uninstall entry."""
+    from garage_os.adapter.installer.pack_install import (
+        PackInstallError,
+        uninstall_pack,
+    )
+
+    try:
+        summary = uninstall_pack(
+            workspace_root,
+            pack_id,
+            dry_run=dry_run,
+            yes=yes,
+        )
+    except PackInstallError as exc:
+        print(f"Pack uninstall failed: {exc}", file=sys.stderr)
+        return 1
+
+    if summary.skipped:
+        return 0
+    print(
+        f"Uninstalled pack '{summary.pack_id}' from {summary.n_hosts_affected} hosts "
+        f"({summary.n_files_removed} files removed)"
+    )
+    return 0
+
+
+def _pack_update(
+    workspace_root: Path,
+    *,
+    pack_id: str,
+    yes: bool = False,
+    preserve_local_edits: bool = False,
+) -> int:
+    """F012-B FR-1204..1206 _pack_update entry."""
+    from garage_os.adapter.installer.pack_install import (
+        PackInstallError,
+        update_pack,
+    )
+
+    try:
+        summary = update_pack(
+            workspace_root,
+            pack_id,
+            yes=yes,
+            preserve_local_edits=preserve_local_edits,
+        )
+    except PackInstallError as exc:
+        print(f"Pack update failed: {exc}", file=sys.stderr)
+        return 1
+
+    if summary.skipped:
+        return 0  # already up to date / interactive cancel
+    print(
+        f"Updated pack '{summary.pack_id}' from v{summary.old_version} to v{summary.new_version}"
+    )
+    return 0
+
+
+def _pack_publish(
+    workspace_root: Path,
+    *,
+    pack_id: str,
+    to_url: str,
+    yes: bool = False,
+    force: bool = False,
+    dry_run: bool = False,
+    no_update_source_url: bool = False,
+    commit_author: str | None = None,
+    commit_message: str | None = None,
+) -> int:
+    """F012-C FR-1207..1210 _pack_publish entry."""
+    from garage_os.adapter.installer.pack_install import (
+        PackInstallError,
+        publish_pack,
+    )
+
+    try:
+        summary = publish_pack(
+            workspace_root,
+            pack_id,
+            to_url,
+            yes=yes,
+            force=force,
+            dry_run=dry_run,
+            no_update_source_url=no_update_source_url,
+            commit_author=commit_author,
+            commit_message=commit_message,
+        )
+    except PackInstallError as exc:
+        print(f"Pack publish failed: {exc}", file=sys.stderr)
+        return 1
+
+    if summary.skipped:
+        # Sensitive abort or interactive cancel; stderr already printed
+        return 1 if summary.sensitive_matches and not summary.pushed else 0
+    if summary.pushed:
+        print(
+            f"Published pack '{summary.pack_id}' v{summary.version} to {summary.to_url}"
+        )
+    return 0
+
+
+def _skill_suggest(
+    garage_root: Path,
+    *,
+    sg_id: str | None,
+    status_filter: str,
+    rescan: bool,
+    threshold: int | None,
+    purge_expired: bool,
+    yes: bool,
+) -> int:
+    """F013-A FR-1302 _skill_suggest entry."""
+    from garage_os.skill_mining.pipeline import (
+        SkillMiningHook,
+        _load_user_config,
+        run_audit,
+    )
+    from garage_os.skill_mining.suggestion_store import SuggestionStore
+    from garage_os.skill_mining.template_generator import render, render_minimal
+    from garage_os.skill_mining.types import SkillSuggestionStatus
+    from garage_os.knowledge.experience_index import ExperienceIndex
+    from garage_os.knowledge.knowledge_store import KnowledgeStore
+
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    ss = SuggestionStore(garage_dir)
+
+    # Audit first (move expired)
+    run_audit(garage_dir)
+
+    # Purge expired
+    if purge_expired:
+        expired = ss.list_by_status(SkillSuggestionStatus.EXPIRED)
+        if not expired:
+            print("No expired suggestions to purge.")
+            return 0
+        if not yes:
+            print(f"Found {len(expired)} expired suggestions. Purge them all? [y/N]: ", end="", flush=True)
+            try:
+                ans = input("").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                ans = ""
+            if ans not in ("y", "yes"):
+                print("Cancelled.")
+                return 0
+        for s in expired:
+            ss.delete(SkillSuggestionStatus.EXPIRED, s.id)
+        print(f"Purged {len(expired)} expired suggestions.")
+        return 0
+
+    # Rescan
+    if rescan:
+        cfg = _load_user_config()
+        eff_threshold = threshold if threshold is not None else int(cfg.get("threshold", 5))
+        result = SkillMiningHook.run_after_extraction(
+            session_id="cli-rescan",
+            garage_dir=garage_dir,
+            threshold=eff_threshold,
+        )
+        if result.error:
+            print(f"Rescan failed: {result.error}", file=sys.stderr)
+            return 1
+        if result.skipped_reason:
+            print(f"Rescan skipped: {result.skipped_reason}")
+            return 0
+        print(f"Rescan complete: {result.new_suggestions_count} new proposals.")
+        # Fall through to listing
+
+    # Detail view (--id)
+    if sg_id:
+        s = ss.find(sg_id)
+        if s is None:
+            print(f"Suggestion '{sg_id}' not found.", file=sys.stderr)
+            return 1
+        print(f"ID: {s.id}")
+        print(f"Status: {s.status.value}")
+        print(f"Suggested name: {s.suggested_name}")
+        print(f"Description: {s.suggested_description}")
+        print(f"Problem domain: {s.problem_domain_key}")
+        print(f"Tag bucket: {', '.join(s.tag_bucket) or '(none)'}")
+        print(f"Suggested pack: {s.suggested_pack}")
+        print(f"Score: {s.score:.4f}")
+        print(f"Evidence entries: {len(s.evidence_entries)}")
+        print(f"Evidence records: {len(s.evidence_records)}")
+        print(f"Created: {s.created_at.isoformat()}")
+        print(f"Expires: {s.expires_at.isoformat()}")
+        print()
+        print("--- SKILL.md preview ---")
+        try:
+            storage = FileStorage(garage_dir)
+            ks = KnowledgeStore(storage)
+            ei = ExperienceIndex(storage)
+            preview = render(s, ks, ei)
+        except Exception:
+            preview = render_minimal(s)
+        print(preview)
+        return 0
+
+    # List
+    if status_filter == "all":
+        listing = ss.list_all()
+    else:
+        listing = ss.list_by_status(SkillSuggestionStatus(status_filter))
+
+    # Threshold display filter (without rescan)
+    if threshold is not None and not rescan:
+        listing = [
+            s for s in listing
+            if (len(s.evidence_entries) + len(s.evidence_records)) >= threshold
+        ]
+
+    if not listing:
+        print(
+            f"No skill suggestions yet (status={status_filter}). "
+            "Try `garage skill suggest --rescan --threshold 3` to lower the bar."
+        )
+        return 0
+
+    listing.sort(key=lambda s: s.score, reverse=True)
+    print(f"{'ID':<25} {'NAME':<30} {'EVIDENCE':<10} {'SCORE':<8} {'PACK':<10} {'STATUS'}")
+    for s in listing:
+        n_ev = len(s.evidence_entries) + len(s.evidence_records)
+        print(
+            f"{s.id:<25} {s.suggested_name[:30]:<30} {n_ev:<10} "
+            f"{s.score:<8.4f} {s.suggested_pack:<10} {s.status.value}"
+        )
+    return 0
+
+
+def _skill_promote(
+    garage_root: Path,
+    *,
+    suggestion_id: str,
+    yes: bool,
+    dry_run: bool,
+    target_pack: str | None,
+    reject: bool,
+) -> int:
+    """F013-A FR-1304 _skill_promote entry."""
+    from garage_os.skill_mining.suggestion_store import SuggestionStore
+    from garage_os.skill_mining.template_generator import render, render_minimal
+    from garage_os.skill_mining.types import SkillSuggestionStatus
+    from garage_os.knowledge.experience_index import ExperienceIndex
+    from garage_os.knowledge.knowledge_store import KnowledgeStore
+
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    ss = SuggestionStore(garage_dir)
+    suggestion = ss.find(suggestion_id)
+    if suggestion is None:
+        print(f"Suggestion '{suggestion_id}' not found.", file=sys.stderr)
+        return 1
+
+    # Reject path
+    if reject:
+        if suggestion.status not in (SkillSuggestionStatus.PROPOSED, SkillSuggestionStatus.ACCEPTED):
+            print(
+                f"Cannot reject suggestion in status '{suggestion.status.value}'.",
+                file=sys.stderr,
+            )
+            return 1
+        reason = ""
+        if not yes:
+            print("Brief reason for rejection (≤ 500 chars; press Enter to skip): ", end="", flush=True)
+            try:
+                reason = input("").strip()[:500]
+            except (EOFError, KeyboardInterrupt):
+                reason = ""
+        suggestion.rejected_reason = reason or None
+        ss.write(suggestion)  # write current status to ensure rejected_reason persists
+        ss.move_to_status(suggestion.id, SkillSuggestionStatus.REJECTED)
+        print(f"Rejected suggestion {suggestion.id}.")
+        return 0
+
+    # Promote path
+    target_pack_id = target_pack or suggestion.suggested_pack
+    target_dir = garage_root / "packs" / target_pack_id
+    if not target_dir.is_dir():
+        print(
+            f"Target pack '{target_pack_id}' not installed at {target_dir}.",
+            file=sys.stderr,
+        )
+        return 1
+    skill_dir = target_dir / "skills" / suggestion.suggested_name
+    skill_md_path = skill_dir / "SKILL.md"
+
+    # Build preview
+    try:
+        storage = FileStorage(garage_dir)
+        ks = KnowledgeStore(storage)
+        ei = ExperienceIndex(storage)
+        preview = render(suggestion, ks, ei)
+    except Exception:
+        preview = render_minimal(suggestion)
+
+    if dry_run:
+        print(f"DRY RUN: would create {skill_md_path}")
+        print()
+        print("--- SKILL.md preview ---")
+        print(preview)
+        return 0
+
+    # Overwrite check
+    if skill_md_path.exists() and not yes:
+        print(
+            f"WARNING: {skill_md_path} already exists. Overwrite? [y/N]: ",
+            end="",
+            flush=True,
+        )
+        try:
+            ans = input("").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            ans = ""
+        if ans not in ("y", "yes"):
+            print("Cancelled.")
+            return 0
+
+    # Confirmation
+    if not yes:
+        print(f"About to create {skill_md_path}")
+        print(f"Target pack: {target_pack_id}")
+        print()
+        print("--- SKILL.md preview ---")
+        print(preview)
+        print()
+        print("Continue? [y/N]: ", end="", flush=True)
+        try:
+            ans = input("").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            ans = ""
+        if ans not in ("y", "yes"):
+            print("Cancelled.")
+            return 0
+
+    # Write SKILL.md (sole writer to packs/, INV-F13-1)
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    skill_md_path.write_text(preview, encoding="utf-8")
+
+    # Update suggestion status (CON-1304: do NOT touch packs/<id>/pack.json)
+    suggestion.promoted_to_path = str(skill_md_path.relative_to(garage_root))
+    ss.write(suggestion)
+    ss.move_to_status(suggestion.id, SkillSuggestionStatus.PROMOTED)
+
+    print(
+        f"Created skill at {skill_md_path}.\n"
+        f"Run 'garage run {suggestion.suggested_name}' to test, or "
+        f"'garage run hf-test-driven-dev' to refine via the workflow."
+    )
     return 0
 
 
@@ -1621,6 +2012,52 @@ def _knowledge_link(
     return 0
 
 
+def _knowledge_export(
+    garage_root: Path,
+    *,
+    anonymize: bool,
+    output: str | None = None,
+    dry_run: bool = False,
+) -> int:
+    """F012-D FR-1211..1213 _knowledge_export entry."""
+    from garage_os.knowledge.exporter import export_anonymized
+
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    if not anonymize:
+        # F012 only supports --anonymize mode (other modes deferred D-1215+)
+        print(
+            "knowledge export requires --anonymize (other export modes deferred to F013+)",
+            file=sys.stderr,
+        )
+        return 1
+
+    output_dir = Path(output).resolve() if output else None
+
+    try:
+        summary = export_anonymized(
+            garage_root,
+            output_dir=output_dir,
+            dry_run=dry_run,
+        )
+    except OSError as exc:
+        print(f"Knowledge export failed: {exc}", file=sys.stderr)
+        return 1
+
+    total_redacted = sum(summary.rule_hit_counts.values())
+    if dry_run:
+        # stderr already printed details via export_anonymized
+        return 0
+    print(
+        f"Exported {summary.entry_count} entries ({total_redacted} sensitive matches redacted) "
+        f"to {summary.output_path}"
+    )
+    return 0
+
+
 def _knowledge_graph(garage_root: Path, *, eid: str) -> int:
     """Implement ``garage knowledge graph --id`` (FR-606)."""
     garage_dir = _require_garage(garage_root)
@@ -1807,6 +2244,79 @@ def build_parser() -> argparse.ArgumentParser:
         help="List installed packs (id, version, source URL)",
         parents=[path_parser],
     )
+    # F012-A FR-1201..1203: uninstall
+    pack_uninstall_parser = pack_subparsers.add_parser(
+        "uninstall",
+        help="Uninstall a pack (reverse of install + garage init)",
+        parents=[path_parser],
+    )
+    pack_uninstall_parser.add_argument(
+        "pack_id", help="Pack id to uninstall (must be in packs/)"
+    )
+    pack_uninstall_parser.add_argument(
+        "--yes", "-y", dest="pack_uninstall_yes", action="store_true",
+        help="Skip interactive confirmation",
+    )
+    pack_uninstall_parser.add_argument(
+        "--dry-run", dest="pack_uninstall_dry_run", action="store_true",
+        help="Print what would be removed without changing any files",
+    )
+    # F012-B FR-1204..1206: update
+    pack_update_parser = pack_subparsers.add_parser(
+        "update",
+        help="Update a pack from its source_url + sync host dirs",
+        parents=[path_parser],
+    )
+    pack_update_parser.add_argument(
+        "pack_id", help="Pack id to update (must have source_url in pack.json)"
+    )
+    pack_update_parser.add_argument(
+        "--yes", "-y", dest="pack_update_yes", action="store_true",
+        help="Skip interactive confirmation",
+    )
+    pack_update_parser.add_argument(
+        "--preserve-local-edits", dest="pack_update_preserve",
+        action="store_true",
+        help="Warn (no true 3-way merge yet, F013 D-1211); proceed with overwrite",
+    )
+    # F012-C FR-1207..1210: publish
+    pack_publish_parser = pack_subparsers.add_parser(
+        "publish",
+        help="Publish a pack to a git URL (init + commit + force push)",
+        parents=[path_parser],
+    )
+    pack_publish_parser.add_argument("pack_id", help="Pack id to publish")
+    pack_publish_parser.add_argument(
+        "--to", dest="pack_publish_to_url", required=True,
+        help="Target git URL (https / ssh / file://; force-pushed)",
+    )
+    pack_publish_parser.add_argument(
+        "--yes", "-y", dest="pack_publish_yes", action="store_true",
+        help="Skip interactive confirmation (does NOT bypass sensitive scan)",
+    )
+    pack_publish_parser.add_argument(
+        "--force", dest="pack_publish_force", action="store_true",
+        help="Skip sensitive scan abort (B5 user-pact opt-in)",
+    )
+    pack_publish_parser.add_argument(
+        "--dry-run", dest="pack_publish_dry_run", action="store_true",
+        help="Build temp git + scan but don't push or update source_url",
+    )
+    pack_publish_parser.add_argument(
+        "--no-update-source-url", dest="pack_publish_no_update_source_url",
+        action="store_true",
+        help="Don't write back to_url to pack.json source_url after push",
+    )
+    pack_publish_parser.add_argument(
+        "--commit-author", dest="pack_publish_commit_author",
+        default=None,
+        help="Override commit author 'Name <email>' (default reads git config)",
+    )
+    pack_publish_parser.add_argument(
+        "--commit-message", "-m", dest="pack_publish_commit_message",
+        default=None,
+        help="Override commit message (default 'Publish <pack-id> v<ver> from Garage')",
+    )
 
     # F010 session import (FR-1005/1006 + ADR-D10-7/8/9/10/11)
     session_parser = subparsers.add_parser(
@@ -1837,6 +2347,74 @@ def build_parser() -> argparse.ArgumentParser:
             "Batch import ALL conversations without interactive prompt. "
             "Default: TTY interactive selection; non-TTY exits with notice."
         ),
+    )
+
+    # F013-A: skill mining (suggest + promote)
+    skill_parser = subparsers.add_parser(
+        "skill",
+        help="Skill mining (F013-A): suggest patterns to promote, promote to packs/",
+        parents=[path_parser],
+    )
+    skill_subparsers = skill_parser.add_subparsers(dest="skill_command")
+    # skill suggest
+    skill_suggest_parser = skill_subparsers.add_parser(
+        "suggest",
+        help="List proposed skill suggestions from pattern mining",
+        parents=[path_parser],
+    )
+    skill_suggest_parser.add_argument(
+        "--id", dest="skill_suggest_id", default=None,
+        help="Show detail for a specific suggestion id (with SKILL.md preview)",
+    )
+    skill_suggest_parser.add_argument(
+        "--status", dest="skill_suggest_status",
+        choices=["proposed", "accepted", "promoted", "rejected", "expired", "all"],
+        default="proposed",
+        help="Filter by status (default: proposed)",
+    )
+    skill_suggest_parser.add_argument(
+        "--rescan", dest="skill_suggest_rescan", action="store_true",
+        help="Force a full re-scan of KnowledgeStore + ExperienceIndex (writes new proposals)",
+    )
+    skill_suggest_parser.add_argument(
+        "--threshold", dest="skill_suggest_threshold", type=int, default=None,
+        help=(
+            "Display threshold N (filters this list only). With --rescan: "
+            "use N as the rescan threshold (writes new proposals at N)."
+        ),
+    )
+    skill_suggest_parser.add_argument(
+        "--purge-expired", dest="skill_suggest_purge_expired", action="store_true",
+        help="Physically delete expired suggestions",
+    )
+    skill_suggest_parser.add_argument(
+        "--yes", "-y", dest="skill_suggest_yes", action="store_true",
+        help="Skip interactive confirmation (for --purge-expired)",
+    )
+    # skill promote
+    skill_promote_parser = skill_subparsers.add_parser(
+        "promote",
+        help="Promote a suggestion to packs/<target-pack>/skills/<name>/SKILL.md",
+        parents=[path_parser],
+    )
+    skill_promote_parser.add_argument(
+        "suggestion_id", help="Suggestion id (sg-yyyymmdd-xxxxxx)"
+    )
+    skill_promote_parser.add_argument(
+        "--yes", "-y", dest="skill_promote_yes", action="store_true",
+        help="Skip interactive confirmation",
+    )
+    skill_promote_parser.add_argument(
+        "--dry-run", dest="skill_promote_dry_run", action="store_true",
+        help="Preview SKILL.md without writing",
+    )
+    skill_promote_parser.add_argument(
+        "--target-pack", dest="skill_promote_target_pack", default=None,
+        help="Override the target pack (default: suggestion's suggested_pack, usually 'garage')",
+    )
+    skill_promote_parser.add_argument(
+        "--reject", dest="skill_promote_reject", action="store_true",
+        help="Reject the suggestion (mark status=rejected with a reason)",
     )
 
     # run
@@ -1900,6 +2478,26 @@ def build_parser() -> argparse.ArgumentParser:
     # knowledge list
     list_parser = knowledge_subparsers.add_parser(
         "list", help="List all knowledge entries", parents=[path_parser]
+    )
+
+    # F012-D FR-1211..1213: knowledge export --anonymize
+    knowledge_export_parser = knowledge_subparsers.add_parser(
+        "export",
+        help="Export knowledge to anonymized tarball",
+        parents=[path_parser],
+    )
+    knowledge_export_parser.add_argument(
+        "--anonymize", dest="knowledge_export_anonymize", action="store_true",
+        required=True,
+        help="Apply anonymize regex rules (currently the only supported export mode)",
+    )
+    knowledge_export_parser.add_argument(
+        "--output", dest="knowledge_export_output", default=None,
+        help="Output dir for tarball (default ~/.garage/exports/)",
+    )
+    knowledge_export_parser.add_argument(
+        "--dry-run", dest="knowledge_export_dry_run", action="store_true",
+        help="Print rule hit counts without writing tarball",
     )
 
     # F005: knowledge add / edit / show / delete (CLI authoring path)
@@ -2196,7 +2794,57 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return _pack_install(root, git_url=args.git_url)
         if args.pack_command == "ls":
             return _pack_ls(root)
+        if args.pack_command == "uninstall":
+            return _pack_uninstall(
+                root,
+                pack_id=args.pack_id,
+                yes=args.pack_uninstall_yes,
+                dry_run=args.pack_uninstall_dry_run,
+            )
+        if args.pack_command == "update":
+            return _pack_update(
+                root,
+                pack_id=args.pack_id,
+                yes=args.pack_update_yes,
+                preserve_local_edits=args.pack_update_preserve,
+            )
+        if args.pack_command == "publish":
+            return _pack_publish(
+                root,
+                pack_id=args.pack_id,
+                to_url=args.pack_publish_to_url,
+                yes=args.pack_publish_yes,
+                force=args.pack_publish_force,
+                dry_run=args.pack_publish_dry_run,
+                no_update_source_url=args.pack_publish_no_update_source_url,
+                commit_author=args.pack_publish_commit_author,
+                commit_message=args.pack_publish_commit_message,
+            )
         pack_parser.print_help()
+        return 1
+
+    if args.command == "skill":
+        root = args.path if args.path else _find_garage_root()
+        if args.skill_command == "suggest":
+            return _skill_suggest(
+                root,
+                sg_id=args.skill_suggest_id,
+                status_filter=args.skill_suggest_status,
+                rescan=args.skill_suggest_rescan,
+                threshold=args.skill_suggest_threshold,
+                purge_expired=args.skill_suggest_purge_expired,
+                yes=args.skill_suggest_yes,
+            )
+        if args.skill_command == "promote":
+            return _skill_promote(
+                root,
+                suggestion_id=args.suggestion_id,
+                yes=args.skill_promote_yes,
+                dry_run=args.skill_promote_dry_run,
+                target_pack=args.skill_promote_target_pack,
+                reject=args.skill_promote_reject,
+            )
+        skill_parser.print_help()
         return 1
 
     if args.command == "run":
@@ -2263,9 +2911,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
         if args.knowledge_command == "graph":
             return _knowledge_graph(root, eid=args.graph_id)
+        if args.knowledge_command == "export":
+            return _knowledge_export(
+                root,
+                anonymize=args.knowledge_export_anonymize,
+                output=args.knowledge_export_output,
+                dry_run=args.knowledge_export_dry_run,
+            )
         print(
             "Knowledge command requires one of: "
-            "search, list, add, edit, show, delete, link, graph",
+            "search, list, add, edit, show, delete, link, graph, export",
             file=sys.stderr,
         )
         return 1

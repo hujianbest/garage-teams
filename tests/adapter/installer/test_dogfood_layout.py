@@ -1,26 +1,49 @@
 """F008 T4c: dogfood layout invariants (ADR-D8-2 candidate C).
 
 Covers spec FR-805 acceptance #1-#4 + design ADR-D8-2 (`.agents/skills/`
-removed + IDE 重定向 to dogfood install products) + INV-6 (.agents/skills/
-absent) + INV-7 (IDE load chain) + INV-8 (dogfood paths in .gitignore).
+removed from git + IDE 重定向 to dogfood install products) + INV-6 (.agents/
+skills/ not git-tracked) + INV-7 (IDE load chain) + INV-8 (dogfood paths in
+.gitignore).
+
+INV-6 was originally "directory absent on disk", but a follow-up cycle restored
+``.agents/skills/`` as a tree of relative symlinks into ``packs/<pack-id>/skills/``
+to support cloud-agent runtimes that hard-code the ``.agents/skills/<name>``
+lookup path (see ``.agents/README.md`` and ``scripts/setup-agent-skills.sh``).
+The original FR-805 intent — no duplicate skill content under git — is preserved
+because ``.agents/skills/`` is git-ignored. INV-6 here checks the git-tracked
+form, not the on-disk form.
 """
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 class TestDogfoodLayout:
-    """ADR-D8-2 candidate C: .agents/skills/ deleted + IDE 入口转向 dogfood 产物."""
+    """ADR-D8-2 candidate C: .agents/skills/ not git-tracked + IDE 入口转向 dogfood 产物."""
 
     def test_agents_skills_removed_INV6(self) -> None:
-        """INV-6 + spec § 4.2 红线 2: .agents/skills/ MUST NOT exist after T4a."""
-        agents_skills = REPO_ROOT / ".agents" / "skills"
-        assert not agents_skills.exists(), (
-            f"FR-805 violated: {agents_skills} still exists; T4a should have "
-            "rm -rf'd it per ADR-D8-2 candidate C."
+        """INV-6 (revised) + spec § 4.2 红线 2: .agents/skills/ MUST NOT have any
+        git-tracked entries (the on-disk form may exist as relative symlinks into
+        packs/<pack-id>/skills/, regenerated locally by scripts/setup-agent-skills.sh
+        and excluded from git via .gitignore).
+
+        Original wording asserted directory absence; revised wording aligns with
+        the actual FR-805 intent (no duplicate skill content committed) and keeps
+        the cloud-agent skill mount point usable.
+        """
+        result = subprocess.run(
+            ["git", "ls-files", ".agents/skills/"],
+            cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+        )
+        tracked = [line for line in result.stdout.splitlines() if line.strip()]
+        assert tracked == [], (
+            "FR-805 violated: git-tracked entries found under .agents/skills/ — "
+            "skill content MUST stay in packs/ (single source of truth). Tracked "
+            f"entries: {tracked}"
         )
 
     def test_gitignore_excludes_dogfood_INV8(self) -> None:
@@ -74,6 +97,34 @@ class TestDogfoodLayout:
         assert "packs/writing/" in agents_md_text, (
             "AGENTS.md Packs table missing packs/writing/ row"
         )
+
+    def test_agents_skills_mount_setup_script_exists(self) -> None:
+        """Cloud-agent runtimes resolve skills under .agents/skills/<name>/SKILL.md.
+        scripts/setup-agent-skills.sh MUST exist so contributors can regenerate
+        the symlink mount after a fresh clone (paired with .gitignore exclusion
+        of .agents/skills/).
+        """
+        setup_script = REPO_ROOT / "scripts" / "setup-agent-skills.sh"
+        assert setup_script.is_file(), (
+            "scripts/setup-agent-skills.sh missing; cloud-agent skill mount setup "
+            "will be impossible after a fresh clone (.agents/skills/ is .gitignore-d)."
+        )
+        # Content sanity: the script must reference both packs/coding/skills and packs/garage/skills
+        content = setup_script.read_text(encoding="utf-8")
+        assert "packs/coding/skills" in content, "setup script must symlink coding pack"
+        assert "packs/garage/skills" in content, "setup script must symlink garage pack"
+
+    def test_agents_readme_explains_mount(self) -> None:
+        """.agents/README.md MUST explain why .agents/skills/ exists as symlinks
+        and how to regenerate it (companion doc to setup-agent-skills.sh).
+        """
+        readme = REPO_ROOT / ".agents" / "README.md"
+        assert readme.is_file(), ".agents/README.md missing (mount-point doc)"
+        content = readme.read_text(encoding="utf-8")
+        for token in ("symlink", "packs/", "setup-agent-skills.sh"):
+            assert token in content, (
+                f".agents/README.md must mention '{token}' (mount-point intent doc)"
+            )
 
     def test_skill_writing_principle_section_intact_防误改(self) -> None:
         """T4b: 防误改: ## Skill 写作原则 段落 MUST still exist (T4b only allowed

@@ -17,13 +17,14 @@
 
 ## 它是什么
 
-`garage-agent` 当前由三层组成：
+`garage-agent` 当前由四层组成：
 
-- 面向产品洞察和编码的 AHE workflow packs
-- 面向 session、knowledge、experience 与 tool execution 的文件优先 runtime foundation
-- Agent 和人都能阅读、检查、演化的仓库约定
+- 可分发的 **packs**（[`packs/`](packs/) 下的 Garage Coding、Garage Writing、Garage 核心三个 pack，加上一个 `search` 实验 pack）
+- 面向 session、knowledge、experience、candidate review 与 tool execution 的**文件优先 runtime**（[`src/garage_os/`](src/garage_os/)）
+- 一套**宿主 installer + sync 层**：把 packs 物化到 Claude Code、Cursor、OpenCode（支持项目级 / 用户级），把 top-N memory 推到每个宿主的 context surface，并把宿主对话历史回流为 Garage session
+- 完整的 **pack lifecycle**（`install` / `ls` / `uninstall` / `update` / `publish`）以及匿名化 knowledge 导出，让能力能离开一个仓库，落地到另一个仓库
 
-它追求的不是把过程藏进黑箱，而是给 Agent 一个稳定的能力基座，让上下文、产物和习惯都能随着工作一起沉淀下来。
+它追求的不是把过程藏进黑箱，而是给 Agent 一个稳定的能力基座，让上下文、产物和习惯都能随着工作一起沉淀下来，再把值得分享的部分分享出去。
 
 ## 它不是什么
 
@@ -34,29 +35,47 @@
 
 ## 核心原则
 
-- 数据归你：数据留在仓库里，即使项目停止维护也依然可读
-- 宿主可换：今天可以优先支持某个宿主，但不能永远绑定某个宿主
-- 渐进增强：第一天就应该能用，而不是先经历一套复杂配置
-- 透明可审计：系统知道什么、为什么这么做，都应该能在文件和产物里看见
-- 人始终掌舵：系统可以辅助和自动化，但方向盘始终在人手里
+- **数据归你**：数据留在仓库里，即使项目停止维护也依然可读
+- **宿主可换**：今天可以优先支持某个宿主，但不能永远绑定某个宿主——目前 3 个 first-class adapter（Claude Code、Cursor、OpenCode）
+- **渐进增强**：第一天就应该能用，而不是先经历一套复杂配置
+- **透明可审计**：系统知道什么、为什么这么做，都应该能在文件和产物里看见
+- **人始终掌舵**：系统可以辅助和自动化，但方向盘始终在人手里——破坏性 / 共享性操作必须 opt-in（`--yes` / `--anonymize` / `--force` 显式声明）
 
-## 当前已有内容
+## 当前已有内容（F001 - F012 共 12 个 cycle）
 
-`garage-agent` 还处在早期阶段，但仓库里已经有：
+经过 12 个已关闭的交付 cycle，仓库现在提供：
 
-- 位于 [packs/product-insights/skills/](packs/product-insights/skills/) 和 [packs/coding/skills/](packs/coding/skills/) 的 AHE workflow skills
-- 位于 [src/garage_os/](src/garage_os/) 的早期 Python runtime package，目前包名仍是 `garage-os`
-- 一个 `garage` CLI，已提供 `init`、`status`、`run`、`recommend`、`knowledge search`、`knowledge list`、`knowledge add`、`knowledge edit`、`knowledge show`、`knowledge delete`、`knowledge link`、`knowledge graph`、`experience add`、`experience show`、`experience delete` 与 `memory review`
-- 位于 [.garage/](.garage/) 的文件优先 runtime 数据结构
-- [docs/features/F001-garage-agent-operating-system.md](docs/features/F001-garage-agent-operating-system.md) 中已批准的 Phase 1 方向，以及 [docs/guides/garage-os-user-guide.md](docs/guides/garage-os-user-guide.md) 和 [docs/guides/garage-os-developer-guide.md](docs/guides/garage-os-developer-guide.md) 两份运行时指南
+| Cycle | 能力 |
+|---|---|
+| F001 | Garage Agent 操作系统底座（`garage init` / `status` / `run` / contracts / VersionManager） |
+| F002 | SessionManager + StateMachine + ErrorHandler |
+| F003 | Memory 自动提取（signals → candidates → review queue） |
+| F004 | Memory v1.1（KnowledgeStore + ExperienceIndex 整合） |
+| F005 | Knowledge 写作 CLI（`knowledge add` / `edit` / `show` / `delete`） |
+| F006 | 召回 + knowledge graph（`knowledge search` / `link` / `graph`） |
+| F007 | Garage Packs + Host Installer（`garage init --hosts claude,cursor,opencode`） |
+| F008 | Coding Pack + Writing Pack + dogfood layout |
+| F009 | 多 scope 安装（`--scope project|user` + per-host override；manifest schema 2 自动迁移） |
+| F010 | Memory Sync（`garage sync`） + 宿主 session 回流（`garage session import --from <host>`） |
+| F011 | `KnowledgeType.STYLE` + 生产 agents（`code-review-agent` / `blog-writing-agent`） + `garage pack install <git-url>` + `pack ls` |
+| F012 | Pack lifecycle 完整化（`pack uninstall` / `pack update` / `pack publish`） + `knowledge export --anonymize` + F009 carry-forward（VersionManager 注册） |
+
+具体交付物：
+
+- **AHE / HF workflow skills** 在 [`packs/coding/skills/`](packs/coding/skills/)（24 个 `hf-*` skill + `using-hf-workflow`）和 [`packs/writing/skills/`](packs/writing/skills/)（5 个写作 skill）
+- **生产 agents** 在 [`packs/garage/agents/`](packs/garage/agents/)：`code-review-agent`、`blog-writing-agent`、`garage-sample-agent`
+- 一个 **Python runtime** package `garage-os`（[`src/garage_os/`](src/garage_os/)），约 930 个测试通过
+- 一个 **`garage` CLI**，覆盖：`init`、`status`、`run`、`recommend`、`sync`、`session import`、`memory review`；knowledge 子命令 `knowledge search`、`knowledge list`、`knowledge add`、`knowledge edit`、`knowledge show`、`knowledge delete`、`knowledge link`、`knowledge graph`、`knowledge export`；experience 子命令 `experience add`、`experience show`、`experience delete`；pack lifecycle `pack install`、`pack ls`、`pack uninstall`、`pack update`、`pack publish`
+- 文件优先的 runtime 数据结构在 [`.garage/`](.garage/)（sessions、含 YAML front matter 的 knowledge 条目、experience records、sync manifest、host installer manifest）
+- 每一个 cycle 的 spec / 评审 / 验收 在 [`docs/features/`](docs/features/)、[`docs/designs/`](docs/designs/)、[`docs/reviews/`](docs/reviews/)、[`docs/approvals/`](docs/approvals/)
 
 ## 三条开始路径
 
 ### 1. 先看 workflow packs
 
-- 如果你从一个模糊想法出发，先看 [packs/product-insights/skills/using-ahe-product-workflow/SKILL.md](packs/product-insights/skills/using-ahe-product-workflow/SKILL.md)
-- 如果你已经知道要做什么，先看 [packs/coding/skills/using-ahe-workflow/SKILL.md](packs/coding/skills/using-ahe-workflow/SKILL.md)
-- 如果你想先看两个 pack 的全貌，读 [packs/product-insights/skills/README.md](packs/product-insights/skills/README.md) 和 [packs/coding/skills/README.md](packs/coding/skills/README.md)
+- 如果你从一个模糊想法出发，先跑 [`packs/coding/skills/hf-product-discovery/SKILL.md`](packs/coding/skills/hf-product-discovery/SKILL.md)
+- 如果你已经知道要做什么，从 [`packs/coding/skills/using-hf-workflow/SKILL.md`](packs/coding/skills/using-hf-workflow/SKILL.md) 入口走，让 `hf-workflow-router` 路由到正确节点
+- 如果你想先看 pack 全貌，读 [`packs/README.md`](packs/README.md)、[`packs/coding/README.md`](packs/coding/README.md)、[`packs/writing/README.md`](packs/writing/README.md)、[`packs/garage/README.md`](packs/garage/README.md)
 
 ### 2. 试用 runtime CLI
 
@@ -64,33 +83,86 @@
 
 ```bash
 uv pip install -e .
-garage init
+
+# 在当前项目初始化 Garage + 把 Garage Coding / Writing / Garage 三个 pack 物化到宿主目录
+# --hosts 接受 claude,cursor,opencode 任意组合
+garage init --hosts claude,cursor --yes
+
+# 查看状态
 garage status
+
+# 把 top-N knowledge + recent experience 推送到每个宿主的 context surface
+# (CLAUDE.md / .cursor/rules/garage-context.mdc / .opencode/AGENTS.md)
+garage sync --hosts claude,cursor
+
+# 把宿主对话历史回流为 Garage sessions, 触发 memory 提取
+garage session import --from claude --all
 ```
 
-如果你的环境里已经安装并登录 Claude Code CLI，也可以继续探索当前的执行入口 `garage run <skill-name>`。不过 runtime 仍在早期，宿主驱动的 skill 执行更适合作为演进中的能力路径来看，而不是成熟的平台体验。
+第一次贡献到本仓库的开发者，如果需要 cloud-agent 的 skill 挂载点，还要执行：
 
-### 3. 阅读世界观与系统文档
+```bash
+bash scripts/setup-agent-skills.sh    # 重生成 .agents/skills/ 软链 → packs/
+```
 
-- 灵魂文档：[docs/soul/manifesto.md](docs/soul/manifesto.md)、[docs/soul/user-pact.md](docs/soul/user-pact.md)、[docs/soul/design-principles.md](docs/soul/design-principles.md)、[docs/soul/growth-strategy.md](docs/soul/growth-strategy.md)
-- 系统规格：[docs/features/F001-garage-agent-operating-system.md](docs/features/F001-garage-agent-operating-system.md)
-- 用户指南：[docs/guides/garage-os-user-guide.md](docs/guides/garage-os-user-guide.md)
-- 开发者指南：[docs/guides/garage-os-developer-guide.md](docs/guides/garage-os-developer-guide.md)
+如果你的环境里已经安装并登录 Claude Code CLI，也可以继续用 `garage run <skill-name>` 跑单个 skill。runtime 仍在早期，宿主驱动的 skill 执行更适合作为演进中的能力路径来看，而不是成熟的平台体验。
+
+### 3. 分享或拉取 packs
+
+```bash
+# 从 git URL 安装别人的 pack
+garage pack install https://github.com/<user>/<their-pack>.git
+
+# 列出已安装 packs (从 URL 安装的会显示 source_url, 本地的显示 "local")
+garage pack ls
+
+# 从 source_url 重新拉取并更新已安装 pack
+garage pack update <pack-id> --yes
+
+# 把你的 pack 发到全新或已有的 git remote (会做 sensitive scan + force-push 提示)
+garage pack publish <pack-id> --to https://github.com/<you>/<pack-name>.git --yes
+
+# 从 packs/ 和所有宿主目录干净地移除一个 pack
+garage pack uninstall <pack-id> --yes
+
+# 把 knowledge 脱敏导出为 tarball (front matter 保留, body 脱敏)
+garage knowledge export --anonymize
+```
+
+### 4. 阅读世界观与系统文档
+
+- 灵魂文档：[`docs/soul/manifesto.md`](docs/soul/manifesto.md)、[`docs/soul/user-pact.md`](docs/soul/user-pact.md)、[`docs/soul/design-principles.md`](docs/soul/design-principles.md)、[`docs/soul/growth-strategy.md`](docs/soul/growth-strategy.md)
+- 系统规格：[`docs/features/F001-garage-agent-operating-system.md`](docs/features/F001-garage-agent-operating-system.md)
+- 用户指南：[`docs/guides/garage-os-user-guide.md`](docs/guides/garage-os-user-guide.md)
+- 开发者指南：[`docs/guides/garage-os-developer-guide.md`](docs/guides/garage-os-developer-guide.md)
+- Skill 写作原则（新增 / 重写 skill 必读）：[`docs/principles/skill-anatomy.md`](docs/principles/skill-anatomy.md)
 
 ## 仓库地图
 
 | 路径 | 用途 |
 | --- | --- |
-| [packs/](packs/) | 参考 workflow packs、pack-local 文档和相关 agent 资产 |
-| [src/garage_os/](src/garage_os/) | runtime package 和 CLI 实现 |
-| [.garage/](.garage/) | sessions、knowledge、experience、contracts 和 config 等运行时状态 |
-| [docs/](docs/) | soul 文档、spec、guide、review 和设计制品 |
-| [tests/](tests/) | 模块、集成、兼容性和安全测试 |
-| [AGENTS.md](AGENTS.md) | 面向 Agent 的项目约定和 Garage OS 开发参考 |
+| [`packs/`](packs/) | 可分发的 packs（single source of truth：`coding`、`writing`、`garage`、`search`） |
+| [`src/garage_os/`](src/garage_os/) | runtime: types、storage、runtime（session manager + state machine + skill executor）、knowledge、adapter（host installer + sync）、tools、platform（VersionManager） |
+| [`.agents/skills/`](#agents-skills-挂载点) | Cloud-agent skill 挂载点（指向 `packs/` 的相对软链；不入 git，本地 `scripts/setup-agent-skills.sh` 重生成） |
+| [`.garage/`](.garage/) | 工作区运行时状态：sessions、knowledge、experience、sync manifest、host installer manifest、contracts、config |
+| [`docs/`](docs/) | 灵魂文档、feature spec（`features/`）、design（`designs/`）、review（`reviews/`）、approval（`approvals/`）、planning（`planning/`）、guide、principle、manual smoke walkthrough |
+| [`tests/`](tests/) | 约 930 个 unit + integration + compatibility + security + sentinel 测试，目录结构与 `src/garage_os/` 模块一一对应 |
+| [`AGENTS.md`](AGENTS.md) | 面向 Agent 的项目约定 + Garage OS 开发参考 + F009-F012 功能用法 |
+| [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | 每个 cycle 的用户可见变化（F001 → F012） |
+
+### `.agents/skills/` 挂载点
+
+某些 cloud-agent runtime 按 `.agents/skills/<name>/SKILL.md` 路径加载 skill。为了让 `packs/` 保持 single source of truth 又不重复文件，`.agents/skills/` 是一棵指向 `packs/<pack-id>/skills/` 的相对软链树。它在 `.gitignore` 里，本地用以下命令重生成：
+
+```bash
+bash scripts/setup-agent-skills.sh
+```
+
+详见 [`.agents/README.md`](.agents/README.md)。
 
 ## 开发计划
 
-下面是「当前已实现内容」对照 [docs/soul/manifesto.md](docs/soul/manifesto.md) 愿景的差距盘点，作为后续 cycle 立项的依据。
+下面是「当前已实现内容」对照 [`docs/soul/manifesto.md`](docs/soul/manifesto.md) 愿景的差距盘点，作为后续 cycle 立项的依据。F012 完成后（2026-04-25）更新。
 
 ### 现状速览
 
@@ -98,50 +170,46 @@ garage status
               vision 完成度
               ┌─────────────────────────────────┐
 信念 1 数据归你 │█████████████████████████████████│ 5/5  ✅
-信念 2 宿主可换 │███████████████████              │ 3/5  ⚠️ 缺扩展点
+信念 2 宿主可换 │█████████████████████████        │ 4/5  ⚠️ 3 个 first-class 宿主, 第 4 个仍要改源码
 信念 3 渐进增强 │█████████████████████████████████│ 5/5  ✅
-信念 4 人机共生 │███████████████████              │ 3/5  ⚠️ 飞轮没闭环
-信念 5 可传承   │████████████                     │ 2/5  ⚠️ 只能 git clone
+信念 4 人机共生 │█████████████████████████████████│ 5/5  ✅ 飞轮闭环 (sync ↔ ingest ↔ memory)
+信念 5 可传承   │█████████████████████████████████│ 5/5  ✅ install / update / publish / 匿名导出
               └─────────────────────────────────┘
 
-承诺 ① 几秒变成你的 Agent  ⚠️ 3/5  ← P0 自动 context handoff 缺失
-承诺 ② 知道你的编码风格    ❌ 0/5  ← P1 style 维度未建模
-承诺 ③ 记得上月架构决策    ⚠️ 4/5  ← P0 召回是 pull,不是 push
+承诺 ① 几秒变成你的 Agent  ✅ 5/5
+承诺 ② 知道你的编码风格    ✅ 5/5  ← KnowledgeType.STYLE + 生产 agents
+承诺 ③ 记得上月架构决策    ✅ 5/5  ← garage sync 推 + garage session import 拉
 承诺 ④ 调用 50 个 skills   ✅ 5/5
 承诺 ⑤ 帮你写博客          ✅ 5/5
 
 Stage 1 工具箱  ████████████████████ 100%
-Stage 2 记忆体  ████████████          60%   ← 缺会话上下文持续化
-Stage 3 工匠    █                      5%   ← agent 组装 + skill 自动提炼几乎为 0
-Stage 4 生态    ░                      0%
+Stage 2 记忆体  ████████████████████ 100%   ← F010 闭环
+Stage 3 工匠    █████████████         65%   ← F011 生产 agents 上线; skill 自动提炼仍手动
+Stage 4 生态    ████████              40%   ← F012 lifecycle 完整; 社区发现 / 签名仍 F013+
 ```
 
-### 缺口与优先级
+### 缺口与优先级（F013+ 候选）
 
-#### P0 — 卡住 vision 兑现的硬瓶颈
+#### P1 — 飞轮抛光
 
-1. **自动 context handoff 管道**：用户在宿主里开新对话时，`.garage/knowledge/` 与 `.garage/experience/` 不会被宿主主动加载。F003-F006 投入的整个 memory 子系统在用户真实使用路径里"看不见"。可能形态：每个 host adapter 提供一种 context 注入路径（Claude Code → `CLAUDE.md`、Cursor → `.cursor/rules/`、OpenCode → 等价物），由 `garage sync` 把 top-N knowledge + recent experience 编译进去。
-2. **宿主 session 回流**：F003 提取触发器是 `SessionManager.archive_session()`，但用户在 Cursor / Claude Code 里的日常对话不会自动归档为 Garage session，"用得越多越强"飞轮没闭环。可能形态：`garage session import --from <host-history>` 或宿主侧 rule 在对话结束时主动触发归档。
+1. **`pack update --preserve-local-edits` 真 3-way merge**（D-1211）：当前 flag 仅 warn 后 overwrite，未来要解决 local edits 与 upstream changes 的合并
+2. **Skill mining push 信号**：系统已能提取 knowledge 候选，但还不能主动指出"这个 pattern 可以变成 skill"；需要把 `.garage/memory/` 候选推到 `packs/<pack>/skills/` 的路径
+3. **跨设备同步**：`garage sync` 写入宿主，但跨机器的 git-aware 合并（D-707 carry-forward）还要靠手动 `git push`
 
-#### P1 — 影响 vision 完整度
+#### P2 — 社区 / 供应链
 
-3. **个人 style / preference 维度**：当前 4 类候选（decision / pattern / solution / experience_summary）里没有 style 维度，承诺 ② "知道你的编码风格"等于 0% 实现。
-4. **agent 组装层空白**：`packs/garage/` 只有 1 个 `garage-sample-agent` 占位；vision 提到的"代码审查 agent / 博客写作 agent"完全没起步，是 Stage 3 的核心能力。
-5. **pack 共享流程**：缺 `garage pack install <git-url>` / `garage pack publish` / 知识脱敏导出 / 跨用户合并工具，信念 5「可传承」实质上只能靠 `git clone`。
+4. **宿主 registry 可插拔**（F007 D-705 carry-forward）：第 4 个宿主仍需改 `HOST_REGISTRY` 字面表
+5. **Pack 签名 / GPG**（D-1212）：publish + install 还不验证 pack 来源
+6. **Monorepo packs**（D-1213）：`pack install` 假设仓库根只有一个 `pack.json`
+7. **Pack 发现**（D-1214）：还没有 `garage pack search` 或 pack 中央 registry
+8. **反向 import + experience export**（D-1215）：`knowledge export --anonymize` 的镜像版本（experience records + 反向 import-from-tarball）
+9. **Publish 自动跑 `hf-doc-freshness-gate`**（D-1216）：把本地 docs/spec 时效性和对外可分享性闭环
 
-#### P2 — 长期债
+### 推荐下一 cycle
 
-6. **宿主扩展点不可插拔**：`HOST_REGISTRY` 是 hardcoded 字面表，第 4 个宿主必须改 Garage 源码。
-7. **跨设备一致性靠手动 git**：缺 `garage sync` 帮用户打理 git push/pull + conflict 合并。
-8. **memory 飞轮缺 push 一环**：当前全链路是 pull；growth-strategy 表里"系统主动指出'这个模式可以变成 skill'"无实现路径。
+F012 后信念 1-5 + 承诺 ①-⑤ 都达 5/5，下一阶段杠杆最大的是 **Stage 3 skill mining**——把现有提取管道升级成"系统从你的模式里建议新 skill"信号；之后是 **Stage 4 社区 / 供应链**（D-1214 pack search + D-1212 签名），打开公共 pack 生态的门。
 
-### 推荐路线
-
-如果只能选一件事集中做，先打 **P0-1（自动 context handoff）**——它的杠杆最大，直接同时盘活承诺 ① ② ③，把已经投入的整个 memory 子系统从沉睡激活到被宿主每次对话主动看见。再加一件就选 **P0-2（宿主 session 回流）**，让 P0-1 注入的 context 持续有新东西可注入。
-
-P1 三项可以排在 P0 之后；P2 三项是长期债，等触发信号到了再做。
-
-详细评分依据见 [docs/soul/manifesto.md](docs/soul/manifesto.md) + [docs/soul/growth-strategy.md](docs/soul/growth-strategy.md) + [RELEASE_NOTES.md](RELEASE_NOTES.md) F001–F008 段。
+详细评分依据见 [`docs/soul/manifesto.md`](docs/soul/manifesto.md)、[`docs/soul/growth-strategy.md`](docs/soul/growth-strategy.md)、[`RELEASE_NOTES.md`](RELEASE_NOTES.md)（F001-F012）和 [`docs/planning/`](docs/planning/)。
 
 ## 开源化进展
 

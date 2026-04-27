@@ -263,6 +263,18 @@ class SessionManager:
             orchestrator.extract_for_archived_session(archived_session)
         except Exception as exc:
             self._persist_extraction_error(session_id, "extraction", exc)
+            return  # Don't trigger skill mining hook on extraction failure
+
+        # F013-A ADR-D13-3 Cr-1 r2: skill mining hook (best-effort; failure must not block archive)
+        # Path 1 of 2 caller sites.
+        try:
+            from garage_os.skill_mining.pipeline import SkillMiningHook
+            SkillMiningHook.run_after_extraction(
+                session_id=session_id,
+                garage_dir=self._storage.base_path,
+            )
+        except Exception:
+            pass  # never block archive on skill-mining hook failure
 
     def _persist_extraction_error(
         self, session_id: str, phase: str, exc: BaseException
