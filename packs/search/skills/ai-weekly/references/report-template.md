@@ -4,9 +4,11 @@ Use this exact structure unless the user overrides it.
 
 Notes:
 - Keep the title and commentary in Chinese.
-- Keep each selected item concise; target roughly 150-200 Chinese characters.
-- Every item must include a real original tweet URL.
-- Keep the final report grouped by `Priority 1 / Priority 2 / Priority 3`; do not flatten it into one numbered list.
+- Keep each primary selected item concise; target roughly 150-200 Chinese characters.
+- Every primary item and every candidate supplement bullet must include a real original tweet URL.
+- Keep the final report grouped by `Priority 1：必看 / Priority 2：值得抄方法 / Priority 3：值得建立认知`; do not flatten it into one numbered list.
+- Add `#### 候选补充` under each priority section when the user asks for a second layer of items.
+- Candidate supplements are secondary recommendations and do not count toward the main selected-item total.
 - If the stated scan count and the explicit roster count differ, note the discrepancy inline in `扫描账号数` instead of hiding it.
 
 ```markdown
@@ -18,13 +20,15 @@ Notes:
 
 **筛选标准:** ✅ 立刻能用 | ✅ 工作流改进 | ✅ 可复用方法论
 
+**分层方式:** Priority 1＝必看 | Priority 2＝值得抄方法 | Priority 3＝值得建立认知
+
 > **受众定位:** AI 内容创作者和爱好者 — 只看实用干货，跳过极客技术细节
 
 ---
 
 ## 🔥 本周最实用的内容
 
-### Priority 1｜立刻能用
+### Priority 1｜必看
 
 #### 1. **[标题 - 聚焦实用价值]**
 
@@ -48,7 +52,15 @@ Notes:
 
 [继续列出属于 Priority 1 的条目；如无内容，写：本周无符合条件内容。]
 
-### Priority 2｜可复用方法论
+#### 候选补充
+
+- `@handle`： [一句话说明为什么值得点开，但没进主榜]  
+  **推文链接:** [链接]
+
+- `@handle`： [一句话说明为什么值得点开，但没进主榜]  
+  **推文链接:** [链接]
+
+### Priority 2｜值得抄方法
 
 #### 1. **[标题 - 聚焦实用价值]**
 
@@ -72,7 +84,15 @@ Notes:
 
 [继续列出属于 Priority 2 的条目；如无内容，写：本周无符合条件内容。]
 
-### Priority 3｜思维转变
+#### 候选补充
+
+- `@handle`： [一句话说明为什么值得点开，但没进主榜]  
+  **推文链接:** [链接]
+
+- `@handle`： [一句话说明为什么值得点开，但没进主榜]  
+  **推文链接:** [链接]
+
+### Priority 3｜值得建立认知
 
 #### 1. **[标题 - 聚焦实用价值]**
 
@@ -96,17 +116,26 @@ Notes:
 
 [继续列出属于 Priority 3 的条目；如无内容，写：本周无符合条件内容。]
 
+#### 候选补充
+
+- `@handle`： [一句话说明为什么值得点开，但没进主榜]  
+  **推文链接:** [链接]
+
+- `@handle`： [一句话说明为什么值得点开，但没进主榜]  
+  **推文链接:** [链接]
+
 ---
 
 ## 📊 筛选统计
 
 - **扫描账号数:** [X] 个
 - **时间范围:** 过去7天
-- **筛选出的实用内容:** [X] 条
+- **筛选出的主榜内容:** [X] 条
+- **候选补充:** [X] 条（不计入主榜）
 - **优先级分布:**
-  - Priority 1｜立刻能用: [X] 条
-  - Priority 2｜可复用方法论: [X] 条
-  - Priority 3｜思维转变: [X] 条
+  - Priority 1｜必看: [X] 条
+  - Priority 2｜值得抄方法: [X] 条
+  - Priority 3｜值得建立认知: [X] 条
 - **类型分布:**
   - 🛠️ 可复用方法: [X] 条
   - 💡 工作流优化: [X] 条

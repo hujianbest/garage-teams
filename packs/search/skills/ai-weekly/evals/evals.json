@@ -22,12 +22,22 @@
     },
     {
       "name": "preserves-priority-layering",
-      "prompt": "做一份本周 AI weekly，按 Priority 1 立刻能用、Priority 2 可复用方法论、Priority 3 思维转变分层输出，不要平铺。",
-      "expected_behavior": "输出必须分成 Priority 1 / 2 / 3 三层，而不是一个扁平列表。",
+      "prompt": "做一份本周 AI weekly，按 Priority 1 必看、Priority 2 值得抄方法、Priority 3 值得建立认知分层输出，不要平铺。",
+      "expected_behavior": "输出必须分成新的三层优先级，而不是一个扁平列表。",
       "assertions": [
-        "输出包含 Priority 1 分层标题",
-        "输出包含 Priority 2 分层标题",
-        "输出包含 Priority 3 分层标题"
+        "输出包含 Priority 1｜必看 分层标题",
+        "输出包含 Priority 2｜值得抄方法 分层标题",
+        "输出包含 Priority 3｜值得建立认知 分层标题"
+      ]
+    },
+    {
+      "name": "includes-candidate-supplements",
+      "prompt": "把 AI weekly 报告升级成三层优先级，并且在每层下面补一个候选补充小节。",
+      "expected_behavior": "输出不仅要有主榜三层，还要在每层后面提供候选补充。",
+      "assertions": [
+        "输出包含 候选补充 小节",
+        "输出不是只有主榜条目",
+        "输出保持三层结构同时增加候选补充"
       ]
     },
     {

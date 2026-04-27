@@ -26,5 +26,6 @@ These evals protect the behavior contract for `ai-weekly`.
 2. Require original `x.com` or `twitter.com` status URLs for all selected items.
 3. Keep the selection bar centered on immediate usefulness for content creators.
 4. Trust the explicit roster over the headline count when they disagree.
-5. Keep the final report grouped by `Priority 1 / Priority 2 / Priority 3`.
+5. Keep the final report grouped by `Priority 1｜必看 / Priority 2｜值得抄方法 / Priority 3｜值得建立认知`.
 6. Keep the skill name and wording consistent with `ai-weekly`.
+7. Add `候选补充` under each priority section when the user asks for a second layer of items.
