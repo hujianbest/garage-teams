@@ -469,6 +469,25 @@ def _status(garage_root: Path) -> None:
     # (always emits metadata line per Im-6 pattern; appended after skill mining)
     _print_workflow_recall_status(garage_dir)
 
+    # F015 ADR-D15-5: append agent compose status section per first-class pack
+    _print_agent_compose_status(garage_root)
+
+
+def _print_agent_compose_status(garage_root: Path) -> None:
+    """F015 FR-1505 + ADR-D15-5: emit per-pack agent count.
+
+    Always emits one line per first-class pack with an agents/ dir (RSK-1501).
+    Does not depend on cache.json (Im-2 r2: no last compose ts suffix).
+    """
+    from garage_os.agent_compose.pipeline import compute_status_summary
+
+    try:
+        summary = compute_status_summary(garage_root / "packs")
+    except Exception:
+        return
+    for line in summary.metadata_lines:
+        print(line)
+
 
 def _print_workflow_recall_status(garage_dir: Path) -> None:
     """F014 FR-1405 + ADR-D14-5: emit workflow recall status section.
@@ -2090,6 +2109,188 @@ def _recall_workflow(
     return 0
 
 
+def _agent_compose(
+    garage_root: Path,
+    *,
+    agent_name: str,
+    skills_csv: str,
+    target_pack: str,
+    description: str | None,
+    no_style: bool,
+    yes: bool,
+    dry_run: bool,
+) -> int:
+    """F015 FR-1503 _agent_compose handler.
+
+    CON-1505: Independent of F006 _recommend / F013-A _skill_suggest /
+    F014 _recall_workflow (only imports from agent_compose subpackage and
+    KnowledgeStore).
+
+    Im-1 r2 strict CLI semantics: any missing skills → exit 1 + no write.
+    """
+    from garage_os.agent_compose.composer import compose
+    from garage_os.knowledge.knowledge_store import KnowledgeStore
+    from garage_os.storage.file_storage import FileStorage
+
+    garage_dir = _require_garage(garage_root)
+    if garage_dir is None:
+        print(ERR_NO_GARAGE, file=sys.stderr)
+        return 1
+
+    # Validate skills_csv
+    skill_ids = [s.strip() for s in skills_csv.split(",") if s.strip()]
+    if not skill_ids:
+        print(
+            "--skills required (at least one); e.g. --skills hf-specify,hf-design",
+            file=sys.stderr,
+        )
+        return 1
+
+    packs_root = garage_root / "packs"
+    storage = FileStorage(garage_dir)
+    knowledge_store = KnowledgeStore(storage)
+
+    try:
+        result = compose(
+            name=agent_name,
+            skill_ids=skill_ids,
+            packs_root=packs_root,
+            knowledge_store=knowledge_store,
+            target_pack=target_pack,
+            description=description,
+            include_style=not no_style,
+        )
+    except ValueError as exc:
+        print(f"agent compose failed: {exc}", file=sys.stderr)
+        return 1
+
+    # Im-1 r2 strict CLI: missing skills → exit 1 + no write
+    if result.missing_skills:
+        print(
+            f"Missing skills: {', '.join(result.missing_skills)}",
+            file=sys.stderr,
+        )
+        return 1
+
+    # CLI: target_pack must exist
+    if not result.target_pack_exists:
+        print(
+            f"Target pack '{target_pack}' not installed at {packs_root / target_pack}",
+            file=sys.stderr,
+        )
+        return 1
+
+    target_path = packs_root / target_pack / "agents" / f"{agent_name}.md"
+
+    if dry_run:
+        print(f"DRY RUN: would create {target_path}")
+        print()
+        print("--- agent.md preview ---")
+        print(result.draft.body)
+        return 0
+
+    # Overwrite check (RSK-1503: with --yes skip prompt)
+    if target_path.exists() and not yes:
+        print(
+            f"WARNING: {target_path} already exists. Overwrite? [y/N]: ",
+            end="",
+            flush=True,
+        )
+        try:
+            ans = input("").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            ans = ""
+        if ans not in ("y", "yes"):
+            print("Cancelled.")
+            return 0
+
+    # Confirmation (regular path; --yes skips)
+    if not yes:
+        print(f"About to create {target_path}")
+        print(f"Target pack: {target_pack}")
+        print(f"Skills: {', '.join(skill_ids)}")
+        if not no_style:
+            print(f"STYLE entries included: {result.style_count}")
+        print()
+        print("--- agent.md preview ---")
+        print(result.draft.body)
+        print()
+        print("Continue? [y/N]: ", end="", flush=True)
+        try:
+            ans = input("").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            ans = ""
+        if ans not in ("y", "yes"):
+            print("Cancelled.")
+            return 0
+
+    # Write agent.md (sole writer; INV-F15-2)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(result.draft.body, encoding="utf-8")
+
+    # CON-1503 守门: do NOT touch packs/<target>/pack.json agents[]
+    print(
+        f"Created agent at {target_path}.\n"
+        f"Manually update packs/{target_pack}/pack.json agents[] to register, "
+        f"or run 'garage run hf-test-driven-dev' to refine via the workflow."
+    )
+    return 0
+
+
+def _agent_ls(
+    garage_root: Path,
+    *,
+    target_pack: str,
+) -> int:
+    """F015 FR-1504 _agent_ls handler — list packs/<target>/agents/*.md."""
+    import re as _re
+
+    packs_root = garage_root / "packs"
+    pack_dir = packs_root / target_pack
+    agents_dir = pack_dir / "agents"
+    if not pack_dir.is_dir():
+        print(
+            f"Target pack '{target_pack}' not installed at {pack_dir}",
+            file=sys.stderr,
+        )
+        return 1
+    if not agents_dir.is_dir():
+        print(f"No agents in pack '{target_pack}'")
+        return 0
+
+    md_files = sorted(agents_dir.glob("*.md"))
+    if not md_files:
+        print(f"No agents in pack '{target_pack}'")
+        return 0
+
+    name_re = _re.compile(r"^name:\s*(.+?)\s*$", _re.MULTILINE)
+    desc_re = _re.compile(r"^description:\s*(.+?)$", _re.MULTILINE)
+
+    print(f"{'NAME':<30} {'DESCRIPTION'}")
+    for path in md_files:
+        try:
+            head = path.read_text(encoding="utf-8")[:1024]
+        except OSError:
+            continue
+        # Default name = filename without .md
+        name = path.stem
+        desc = "(no description)"
+        if head.startswith("---\n"):
+            end = head.find("\n---\n", 4)
+            if end > 0:
+                fm = head[4:end]
+                m_name = name_re.search(fm)
+                if m_name:
+                    name = m_name.group(1).strip()
+                m_desc = desc_re.search(fm)
+                if m_desc:
+                    desc = m_desc.group(1).strip()
+        if len(desc) > 80:
+            desc = desc[:77] + "..."
+        print(f"{name:<30} {desc}")
+    return 0
+
+
 def _knowledge_link(
     garage_root: Path,
     *,
@@ -2597,6 +2798,58 @@ def build_parser() -> argparse.ArgumentParser:
         help="Force full recompute (skip cache)",
     )
 
+    # F015: agent (top-level; sibling of recall / recommend / skill — CON-1505)
+    agent_parser = subparsers.add_parser(
+        "agent",
+        help="Compose / list production agents (F015)",
+        parents=[path_parser],
+    )
+    agent_subparsers = agent_parser.add_subparsers(dest="agent_command")
+    # agent compose <name> --skills s1,s2,s3
+    agent_compose_parser = agent_subparsers.add_parser(
+        "compose",
+        help="Compose an agent.md draft from skills + STYLE entries",
+        parents=[path_parser],
+    )
+    agent_compose_parser.add_argument(
+        "agent_name",
+        help="kebab-case agent name (e.g. 'config-design-agent')",
+    )
+    agent_compose_parser.add_argument(
+        "--skills", dest="agent_skills", required=True,
+        help="Comma-separated skill_ids (at least one); e.g. 'hf-specify,hf-design,hf-tasks'",
+    )
+    agent_compose_parser.add_argument(
+        "--target-pack", dest="agent_target_pack", default="garage",
+        help="Destination pack id (default 'garage')",
+    )
+    agent_compose_parser.add_argument(
+        "--description", dest="agent_description", default=None,
+        help="Override the auto-generated frontmatter description (≥ 50 chars recommended)",
+    )
+    agent_compose_parser.add_argument(
+        "--no-style", dest="agent_no_style", action="store_true",
+        help="Skip the '## Style Alignment' section (KnowledgeType.STYLE entries)",
+    )
+    agent_compose_parser.add_argument(
+        "--yes", "-y", dest="agent_yes", action="store_true",
+        help="Skip interactive confirmation",
+    )
+    agent_compose_parser.add_argument(
+        "--dry-run", dest="agent_dry_run", action="store_true",
+        help="Preview agent.md without writing",
+    )
+    # agent ls
+    agent_ls_parser = agent_subparsers.add_parser(
+        "ls",
+        help="List agents in a pack",
+        parents=[path_parser],
+    )
+    agent_ls_parser.add_argument(
+        "--target-pack", dest="agent_ls_target_pack", default="garage",
+        help="Pack id to list (default 'garage')",
+    )
+
     # F006: recommend (top-level; cross-domain active recall)
     recommend_parser = subparsers.add_parser(
         "recommend",
@@ -3043,6 +3296,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 rebuild_cache=args.recall_rebuild_cache,
             )
         recall_parser.print_help()
+        return 1
+
+    if args.command == "agent":
+        root = args.path if args.path else _find_garage_root()
+        if args.agent_command == "compose":
+            return _agent_compose(
+                root,
+                agent_name=args.agent_name,
+                skills_csv=args.agent_skills,
+                target_pack=args.agent_target_pack,
+                description=args.agent_description,
+                no_style=args.agent_no_style,
+                yes=args.agent_yes,
+                dry_run=args.agent_dry_run,
+            )
+        if args.agent_command == "ls":
+            return _agent_ls(
+                root,
+                target_pack=args.agent_ls_target_pack,
+            )
+        agent_parser.print_help()
         return 1
 
     if args.command == "knowledge":

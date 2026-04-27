@@ -4657,3 +4657,211 @@ class TestRecallWorkflowCommand:
         assert rc == 0
         # last-indexed.json should have been invalidated by --rebuild-cache
         assert not cache.last_indexed_path.is_file()
+
+
+# ===========================================================================
+# F015 T3: garage agent compose / ls CLI tests
+# ===========================================================================
+
+
+class TestAgentComposeCommand:
+    """F015 FR-1503 + Im-1 r2 strict CLI + CON-1503/1505."""
+
+    @staticmethod
+    def _setup_workspace(tmp_path: Path) -> Path:
+        from garage_os.cli import main
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        # Set up garage pack with at least one skill
+        skill_dir = workspace / "packs" / "garage" / "skills" / "hf-specify"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: hf-specify\ndescription: 适用于规格起草。\n---\n",
+            encoding="utf-8",
+        )
+        (workspace / "packs" / "garage" / "agents").mkdir(parents=True, exist_ok=True)
+        # Init garage
+        main(["init", "--path", str(workspace), "--yes"])
+        return workspace
+
+    def test_compose_yes_writes_agent_md(self, tmp_path: Path, capsys) -> None:
+        from garage_os.cli import main
+        workspace = self._setup_workspace(tmp_path)
+        capsys.readouterr()
+
+        rc = main([
+            "agent", "compose", "--path", str(workspace),
+            "test-agent", "--skills", "hf-specify", "--yes",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Created agent at" in captured.out
+
+        target = workspace / "packs" / "garage" / "agents" / "test-agent.md"
+        assert target.is_file()
+        body = target.read_text(encoding="utf-8")
+        assert body.startswith("---\n")
+        assert "name: test-agent" in body
+        assert "## When to Use" in body
+        assert "## How It Composes" in body
+        assert "## Workflow" in body
+
+    def test_compose_dry_run_no_write(self, tmp_path: Path, capsys) -> None:
+        from garage_os.cli import main
+        workspace = self._setup_workspace(tmp_path)
+        capsys.readouterr()
+
+        rc = main([
+            "agent", "compose", "--path", str(workspace),
+            "test-agent-dr", "--skills", "hf-specify", "--dry-run",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "DRY RUN" in captured.out
+        assert "agent.md preview" in captured.out
+
+        target = workspace / "packs" / "garage" / "agents" / "test-agent-dr.md"
+        assert not target.exists()
+
+    def test_compose_missing_skill_exit_1(self, tmp_path: Path, capsys) -> None:
+        from garage_os.cli import main
+        workspace = self._setup_workspace(tmp_path)
+        capsys.readouterr()
+
+        rc = main([
+            "agent", "compose", "--path", str(workspace),
+            "test-agent", "--skills", "hf-specify,nonexistent-skill", "--yes",
+        ])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "Missing skills" in captured.err
+        assert "nonexistent-skill" in captured.err
+
+        target = workspace / "packs" / "garage" / "agents" / "test-agent.md"
+        assert not target.exists()
+
+    def test_compose_invalid_kebab_exit_1(self, tmp_path: Path, capsys) -> None:
+        from garage_os.cli import main
+        workspace = self._setup_workspace(tmp_path)
+        capsys.readouterr()
+
+        rc = main([
+            "agent", "compose", "--path", str(workspace),
+            "Invalid_Name", "--skills", "hf-specify", "--yes",
+        ])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "kebab-case" in captured.err
+
+    def test_compose_target_pack_not_exists_exit_1(self, tmp_path: Path, capsys) -> None:
+        from garage_os.cli import main
+        workspace = self._setup_workspace(tmp_path)
+        capsys.readouterr()
+
+        rc = main([
+            "agent", "compose", "--path", str(workspace),
+            "x", "--skills", "hf-specify", "--yes",
+            "--target-pack", "nonexistent-pack",
+        ])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "not installed" in captured.err
+
+    def test_compose_no_style_omits_section(self, tmp_path: Path, capsys) -> None:
+        from garage_os.cli import main
+        workspace = self._setup_workspace(tmp_path)
+        capsys.readouterr()
+
+        rc = main([
+            "agent", "compose", "--path", str(workspace),
+            "x-agent", "--skills", "hf-specify", "--yes", "--no-style",
+        ])
+        assert rc == 0
+        body = (workspace / "packs" / "garage" / "agents" / "x-agent.md").read_text()
+        assert "## Style Alignment" not in body
+
+    def test_compose_does_not_modify_pack_json(self, tmp_path: Path, capsys) -> None:
+        """CON-1503 + INV-F15-3 sentinel: compose 不动 pack.json."""
+        import hashlib
+        from garage_os.cli import main
+        workspace = self._setup_workspace(tmp_path)
+        # Add a pack.json
+        pack_json = workspace / "packs" / "garage" / "pack.json"
+        pack_json.write_text(
+            '{"schema_version":1,"pack_id":"garage","version":"0.3.0",'
+            '"description":"x","skills":["hf-specify"],"agents":["existing"]}',
+            encoding="utf-8",
+        )
+        before = hashlib.sha256(pack_json.read_bytes()).hexdigest()
+        capsys.readouterr()
+
+        rc = main([
+            "agent", "compose", "--path", str(workspace),
+            "new-agent", "--skills", "hf-specify", "--yes",
+        ])
+        assert rc == 0
+        capsys.readouterr()
+
+        after = hashlib.sha256(pack_json.read_bytes()).hexdigest()
+        assert before == after, (
+            "CON-1503 violated: agent compose modified packs/garage/pack.json. "
+            "Per INV-F15-3, compose MUST NOT touch pack.json agents[]."
+        )
+
+
+class TestAgentLsCommand:
+    """F015 FR-1504."""
+
+    def test_ls_shows_agents(self, tmp_path: Path, capsys) -> None:
+        from garage_os.cli import main
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        agents_dir = workspace / "packs" / "garage" / "agents"
+        agents_dir.mkdir(parents=True)
+        (agents_dir / "alpha.md").write_text(
+            "---\nname: alpha\ndescription: agent alpha desc\n---\n",
+            encoding="utf-8",
+        )
+        (agents_dir / "beta.md").write_text(
+            "---\nname: beta\ndescription: agent beta desc\n---\n",
+            encoding="utf-8",
+        )
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+
+        rc = main(["agent", "ls", "--path", str(workspace)])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "NAME" in captured.out
+        assert "alpha" in captured.out
+        assert "beta" in captured.out
+
+    def test_ls_empty_pack_friendly_msg(self, tmp_path: Path, capsys) -> None:
+        from garage_os.cli import main
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        (workspace / "packs" / "garage").mkdir(parents=True)
+        # No agents/ dir
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+
+        rc = main(["agent", "ls", "--path", str(workspace)])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "No agents" in captured.out
+
+    def test_ls_target_pack_not_exists(self, tmp_path: Path, capsys) -> None:
+        from garage_os.cli import main
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        (workspace / "packs" / "garage").mkdir(parents=True)
+        main(["init", "--path", str(workspace), "--yes"])
+        capsys.readouterr()
+
+        rc = main([
+            "agent", "ls", "--path", str(workspace),
+            "--target-pack", "nonexistent-pack",
+        ])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "not installed" in captured.err

@@ -342,6 +342,51 @@ router 在既有 step 3 (支线信号) 与 step 4 (Profile) 之间插入 step 3.
 
 详见 spec `docs/features/F014-workflow-recall.md` + design `docs/designs/2026-04-26-workflow-recall-design.md` (7 ADR + 5 INV + 5 CON)。
 
+## Agent Compose (F015)
+
+F015 完成 `growth-strategy.md § Stage 3 第 67 行` "Skills 可组合成专用 agents" 的最后一项: F011 落了 3 个手写 production agent (`code-review-agent` / `blog-writing-agent` / `garage-sample-agent`); 但 compose 路径未做. F015 加 `garage agent compose <name> --skills <list>` CLI: 用户给一组 skill_ids → 系统读各 skill 的 SKILL.md frontmatter description + `KnowledgeStore.list_entries(knowledge_type=KnowledgeType.STYLE)` → 半自动产出 7-section agent.md 草稿 (frontmatter + When to Use + How It Composes + Workflow + Style Alignment, 严格遵 F011 既有 `blog-writing-agent.md` + `code-review-agent.md` schema; `garage-sample-agent` 是 F008 简化样本不参考).
+
+### `garage agent compose <name>` (FR-1503)
+
+```bash
+garage agent compose config-design-agent --skills hf-specify,hf-design,hf-tasks --yes
+garage agent compose new-agent --skills hf-specify --target-pack coding   # default 'garage'
+garage agent compose new-agent --skills hf-specify --description "..."     # 覆盖 auto
+garage agent compose new-agent --skills hf-specify --no-style              # 跳过 Style Alignment
+garage agent compose new-agent --skills hf-specify --dry-run               # preview
+```
+
+- 唯一通道写 `packs/<target>/agents/<name>.md` (INV-F15-2; CLI promote 路径)
+- **CON-1503 守门**: compose 不动 `packs/<target>/pack.json` 的 `agents[]` 列表; 用户走 `garage run hf-test-driven-dev` 路径自己加 (sentinel 测试守 byte-level)
+- **Im-1 r2 双层 missing 语义**: library 返 partial draft + missing list (供未来其他调用方); CLI 严格 exit 1 不写盘
+- INV-F15-5 守 F011 既有 3 个 agent byte 不变
+
+### `garage agent ls` (FR-1504)
+
+```bash
+garage agent ls                       # default packs/garage/agents/
+garage agent ls --target-pack coding
+```
+
+列 packs/<target>/agents/*.md frontmatter `name` + `description` (前 80 字).
+
+### `garage status` 显示 (FR-1505 + Im-2 r2)
+
+`garage status` 末尾每个 first-class pack (garage / coding / writing / search) 一行: `Agent compose: <pack> has N agents`. 不含 last-compose ts (Im-2 r2: 不依赖 cache.json).
+
+### 内部类型 (library 层)
+
+- `AgentDraft`: kebab-case name + description + target_pack + body (full agent.md text)
+- `ComposeResult`: draft + missing_skills + style_count + target_pack_exists (Im-1 r2 双层语义)
+
+### Carry-forward (F016+)
+
+- Auto-suggest skills (基于 F014 recall + F013-A skill mining 组合 → "你常用这 5 个 skill, 推荐组成 agent X")
+- Cross-pack agent compose (当前默认 garage, --target-pack 切但不并发多 pack)
+- agent.md schema 演进 (例 加 NFR section)
+
+详见 spec `docs/features/F015-agent-compose.md` + design `docs/designs/2026-04-26-agent-compose-design.md` (6 ADR + 5 INV + 5 CON)。
+
 ### Garage OS 开发者参考
 
 #### 模块概览

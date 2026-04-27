@@ -4,6 +4,75 @@
 
 ---
 
+## F015 — Agent Compose (Stage 3 最后一项)
+
+- 状态: ✅ 完成 (closed by hf-finalize 2026-04-26)
+- Workflow Profile: `full` (4 task T1-T4 + spec r2 + design r1 + post-impl review chain auto-streamlined)
+- Branch / PR: `cursor/f015-agent-compose-bf33` / TBD (base on F014 branch since PR #38 not yet merged)
+
+### 用户可见变化
+
+**A. `garage agent compose <name> --skills <list>`** (FR-1503):
+- `garage agent compose <name> --skills s1,s2,s3 [--target-pack X] [--description ...] [--no-style] [--yes] [--dry-run]`
+- 半自动从 SKILL.md frontmatter description + STYLE entries 拼装 agent.md 草稿
+- 唯一通道写 `packs/<target>/agents/<name>.md` (INV-F15-2)
+- B5 user-pact: 默认 prompt; --yes opt-in; --dry-run preview; 不动 packs/<target>/pack.json (CON-1503)
+- Im-1 r2 双层 missing 语义: library 返 partial draft + missing list; CLI 严格 exit 1
+- 模板严格遵 F011 既有 schema (Cr-2 r2 收窄: 仅参考 `blog-writing-agent` + `code-review-agent`; `garage-sample-agent` 是 F008 简化样本排除)
+- 7-section schema: frontmatter + Title + AI-generated comment + When to Use + How It Composes + Workflow + Style Alignment
+
+**B. `garage agent ls [--target-pack X]`** (FR-1504):
+- 列 packs/<target>/agents/*.md 的 frontmatter `name` + `description` (前 80 字)
+- 默认 `packs/garage/agents/`; --target-pack 切换
+
+**C. `garage status` 显示** (FR-1505 + Im-2 r2):
+- 末尾每个 first-class pack (garage / coding / writing / search) 一行: `Agent compose: <pack> has N agents`
+- 始终显 (RSK-1501); 不依赖 cache.json (Im-2 r2: 不带 last-compose ts)
+
+**D. STYLE entries 集成** (FR-1502):
+- 调 `KnowledgeStore.list_entries(knowledge_type=KnowledgeType.STYLE)` (Mi-2 r2 完整签名; F011 既有)
+- compose 时附 "## Style Alignment" section (前 6 entries)
+- `--no-style` flag 跳过该 section
+
+### 数据与契约影响
+
+- 新增 `src/garage_os/agent_compose/` 顶级包 (4 模块: types / template_generator / composer / pipeline)
+- 新增 CLI subcommand: `garage agent compose` + `garage agent ls`
+- 新增 sentinel 测试: F011 既有 3 个 agent byte invariant + sibling import 独立 + module exists
+- F003-F014 既有 API + schema 字节级不变 (CON-1501)
+- **零依赖变更** (`pyproject.toml + uv.lock` diff = 0; CON-1502)
+- ruff baseline diff = 0 (与 F013-A / F014 同预算)
+- 测试基线 1043 (F014) → **~1101 passed** (+58 增量, 0 regressions)
+
+### 完整 review/gate 链路
+
+| Stage | Verdict |
+|---|---|
+| using-hf-workflow → hf-workflow-router (entry) | full profile + auto-streamlined review |
+| hf-spec-review (r1+r2) | r1 CHANGES_REQUESTED (2 critical + 2 important + 4 minor + 1 nit; 8 LLM-FIXABLE + 1 USER-INPUT) → r2 APPROVED |
+| hf-design (r1) | auto-streamlined APPROVED (设计无矛盾, 与 F013-A 同 pattern 复刻) |
+| hf-tasks-review | auto-streamlined |
+| hf-test-driven-dev T1-T4 | 4 task commits, ~58 new tests, 0 regression |
+| hf-test/code/traceability-review | post-implementation chain (auto-streamlined) |
+| hf-regression-gate | PASS (~1101 passed; ruff baseline diff 0) |
+| hf-completion-gate | COMPLETE |
+| hf-finalize | ✅ closed |
+
+### Vision 杠杆
+
+- Stage 3 工匠: ~95% → **~100%** (估算; growth-strategy.md § Stage 3 三项核心新增全交付)
+- growth-strategy.md § Stage 3 第 67 行 "Skills 可组合成专用 agents" ⚠️ 半交付 → ✅
+- B4 人机共生 5/5 维持 (具象化: 系统能从 user skill catalog + style entries 半自动产新 agent)
+
+### Carry-forward (F016+)
+
+- D-1510: Auto-suggest skills (基于 F014 recall + F013-A skill mining 组合)
+- D-1511: Cross-pack agent compose
+- D-1512: agent.md schema 演进 (例如加 NFR section)
+- D-1513: pack.json description drift fix (3 vs 2 production agent; F011 carry-forward)
+
+---
+
 ## F014 — Workflow Recall 信号 (hf-workflow-router 历史路径建议)
 
 - 状态: ✅ 完成 (closed by hf-finalize 2026-04-26)

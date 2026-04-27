@@ -140,6 +140,23 @@ def test_readmes_list_f006_cli_subcommands() -> None:
             )
 
 
+# F015 / FR-1503: AGENTS.md must document the new agent compose CLI subcommand.
+
+def test_agents_md_mentions_agent_compose_cli() -> None:
+    """F015: AGENTS.md must mention `garage agent compose` CLI."""
+    agents_md = REPO_ROOT / "AGENTS.md"
+    content = agents_md.read_text(encoding="utf-8")
+    for token in (
+        "agent compose",
+        "Agent Compose (F015)",
+        "AgentDraft",
+        "ComposeResult",
+    ):
+        assert token in content, (
+            f"expected AGENTS.md to mention F015 token '{token}'; not found"
+        )
+
+
 # F014 / FR-1402: AGENTS.md must document the new recall workflow CLI subcommand.
 
 def test_agents_md_mentions_workflow_recall_cli() -> None:

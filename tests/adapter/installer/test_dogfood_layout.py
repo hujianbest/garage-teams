@@ -121,6 +121,13 @@ class TestDogfoodLayout:
         for module in ("__init__.py", "types.py", "cache.py", "path_recaller.py", "pipeline.py"):
             assert (wr_dir / module).is_file(), f"F014: workflow_recall/{module} missing"
 
+    def test_agent_compose_module_exists(self) -> None:
+        """F015 T4 sentinel: agent_compose package + 4 modules registered."""
+        ac_dir = REPO_ROOT / "src" / "garage_os" / "agent_compose"
+        assert ac_dir.is_dir(), "F015: src/garage_os/agent_compose/ missing"
+        for module in ("__init__.py", "types.py", "template_generator.py", "composer.py", "pipeline.py"):
+            assert (ac_dir / module).is_file(), f"F015: agent_compose/{module} missing"
+
     def test_agents_readme_explains_mount(self) -> None:
         """.agents/README.md MUST explain why .agents/skills/ exists as symlinks
         and how to regenerate it (companion doc to setup-agent-skills.sh).
