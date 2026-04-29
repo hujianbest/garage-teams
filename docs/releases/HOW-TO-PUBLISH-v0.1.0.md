@@ -73,8 +73,15 @@ The release-prep cloud agent built and saved the artifacts twice during this wor
 
 ```bash
 # from a fresh checkout of main at v0.1.0
-python -m pip install --upgrade build
-python -m build --outdir dist
+#
+# Build tool: pick ONE (Debian/Ubuntu system Python is PEP 668 — do not
+# `pip install` onto it without a venv).
+#
+#   pipx install build          # then: ~/.local/bin is usually on PATH → build
+#   uv tool install build       # then: build (same idea as pipx)
+#   python3 -m venv .venv && . .venv/bin/activate && pip install build
+#
+python -m build --outdir dist   # or: python3 -m build … if your `python` is py3
 ls dist/
 # expected:
 #   garage_os-0.1.0-py3-none-any.whl
@@ -135,7 +142,10 @@ Prerequisites:
 - `~/.pypirc` configured **or** `TWINE_USERNAME=__token__` + `TWINE_PASSWORD=pypi-AgEI...` exported
 
 ```bash
-python -m pip install --upgrade twine
+# Twine: same PEP 668 story — use pipx / uv tool / venv, not system pip.
+#   pipx install twine
+#   uv tool install twine
+#
 python -m twine check dist/*           # validate metadata before upload
 python -m twine upload dist/*          # actual upload
 ```
@@ -184,7 +194,7 @@ After PyPI upload: **PyPI does not allow re-using a version number**. Bump to v0
 - [x] PR #42 merged (coding-pack v0.4.0; path A)
 - [ ] PR #43 (this runbook + release docs) reviewed and merged
 - [ ] Local main pulled; `pytest tests/ -q` green at the merged commit (expect 1045 passed)
-- [ ] Final artifacts rebuilt locally with `python -m build`
+- [ ] Final artifacts rebuilt locally (`python -m build` after `build` is on PATH via pipx/uv/venv)
 - [ ] `v0.1.0` tag created and pushed
 - [ ] `gh release create v0.1.0 --prerelease --notes-file docs/releases/v0.1.0.md dist/*.whl dist/*.tar.gz` succeeded
 - [ ] Release visible at https://github.com/hujianbest/garage-agent/releases/tag/v0.1.0
