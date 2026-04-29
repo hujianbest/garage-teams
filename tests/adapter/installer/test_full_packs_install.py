@@ -26,26 +26,13 @@ PACKS_ROOT = REPO_ROOT / "packs"
 # F008 ADR-D8-1: family-level shared assets that must appear at most once
 # under packs/. Skill-private references/<file>.md with the same basename
 # do NOT count (those are skill-internal and can be duplicated).
+#
+# Post harness-flow v0.1.0 reverse-sync: packs/coding no longer ships any
+# family-level shared assets — upstream went per-skill self-contained
+# (templates + shared docs distributed into each skill's own references/).
+# So coding/ contributes zero entries here. The only remaining family-level
+# asset in the whole packs/ tree is packs/writing/prompts/横纵分析法.md.
 FAMILY_ASSET_BASENAMES_AND_PATHS = {
-    # 4 family shared docs (packs/coding/skills/docs/<file>)
-    ("hf-command-entrypoints.md", Path("packs/coding/skills/docs")),
-    ("hf-workflow-entrypoints.md", Path("packs/coding/skills/docs")),
-    ("hf-workflow-shared-conventions.md", Path("packs/coding/skills/docs")),
-    ("hf-worktree-isolation.md", Path("packs/coding/skills/docs")),
-    # 6 templates (packs/coding/skills/templates/<file>)
-    ("feature-readme-template.md", Path("packs/coding/skills/templates")),
-    ("finalize-closeout-pack-template.md", Path("packs/coding/skills/templates")),
-    ("task-board-template.md", Path("packs/coding/skills/templates")),
-    ("task-progress-template.md", Path("packs/coding/skills/templates")),
-    ("verification-record-template.md", Path("packs/coding/skills/templates")),
-    # 6 principles (packs/coding/principles/<file>)
-    ("skill-anatomy.md", Path("packs/coding/principles")),
-    ("hf-sdd-tdd-skill-design.md", Path("packs/coding/principles")),
-    ("architectural-health-during-tdd.md", Path("packs/coding/principles")),
-    ("methodology-coherence.md", Path("packs/coding/principles")),
-    ("sdd-artifact-layout.md", Path("packs/coding/principles")),
-    ("emergent-vs-upfront-patterns.md", Path("packs/coding/principles")),
-    # writing family-level prompts (packs/writing/prompts/<file>)
     ("横纵分析法.md", Path("packs/writing/prompts")),
 }
 
