@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 import pytest
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_SRC = _REPO_ROOT / "src"
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -33,3 +39,12 @@ def pytest_configure(config: pytest.Config) -> None:
             "  poetry install\n"
             "(see pyproject.toml → [tool.poetry.dependencies])"
         )
+
+    # Subprocesses (e.g. `python -m garage_os.cli`, nested `pytest`) do not inherit
+    # pytest's ini `pythonpath`; mirror it on os.environ so sentinel + smoke tests
+    # behave like `uv run pytest` from the repo root.
+    paths: list[str] = [str(_SRC), str(_REPO_ROOT)]
+    for p in os.environ.get("PYTHONPATH", "").split(os.pathsep):
+        if p and p not in paths:
+            paths.append(p)
+    os.environ["PYTHONPATH"] = os.pathsep.join(paths)
