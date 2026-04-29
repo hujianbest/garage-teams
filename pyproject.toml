@@ -1,12 +1,49 @@
 [tool.poetry]
 name = "garage-os"
 version = "0.1.0"
-description = "Garage Agent Operating System - Phase 1 Implementation"
+description = "Garage Agent — local-first home for agent skills, knowledge, and experience"
 authors = ["Garage Contributors"]
+license = "Apache-2.0"
 readme = "README.md"
+homepage = "https://github.com/hujianbest/garage-agent"
+repository = "https://github.com/hujianbest/garage-agent"
+documentation = "https://github.com/hujianbest/garage-agent/blob/main/README.md"
+keywords = [
+    "agent",
+    "ai",
+    "skills",
+    "knowledge-management",
+    "claude-code",
+    "cursor",
+    "opencode",
+    "local-first",
+    "solo-creator",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
 packages = [
     { include = "garage_os", from = "src" }
 ]
+include = [
+    "LICENSE",
+    "AGENTS.md",
+    "RELEASE_NOTES.md",
+]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/hujianbest/garage-agent/issues"
+"Release Notes" = "https://github.com/hujianbest/garage-agent/blob/main/RELEASE_NOTES.md"
+"Source Code" = "https://github.com/hujianbest/garage-agent"
 
 [tool.poetry.dependencies]
 python = "^3.11"
