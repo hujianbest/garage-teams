@@ -46,9 +46,9 @@
 - **透明可审计**：系统知道什么、为什么这么做，都应该能在文件和产物里看见
 - **人始终掌舵**：系统可以辅助和自动化，但方向盘始终在人手里——破坏性 / 共享性操作必须 opt-in（`--yes` / `--anonymize` / `--force` 显式声明）
 
-## 当前已有内容（F001 - F012 共 12 个 cycle）
+## 当前已有内容（F001 - F014 共 14 个 cycle）
 
-经过 12 个已关闭的交付 cycle，仓库现在提供：
+经过 14 个已关闭的交付 cycle，仓库现在提供：
 
 | Cycle | 能力 |
 |---|---|
@@ -64,13 +64,15 @@
 | F010 | Memory Sync（`garage sync`） + 宿主 session 回流（`garage session import --from <host>`） |
 | F011 | `KnowledgeType.STYLE` + 生产 agents（`code-review-agent` / `blog-writing-agent`） + `garage pack install <git-url>` + `pack ls` |
 | F012 | Pack lifecycle 完整化（`pack uninstall` / `pack update` / `pack publish`） + `knowledge export --anonymize` + F009 carry-forward（VersionManager 注册） |
+| F013-A | Skill Mining Push（`garage skill suggest` / `garage skill promote`，从重复模式建议生成 skill 草稿） |
+| F014 | Workflow Recall（`garage recall workflow` + `hf-workflow-router` step 3.5 历史路径 advisory） |
 
 具体交付物：
 
 - **AHE / HF workflow skills** 在 [`packs/coding/skills/`](packs/coding/skills/)（24 个 `hf-*` skill + `using-hf-workflow`）和 [`packs/writing/skills/`](packs/writing/skills/)（5 个写作 skill）
 - **生产 agents** 在 [`packs/garage/agents/`](packs/garage/agents/)：`code-review-agent`、`blog-writing-agent`、`garage-sample-agent`
-- 一个 **Python runtime** package `garage-os`（[`src/garage_os/`](src/garage_os/)），约 930 个测试通过
-- 一个 **`garage` CLI**，覆盖：`init`、`status`、`run`、`recommend`、`sync`、`session import`、`memory review`；knowledge 子命令 `knowledge search`、`knowledge list`、`knowledge add`、`knowledge edit`、`knowledge show`、`knowledge delete`、`knowledge link`、`knowledge graph`、`knowledge export`；experience 子命令 `experience add`、`experience show`、`experience delete`；pack lifecycle `pack install`、`pack ls`、`pack uninstall`、`pack update`、`pack publish`
+- 一个 **Python runtime** package `garage-os`（[`src/garage_os/`](src/garage_os/)），约 1045 个测试通过
+- 一个 **`garage` CLI**，覆盖：`init`、`status`、`run`、`recommend`、`recall workflow`、`sync`、`session import`、`memory review`、`skill suggest`、`skill promote`；knowledge 子命令 `knowledge search`、`knowledge list`、`knowledge add`、`knowledge edit`、`knowledge show`、`knowledge delete`、`knowledge link`、`knowledge graph`、`knowledge export`；experience 子命令 `experience add`、`experience show`、`experience delete`；pack lifecycle `pack install`、`pack ls`、`pack uninstall`、`pack update`、`pack publish`
 - 文件优先的 runtime 数据结构在 [`.garage/`](.garage/)（sessions、含 YAML front matter 的 knowledge 条目、experience records、sync manifest、host installer manifest）
 - 每一个 cycle 的 spec / 评审 / 验收 在 [`docs/features/`](docs/features/)、[`docs/designs/`](docs/designs/)、[`docs/reviews/`](docs/reviews/)、[`docs/approvals/`](docs/approvals/)
 
@@ -102,6 +104,12 @@ garage sync --hosts claude,cursor
 
 # 把宿主对话历史回流为 Garage sessions, 触发 memory 提取
 garage session import --from claude --all
+
+# 查看系统从历史经验中建议的 workflow path
+garage recall workflow --problem-domain cli-design
+
+# 查看或提升系统挖出的 pattern → skill 建议
+garage skill suggest --rescan
 ```
 
 第一次贡献到本仓库的开发者，如果需要 cloud-agent 的 skill 挂载点，还要执行：
@@ -151,9 +159,9 @@ garage knowledge export --anonymize
 | [`.agents/skills/`](#agents-skills-挂载点) | Cloud-agent skill 挂载点（指向 `packs/` 的相对软链；不入 git，本地 `scripts/setup-agent-skills.sh` 重生成） |
 | [`.garage/`](.garage/) | 工作区运行时状态：sessions、knowledge、experience、sync manifest、host installer manifest、contracts、config |
 | [`docs/`](docs/) | 灵魂文档、feature spec（`features/`）、design（`designs/`）、review（`reviews/`）、approval（`approvals/`）、planning（`planning/`）、guide、principle、manual smoke walkthrough |
-| [`tests/`](tests/) | 约 930 个 unit + integration + compatibility + security + sentinel 测试，目录结构与 `src/garage_os/` 模块一一对应 |
-| [`AGENTS.md`](AGENTS.md) | 面向 Agent 的项目约定 + Garage OS 开发参考 + F009-F012 功能用法 |
-| [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | 每个 cycle 的用户可见变化（F001 → F012） |
+| [`tests/`](tests/) | 约 1045 个 unit + integration + compatibility + security + sentinel 测试，目录结构与 `src/garage_os/` 模块一一对应 |
+| [`AGENTS.md`](AGENTS.md) | 面向 Agent 的项目约定 + Garage OS 开发参考 + F009-F014 功能用法 |
+| [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | 每个 cycle 的用户可见变化（F001 → F014） |
 
 ### `.agents/skills/` 挂载点
 

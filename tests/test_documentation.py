@@ -157,6 +157,75 @@ def test_agents_md_mentions_workflow_recall_cli() -> None:
         )
 
 
+def test_user_guide_documents_f013_f014_user_flows() -> None:
+    """User guide must cover the F013-A and F014 user-facing commands."""
+    content = USER_GUIDE.read_text(encoding="utf-8")
+    for token in (
+        "Skill Mining (F013-A",
+        "garage skill suggest",
+        "garage skill promote",
+        "garage status",
+        "Workflow Recall (F014",
+        "garage recall workflow",
+        "--json",
+        "--rebuild-cache",
+    ):
+        assert token in content, (
+            f"expected user guide to mention F013/F014 token '{token}'; not found"
+        )
+
+
+def test_user_guide_documents_pack_lifecycle_and_anonymize_export() -> None:
+    """User guide must cover F011/F012 pack lifecycle and anonymized export commands."""
+    content = USER_GUIDE.read_text(encoding="utf-8")
+    for token in (
+        "Pack Lifecycle",
+        "garage pack install",
+        "garage pack ls",
+        "garage pack update",
+        "garage pack uninstall",
+        "garage pack publish",
+        "garage knowledge export --anonymize",
+        "~/.garage/anonymize-patterns.txt",
+    ):
+        assert token in content, (
+            f"expected user guide to mention lifecycle token '{token}'; not found"
+        )
+
+
+def test_user_guide_documents_skill_mining_and_workflow_recall() -> None:
+    """User guide must cover current F013-A and F014 user-facing commands."""
+    content = USER_GUIDE.read_text(encoding="utf-8")
+    for token in (
+        "pattern → skill",
+        "garage skill suggest",
+        "garage skill promote",
+        "skill_mining",
+        "Workflow Recall",
+        "garage recall workflow",
+        "--rebuild-cache",
+        "workflow_recall",
+    ):
+        assert token in content, (
+            f"expected user guide to mention current CLI token '{token}'; not found"
+        )
+
+
+def test_readmes_are_synced_to_f014_cli_surface() -> None:
+    """Both READMEs must reflect F013-A/F014 in the quick user-facing surface."""
+    for readme in (README_EN, README_ZH):
+        content = readme.read_text(encoding="utf-8")
+        for token in (
+            "F014",
+            "skill suggest",
+            "skill promote",
+            "recall workflow",
+        ):
+            assert token in content, (
+                f"expected {readme.name} to mention F014-era token '{token}'; not found"
+            )
+
+
 # F007 / FR-710: user guide must document the Pack & Host Installer.
 
 def test_user_guide_documents_pack_and_host_installer() -> None:
