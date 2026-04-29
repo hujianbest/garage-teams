@@ -90,6 +90,7 @@ module = "atomicwrites.*"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
+pythonpath = ["src"]
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
