@@ -1,0 +1,58 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: pytest (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install project + dev deps
+        run: |
+          uv venv
+          uv pip install -e .
+          uv pip install pytest pytest-cov
+
+      - name: Run pytest (full suite, baseline 1044)
+        run: |
+          source .venv/bin/activate
+          pytest tests/ -q --tb=short
+
+# NOTE on lint / type checks (ruff / mypy):
+#
+# v0.1 deliberately ships CI with pytest only. ruff (~506 findings) and mypy
+# (~73 findings) are pre-existing and need a dedicated cleanup cycle to clear.
+# Adding them as `continue-on-error: true` was tried in c3e48e8 but produced
+# permanently-red ❌ checks on the PR UI, which is worse review UX than not
+# running them at all (no actionable signal, only noise).
+#
+# v0.2 plan: a focused cleanup cycle drives ruff + mypy to 0 findings, then
+# this workflow gains a `lint:` and `types:` job that are BLOCKING (no
+# continue-on-error). Until then, contributors are expected to run them
+# locally as documented in CONTRIBUTING.md.

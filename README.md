@@ -2,6 +2,11 @@
 
 **English** | [中文](README.zh-CN.md)
 
+[![Tests](https://github.com/hujianbest/garage-agent/actions/workflows/test.yml/badge.svg)](https://github.com/hujianbest/garage-agent/actions/workflows/test.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-ff69b4.svg)](CODE_OF_CONDUCT.md)
+
 `garage-agent` is a local-first home for agent skills, knowledge, and experience.
 
 It is built for solo creators who want agent capability that starts small, grows with real work, and stays portable across hosts instead of being trapped inside one tool, one session, or one machine.
@@ -211,12 +216,17 @@ With Beliefs 1-5 and Promises ①-⑤ all at 5/5 after F012, the highest-leverag
 
 Scoring rationale: see [`docs/soul/manifesto.md`](docs/soul/manifesto.md), [`docs/soul/growth-strategy.md`](docs/soul/growth-strategy.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md) (F001-F012), and [`docs/planning/`](docs/planning/).
 
-## Open Source Direction
+## Open Source
 
-`garage-agent` is being prepared for public open-source release.
+`garage-agent` is open source under the [Apache 2.0 License](LICENSE).
 
-- Public project name: `garage-agent`
-- Current Python package and CLI names in the repo: `garage-os` and `garage`
-- A formal `LICENSE` file has not been added yet, so reuse terms are not final
-- `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `SECURITY.md` are also still to be defined
-- The most useful contributions right now are workflow quality, portability, docs clarity, runtime hardening, and examples
+- **Public project name**: `garage-agent`
+- **Python package + import path**: `garage-os` (kept stable to avoid breaking existing imports)
+- **CLI binary**: `garage`
+- **License**: [Apache-2.0](LICENSE) — chosen for explicit patent grant + downstream-friendliness
+- **Contributing**: read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a non-trivial PR
+- **Code of Conduct**: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) (Contributor Covenant 2.1)
+- **Security**: report vulnerabilities via [`SECURITY.md`](SECURITY.md) — please do not open public issues for security bugs
+- **CI**: GitHub Actions runs the full `pytest` suite (1044 tests) on Python 3.11 + 3.12 for every push and PR
+
+The most useful contributions right now are workflow quality, host portability, docs clarity, runtime hardening, and real-world examples.

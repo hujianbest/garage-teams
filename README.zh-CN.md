@@ -2,6 +2,11 @@
 
 [English](README.md) | **中文**
 
+[![Tests](https://github.com/hujianbest/garage-agent/actions/workflows/test.yml/badge.svg)](https://github.com/hujianbest/garage-agent/actions/workflows/test.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-ff69b4.svg)](CODE_OF_CONDUCT.md)
+
 `garage-agent` 是一个本地优先的 Agent 能力之家，用来存放并积累你的技能、知识和经验。
 
 它面向独立创作者，希望让 Agent 能力从一次次聪明对话，成长为真正跟着自己、服务自己、可以迁移的长期能力系统，而不是被锁在某个工具、某个 session、某台机器里。
@@ -211,12 +216,17 @@ F012 后信念 1-5 + 承诺 ①-⑤ 都达 5/5，下一阶段杠杆最大的是 
 
 详细评分依据见 [`docs/soul/manifesto.md`](docs/soul/manifesto.md)、[`docs/soul/growth-strategy.md`](docs/soul/growth-strategy.md)、[`RELEASE_NOTES.md`](RELEASE_NOTES.md)（F001-F012）和 [`docs/planning/`](docs/planning/)。
 
-## 开源化进展
+## 开源
 
-`garage-agent` 正在为公开开源发布做整理。
+`garage-agent` 已采用 [Apache 2.0 License](LICENSE) 公开开源。
 
-- 对外项目名已经采用 `garage-agent`
-- 仓库里的 Python package 和 CLI 当前仍叫 `garage-os` 与 `garage`
-- 正式的 `LICENSE` 文件尚未加入，因此复用条款还没有最终确定
-- `CONTRIBUTING.md`、`CODE_OF_CONDUCT.md` 和 `SECURITY.md` 也还在补齐中
-- 当前最有价值的外部贡献方向，是 workflow 质量、可迁移性、文档清晰度、runtime 稳定性和示例完善
+- **对外项目名**: `garage-agent`
+- **Python package + import 路径**: `garage-os`（保持稳定，避免破坏既有 import）
+- **CLI 命令**: `garage`
+- **License**: [Apache-2.0](LICENSE)，明确含专利授权，对下游友好
+- **贡献指南**: 提非琐碎 PR 前请先读 [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- **行为准则**: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)（Contributor Covenant 2.1）
+- **安全报告**: 漏洞请走 [`SECURITY.md`](SECURITY.md) 的私有渠道，不要在公共 issue 里披露
+- **CI**: GitHub Actions 在每个 push 与 PR 上对 Python 3.11 + 3.12 跑完整 1044 个 `pytest` 用例
+
+当前最有价值的外部贡献方向：workflow 质量、宿主可迁移性、文档清晰度、runtime 稳定性和真实使用示例。

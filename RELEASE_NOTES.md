@@ -4,6 +4,61 @@
 
 ---
 
+## v0.1.0 — 首个对外发布版本 (release-prep)
+
+- 状态: 🟢 准备中 (release-prep branch `cursor/v0.1-release-prep-7558`)
+- 范围: 把 F001-F014 累积的能力打包成一个真正"对外可用"的开源版本
+
+### 用户可见变化
+
+**A. 法务 / 社区 / 安全文件落地**:
+- 加 [`LICENSE`](LICENSE) — Apache-2.0（明确专利授权，与 manifesto "数据归你 / 可传承" 对齐）
+- 加 [`CONTRIBUTING.md`](CONTRIBUTING.md) — AHE/HF workflow 贡献流程、dev setup、PR 检查清单
+- 加 [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — Contributor Covenant 2.1
+- 加 [`SECURITY.md`](SECURITY.md) — 漏洞上报渠道（GitHub Security Advisory）+ 威胁模型范围（in scope: path traversal / sensitive_scan bypass / anonymizer bypass / scope escalation / schema migration corruption）
+
+**B. CI 落地** (`.github/workflows/test.yml`):
+- 每次 push / PR 触发，Python 3.11 + 3.12 矩阵
+- `pytest tests/ -q` 是 blocking gate（基线 1044 个测试，~67s on GitHub Actions）
+- `ruff` (506 finding) + `mypy` (73 finding) 故意不在 v0.1 CI 内：把它们当 informational job 会让 PR check 永久红 ❌（无可操作信号，纯噪音）。v0.2 cleanup cycle 把存量 finding 清零后，再加回 CI 作为 blocking gate。期间贡献者按 `CONTRIBUTING.md` 在本地跑
+
+**C. PyPI 元数据齐全** (`pyproject.toml`):
+- `license = "Apache-2.0"` + `homepage` / `repository` / `documentation` URL + `urls.{Bug Tracker, Release Notes, Source Code}`
+- `keywords` (agent / ai / skills / knowledge-management / claude-code / cursor / opencode / local-first / solo-creator)
+- `classifiers` (Development Status :: 4 - Beta + OSI Apache + Python 3.11/3.12 + Typing :: Typed)
+- `include = [LICENSE, AGENTS.md, RELEASE_NOTES.md]`（确保 sdist/wheel 内含）
+- 包名 `garage-os` 与 CLI `garage` 不变（v0.1 保稳，避免破坏既有 import）
+
+**D. README 双语刷新**:
+- 顶部 4 个 badge: Tests / License / Python / Code of Conduct
+- "Open Source" 段从 "preparing for" 改写为已交付状态，明确包名 / 项目名 / CLI 名三者关系
+
+**E. 3 个 sentinel 基线刷新** (pre-condition for release):
+- `tests/adapter/installer/test_dogfood_invariance_F009.py` — `ai-weekly/SKILL.md` SHA 漂移由 commits f1c0bd7 / 84f4800 内容更新引入，刷新 `dogfood_baseline/skill_md_sha256.json`（仅 2 个 entry 改动，其他 68 个 hash 不变）
+- `tests/adapter/installer/test_manifest_v2_dogfood_fields_stable.py` — 同源刷新
+- `tests/sync/test_baseline_no_regression.py` — 因 -x 级联失败，根因修复后绿
+- 修复后: 1044 passed in 167.89s
+
+### 已知限制 (carry to v0.2+)
+
+- ruff 506 finding + mypy 73 finding 待专门 cleanup cycle 收（不阻塞 v0.1）
+- F010 cursor history reader 仍是 stub (deferred 到 D-1010)
+- HOST_REGISTRY 第 4 个宿主仍要改源码 (D-705)
+- Pack signature / GPG (D-1212)、`pack search` / 中央 registry (D-1214) 留给 Stage 4 cycle
+
+### 升级 / 安装
+
+```bash
+# 从 git clone 安装 (推荐 v0.1)
+git clone https://github.com/hujianbest/garage-agent.git
+cd garage-agent
+uv pip install -e .   # 或 poetry install
+```
+
+PyPI 首发暂未启用，待维护者首次 `poetry publish` / `twine upload` 后会在本节追加 `pip install garage-os` 路径。
+
+---
+
 ## F014 — Workflow Recall 信号 (hf-workflow-router 历史路径建议)
 
 - 状态: ✅ 完成 (closed by hf-finalize 2026-04-26)
