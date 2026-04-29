@@ -116,6 +116,15 @@ bash scripts/setup-agent-skills.sh    # regenerates .agents/skills/ symlinks →
 
 If you already have Claude Code CLI installed and authenticated, you can also run individual skills with `garage run <skill-name>`. The runtime is still early; treat host-backed skill execution as an evolving path rather than a finished platform experience.
 
+**Running tests** (from the repository root):
+
+```bash
+uv sync                     # or: uv pip install -e .
+uv run pytest tests/ -q    # recommended: matches the CI toolchain
+```
+
+You can also run `pytest tests/` directly. The repo sets `pythonpath` in `.pytest.ini`, and `tests/conftest.py` extends `PYTHONPATH` for the session so subprocess-based tests (nested `pytest`, `python -m garage_os.cli`) resolve [`src/garage_os/`](src/garage_os/) without a prior editable install. If pytest stops with a missing-dependency message, install runtime packages (`filelock`, `PyYAML`, etc.) from [`pyproject.toml`](pyproject.toml).
+
 ### 3. Share or pull packs
 
 ```bash
@@ -231,6 +240,6 @@ Scoring rationale: see [`docs/soul/manifesto.md`](docs/soul/manifesto.md), [`doc
 - **Contributing**: read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a non-trivial PR
 - **Code of Conduct**: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) (Contributor Covenant 2.1)
 - **Security**: report vulnerabilities via [`SECURITY.md`](SECURITY.md) — please do not open public issues for security bugs
-- **CI**: GitHub Actions runs the full `pytest` suite (1044 tests) on Python 3.11 + 3.12 for every push and PR
+- **CI**: GitHub Actions runs the full `pytest` suite (1000+ tests) on Python 3.11 + 3.12 for every push and PR
 
 The most useful contributions right now are workflow quality, host portability, docs clarity, runtime hardening, and real-world examples.

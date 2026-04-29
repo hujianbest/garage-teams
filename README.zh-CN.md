@@ -87,7 +87,11 @@
 在仓库根目录执行：
 
 ```bash
+# 方式 A：可编辑安装（任意 venv）
 uv pip install -e .
+
+# 方式 B：uv 管理环境（从 uv.lock 安装运行时 + dev 工具）
+uv sync
 
 # 在当前项目初始化 Garage + 把 Garage Coding / Writing / Garage 三个 pack 物化到宿主目录
 # --hosts 接受 claude,cursor,opencode 任意组合
@@ -111,6 +115,15 @@ bash scripts/setup-agent-skills.sh    # 重生成 .agents/skills/ 软链 → pac
 ```
 
 如果你的环境里已经安装并登录 Claude Code CLI，也可以继续用 `garage run <skill-name>` 跑单个 skill。runtime 仍在早期，宿主驱动的 skill 执行更适合作为演进中的能力路径来看，而不是成熟的平台体验。
+
+**跑测试**（在仓库根目录）：
+
+```bash
+uv sync                      # 或: uv pip install -e .
+uv run pytest tests/ -q      # 推荐：与 CI 使用同一套依赖
+```
+
+也可以直接执行 `pytest tests/`：仓库在 `.pytest.ini` 里配置了 `pythonpath`，`tests/conftest.py` 会在会话里补全 `PYTHONPATH`，让依赖子进程的用例（嵌套 `pytest`、`python -m garage_os.cli`）能解析 [`src/garage_os/`](src/garage_os/)，无需事先可编辑安装。若 pytest 报缺少依赖，请按 [`pyproject.toml`](pyproject.toml) 安装运行时包（如 `filelock`、`PyYAML`）。
 
 ### 3. 分享或拉取 packs
 
@@ -227,6 +240,6 @@ F012 后信念 1-5 + 承诺 ①-⑤ 都达 5/5，下一阶段杠杆最大的是 
 - **贡献指南**: 提非琐碎 PR 前请先读 [`CONTRIBUTING.md`](CONTRIBUTING.md)
 - **行为准则**: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)（Contributor Covenant 2.1）
 - **安全报告**: 漏洞请走 [`SECURITY.md`](SECURITY.md) 的私有渠道，不要在公共 issue 里披露
-- **CI**: GitHub Actions 在每个 push 与 PR 上对 Python 3.11 + 3.12 跑完整 1044 个 `pytest` 用例
+- **CI**: GitHub Actions 在每个 push 与 PR 上对 Python 3.11 + 3.12 跑完整 `pytest` 套件（1000+ 用例）
 
 当前最有价值的外部贡献方向：workflow 质量、宿主可迁移性、文档清晰度、runtime 稳定性和真实使用示例。
