@@ -1,3 +1,37 @@
+# PEP 621 — used by `uv lock` / `uv sync` (Poetry-only pyproject leaves uv.lock empty).
+[project]
+name = "garage-os"
+version = "0.1.0"
+description = "Garage Agent — local-first home for agent skills, knowledge, and experience"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Garage Contributors" }]
+dependencies = [
+    "pyyaml>=6.0",
+    "filelock>=3.13",
+    "atomicwrites>=1.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/hujianbest/garage-agent"
+Repository = "https://github.com/hujianbest/garage-agent"
+Documentation = "https://github.com/hujianbest/garage-agent/blob/main/README.md"
+"Bug Tracker" = "https://github.com/hujianbest/garage-agent/issues"
+"Release Notes" = "https://github.com/hujianbest/garage-agent/blob/main/RELEASE_NOTES.md"
+
+[project.scripts]
+garage = "garage_os.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "mypy>=1.7",
+    "ruff>=0.1",
+    "pre-commit>=3.5",
+]
+
 [tool.poetry]
 name = "garage-os"
 version = "0.1.0"

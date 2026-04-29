@@ -87,7 +87,11 @@ Concrete deliverables:
 From the repository root:
 
 ```bash
+# Option A: editable install (any venv)
 uv pip install -e .
+
+# Option B: uv-managed env (installs runtime + dev tools from uv.lock)
+uv sync
 
 # Initialize Garage in this project + materialize Garage Coding/Writing/Garage packs
 # into your host directories. --hosts accepts any combination of claude,cursor,opencode.
