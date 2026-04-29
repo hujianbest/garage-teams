@@ -19,8 +19,8 @@
 
 **B. CI 落地** (`.github/workflows/test.yml`):
 - 每次 push / PR 触发，Python 3.11 + 3.12 矩阵
-- `pytest tests/ -q` 是 blocking gate（基线 1044 个测试）
-- `ruff` + `mypy` 是 informational（continue-on-error；存量 506 ruff + 73 mypy 待 v0.2 cleanup cycle）
+- `pytest tests/ -q` 是 blocking gate（基线 1044 个测试，~67s on GitHub Actions）
+- `ruff` (506 finding) + `mypy` (73 finding) 故意不在 v0.1 CI 内：把它们当 informational job 会让 PR check 永久红 ❌（无可操作信号，纯噪音）。v0.2 cleanup cycle 把存量 finding 清零后，再加回 CI 作为 blocking gate。期间贡献者按 `CONTRIBUTING.md` 在本地跑
 
 **C. PyPI 元数据齐全** (`pyproject.toml`):
 - `license = "Apache-2.0"` + `homepage` / `repository` / `documentation` URL + `urls.{Bug Tracker, Release Notes, Source Code}`

@@ -44,32 +44,15 @@ jobs:
           source .venv/bin/activate
           pytest tests/ -q --tb=short
 
-  lint:
-    name: ruff (informational)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install ruff
-        run: pip install "ruff>=0.1,<0.2"
-      - name: Run ruff (non-blocking; v0.2 will tighten)
-        run: ruff check src/ tests/
-
-  types:
-    name: mypy (informational)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install mypy + project deps
-        run: |
-          pip install "mypy>=1.7,<2.0" pyyaml filelock atomicwrites
-          pip install -e .
-      - name: Run mypy (non-blocking; v0.2 will tighten)
-        run: mypy src/
+# NOTE on lint / type checks (ruff / mypy):
+#
+# v0.1 deliberately ships CI with pytest only. ruff (~506 findings) and mypy
+# (~73 findings) are pre-existing and need a dedicated cleanup cycle to clear.
+# Adding them as `continue-on-error: true` was tried in c3e48e8 but produced
+# permanently-red ❌ checks on the PR UI, which is worse review UX than not
+# running them at all (no actionable signal, only noise).
+#
+# v0.2 plan: a focused cleanup cycle drives ruff + mypy to 0 findings, then
+# this workflow gains a `lint:` and `types:` job that are BLOCKING (no
+# continue-on-error). Until then, contributors are expected to run them
+# locally as documented in CONTRIBUTING.md.
