@@ -27,7 +27,7 @@
 
 当设计决策出现价值冲突时，回溯到这里做判断。
 
-## Garage OS
+## garage-agent
 
 - 运行时数据存储: .garage/
 - 平台配置: .garage/config/platform.json
@@ -57,7 +57,7 @@ Garage 自带的可分发 skills + agents 沉淀在仓库 `packs/<pack-id>/` 下
 |---|---|
 | `packs/README.md` | 顶层契约：pack 目录结构、`pack.json` schema、与宿主关系、不变量 |
 | `packs/<pack-id>/README.md` | 每个 pack 的概述 + skill/agent 清单（强制） |
-| `docs/guides/garage-os-user-guide.md` "Pack & Host Installer" 段 | 端到端用法（交互/非交互/extend mode、退出码、宿主路径表、风险） |
+| `docs/guides/garage-agent-user-guide.md` "Packs、Skills 和 Agents" 段 | 端到端用法（交互/非交互/extend mode、退出码、宿主路径表、风险） |
 | `docs/features/F007-garage-packs-and-host-installer.md` | F007 已批准规格（packs/ 目录契约 + `garage init --hosts ...` 安装管道） |
 | `docs/features/F008-garage-coding-pack-and-writing-pack.md` | F008 已批准规格（把 `.agents/skills/` 物化为 packs 内容物）|
 | `docs/features/F009-garage-init-scope-selection.md` | F009 已批准规格（`garage init` 双 scope project/user + 交互式 scope 选择）|
@@ -342,11 +342,11 @@ router 在既有 step 3 (支线信号) 与 step 4 (Profile) 之间插入 step 3.
 
 详见 spec `docs/features/F014-workflow-recall.md` + design `docs/designs/2026-04-26-workflow-recall-design.md` (7 ADR + 5 INV + 5 CON)。
 
-### Garage OS 开发者参考
+### garage-agent 开发者参考
 
 #### 模块概览
 
-Garage OS 源码位于 `src/garage_os/`，由 7 个核心模块组成：
+garage-agent 的 Python 实现源码位于 `src/garage_os/`（兼容保留的包路径），由 7 个核心模块组成：
 
 | 模块 | 路径 | 职责 |
 |------|------|------|
@@ -387,7 +387,7 @@ uv run ruff check src/ tests/
 
 #### .garage/ 目录结构
 
-`.garage/` 是 Garage OS 的运行时数据目录，所有数据以文件形式存储，git 可追踪：
+`.garage/` 是 garage-agent 的运行时数据目录，所有数据以文件形式存储，git 可追踪：
 
 ```
 .garage/

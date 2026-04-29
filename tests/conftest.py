@@ -31,7 +31,7 @@ def pytest_configure(config: pytest.Config) -> None:
     if missing:
         joined = "\n  - ".join(missing)
         raise pytest.UsageError(
-            "Missing runtime dependencies for Garage OS tests:\n"
+            "Missing runtime dependencies for garage-agent tests:\n"
             f"  - {joined}\n\n"
             "Install project dependencies, for example:\n"
             "  pip install -e .\n"

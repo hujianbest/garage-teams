@@ -1,5 +1,5 @@
 """
-Knowledge Store for Garage Agent OS.
+Knowledge Store for garage-agent.
 
 Stores knowledge entries as markdown files with YAML front matter.
 Directory structure:

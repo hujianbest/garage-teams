@@ -52,7 +52,7 @@ Through 14 closed delivery cycles the repository now provides:
 
 | Cycle | Capability |
 |---|---|
-| F001 | Garage Agent Operating System foundation (`garage init` / `status` / `run` / contracts / VersionManager) |
+| F001 | garage-agent foundation (`garage init` / `status` / `run` / contracts / VersionManager) |
 | F002 | Session manager + StateMachine + ErrorHandler |
 | F003 | Memory auto-extraction (signals → candidates → review queue) |
 | F004 | Memory v1.1 (KnowledgeStore + ExperienceIndex consolidation) |
@@ -150,8 +150,7 @@ garage knowledge export --anonymize
 
 - Soul: [`docs/soul/manifesto.md`](docs/soul/manifesto.md), [`docs/soul/user-pact.md`](docs/soul/user-pact.md), [`docs/soul/design-principles.md`](docs/soul/design-principles.md), [`docs/soul/growth-strategy.md`](docs/soul/growth-strategy.md)
 - System spec: [`docs/features/F001-garage-agent-operating-system.md`](docs/features/F001-garage-agent-operating-system.md)
-- User guide: [`docs/guides/garage-os-user-guide.md`](docs/guides/garage-os-user-guide.md)
-- Developer guide: [`docs/guides/garage-os-developer-guide.md`](docs/guides/garage-os-developer-guide.md)
+- User guide: [`docs/guides/garage-agent-user-guide.md`](docs/guides/garage-agent-user-guide.md)
 - Skill anatomy (mandatory for any new skill): [`docs/principles/skill-anatomy.md`](docs/principles/skill-anatomy.md)
 
 ## Repository Map
@@ -164,7 +163,7 @@ garage knowledge export --anonymize
 | [`.garage/`](.garage/) | Workspace runtime state for sessions, knowledge, experience, sync manifest, host installer manifest, contracts, config |
 | [`docs/`](docs/) | Soul docs, feature specs (`features/`), designs (`designs/`), reviews (`reviews/`), approvals (`approvals/`), planning (`planning/`), guides, principles, manual smoke walkthroughs |
 | [`tests/`](tests/) | ~1045 unit + integration + compatibility + security + sentinel tests; mirrors `src/garage_os/` module layout |
-| [`AGENTS.md`](AGENTS.md) | Agent-facing conventions, Garage OS developer reference, F009-F014 feature usage |
+| [`AGENTS.md`](AGENTS.md) | Agent-facing conventions + garage-agent development notes + F009-F014 feature usage |
 | [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | Per-cycle user-visible changes (F001 → F014) |
 
 ### `.agents/skills/` mount
@@ -226,7 +225,7 @@ Stage 4 Ecosystem  ████████              40%   ← F012 lifecycl
 
 With Beliefs 1-5 and Promises ①-⑤ all at 5/5 after F012, the highest-leverage next push is **Stage 3 skill mining** — turn the existing extraction pipeline into a "the system suggests a new skill from your patterns" signal. After that, **Stage 4 community / supply-chain** (D-1214 pack search + D-1212 signature) opens the door to a public pack ecosystem.
 
-Scoring rationale: see [`docs/soul/manifesto.md`](docs/soul/manifesto.md), [`docs/soul/growth-strategy.md`](docs/soul/growth-strategy.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md) (F001-F012), and [`docs/planning/`](docs/planning/).
+Scoring rationale: see [`docs/soul/manifesto.md`](docs/soul/manifesto.md), [`docs/soul/growth-strategy.md`](docs/soul/growth-strategy.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md) (F001-F014), and [`docs/planning/`](docs/planning/).
 
 ## Open Source
 
@@ -239,6 +238,6 @@ Scoring rationale: see [`docs/soul/manifesto.md`](docs/soul/manifesto.md), [`doc
 - **Contributing**: read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a non-trivial PR
 - **Code of Conduct**: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) (Contributor Covenant 2.1)
 - **Security**: report vulnerabilities via [`SECURITY.md`](SECURITY.md) — please do not open public issues for security bugs
-- **CI**: GitHub Actions runs the full `pytest` suite (1044 tests) on Python 3.11 + 3.12 for every push and PR
+- **CI**: GitHub Actions runs the full `pytest` suite (~1045 tests) on Python 3.11 + 3.12 for every push and PR
 
 The most useful contributions right now are workflow quality, host portability, docs clarity, runtime hardening, and real-world examples.

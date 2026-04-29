@@ -10,7 +10,7 @@
 
 ## 安装
 
-随 `garage init --hosts <list>` 自动装到三家宿主原生目录。详见 `packs/README.md` 顶层契约 + `docs/guides/garage-os-user-guide.md` "Pack & Host Installer" 段。
+随 `garage init --hosts <list>` 自动装到三家宿主原生目录。详见 `packs/README.md` 顶层契约 + `docs/guides/garage-agent-user-guide.md` "Pack & Host Installer" 段。
 
 ## 设计来源
 

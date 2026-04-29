@@ -1,4 +1,4 @@
-"""Error Handler module for Garage Agent OS.
+"""Error Handler module for garage-agent.
 
 This module provides error classification, retry strategies, and logging
 capabilities for handling errors during session execution.

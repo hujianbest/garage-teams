@@ -1,4 +1,4 @@
-"""Tests for Garage OS CLI."""
+"""Tests for garage-agent CLI."""
 
 import json
 from pathlib import Path
@@ -2995,8 +2995,8 @@ class TestInitWithHosts:
     ) -> None:
         """CON-702: bare `garage init` with no flags must keep F002 behavior.
 
-        Specifically: stdout is the legacy 'Initialized Garage OS in <path>'
-        line, and no host directory is touched.
+        Specifically: stdout includes the stable init marker line, and no host
+        directory is touched.
         """
         # No packs/ symlink → guarantee zero packs to install even if the
         # interactive prompt accidentally yields hosts.
@@ -3004,8 +3004,7 @@ class TestInitWithHosts:
         assert rc == 0
 
         captured = capsys.readouterr()
-        # The exact F002 marker must be present and unchanged.
-        assert f"Initialized Garage OS in {tmp_path}/.garage" in captured.out
+        assert f"Initialized garage-agent in {tmp_path}/.garage" in captured.out
         # Nothing else relevant on stdout/stderr.
         assert "Installed" not in captured.out
 
@@ -3244,8 +3243,7 @@ class TestInitErrorPaths:
         rc = main(["init", "--path", str(tmp_path)])
         assert rc == 0
         captured = capsys.readouterr()
-        # CON-702 baseline marker still printed.
-        assert "Initialized Garage OS in" in captured.out
+        assert "Initialized garage-agent in" in captured.out
         assert "Installed" not in captured.out
         # Non-interactive notice on stderr.
         assert "non-interactive" in captured.err.lower()

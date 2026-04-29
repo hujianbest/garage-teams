@@ -1,1 +1,1 @@
-"""Integration tests for Garage Agent OS."""
+"""Integration tests for garage-agent."""

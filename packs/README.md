@@ -84,7 +84,7 @@ garage init --hosts claude,cursor
 # → 同时写入 my-app/.garage/config/host-installer.json 安装清单
 ```
 
-详见 `docs/guides/garage-os-user-guide.md` 的 "Pack & Host Installer" 段。
+详见 `docs/guides/garage-agent-user-guide.md` 的 "Pack & Host Installer" 段。
 
 ## Install Scope（F009 新增）
 

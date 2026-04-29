@@ -1,5 +1,5 @@
 """
-Tool Registry and Gateway for Garage Agent OS.
+Tool Registry and Gateway for garage-agent.
 
 This module provides tool registration, discovery, and invocation capabilities.
 Phase 1: ToolGateway records calls and returns mock results; actual execution

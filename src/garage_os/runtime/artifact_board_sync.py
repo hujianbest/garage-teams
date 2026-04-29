@@ -1,4 +1,4 @@
-"""Artifact-Board synchronization protocol for Garage Agent OS.
+"""Artifact-Board synchronization protocol for garage-agent.
 
 This module implements the consistency protocol between the board (in-memory
 artifact references) and the actual artifact files on disk. It ensures that

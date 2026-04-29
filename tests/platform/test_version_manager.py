@@ -68,7 +68,7 @@ class TestDetectVersion:
         """Detect schema_version from a JSON v1 contract file."""
         f = _write_json(
             tmp_contracts / "platform.json",
-            {"schema_version": 1, "platform_name": "Garage Agent OS"},
+            {"schema_version": 1, "platform_name": "garage-agent"},
         )
         version = vm.detect_version(f)
         assert version.major == 1
@@ -318,7 +318,7 @@ class TestHelpers:
             assert version.major == 1
             data, result = vm.load_with_compatibility(platform_json)
             assert result.status == CompatibilityStatus.COMPATIBLE
-            assert data["platform_name"] == "Garage Agent OS"
+            assert data["platform_name"] == "garage-agent"
 
 
 # ---------------------------------------------------------------------------

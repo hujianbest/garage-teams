@@ -1,4 +1,4 @@
-"""Session management for Garage Agent OS workflows."""
+"""Session management for garage-agent workflows."""
 
 import hashlib
 import json

@@ -1,4 +1,4 @@
-"""Memory candidate storage and recommendation primitives for Garage OS."""
+"""Memory candidate storage and recommendation primitives for garage-agent."""
 
 from garage_os.memory.types import (
     ALLOWED_CANDIDATE_TYPES,

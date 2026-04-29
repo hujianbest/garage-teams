@@ -1,4 +1,4 @@
-"""End-to-end workflow integration tests for Garage Agent OS.
+"""End-to-end workflow integration tests for garage-agent.
 
 These tests assemble the complete module chain and verify end-to-end behavior:
 - Host Adapter → Session Manager → Skill Executor → Knowledge Store
@@ -909,7 +909,7 @@ This artifact has been approved.
             "config/platform.json",
             {
                 "schema_version": 1,
-                "platform_name": "Garage Agent OS",
+                "platform_name": "garage-agent",
                 "stage": 1,
                 "storage_mode": "artifact-first",
                 "host_type": "claude-code",

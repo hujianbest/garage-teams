@@ -71,7 +71,7 @@
 
 - **AHE / HF workflow skills** 在 [`packs/coding/skills/`](packs/coding/skills/)（24 个 `hf-*` skill + `using-hf-workflow`）和 [`packs/writing/skills/`](packs/writing/skills/)（5 个写作 skill）
 - **生产 agents** 在 [`packs/garage/agents/`](packs/garage/agents/)：`code-review-agent`、`blog-writing-agent`、`garage-sample-agent`
-- 一个 **Python runtime** package `garage-os`（[`src/garage_os/`](src/garage_os/)），约 1045 个测试通过
+- 一个 **Python runtime** package `garage-os`（[`src/garage_os/`](src/garage_os/)；兼容名保留），约 1045 个测试通过
 - 一个 **`garage` CLI**，覆盖：`init`、`status`、`run`、`recommend`、`recall workflow`、`sync`、`session import`、`memory review`、`skill suggest`、`skill promote`；knowledge 子命令 `knowledge search`、`knowledge list`、`knowledge add`、`knowledge edit`、`knowledge show`、`knowledge delete`、`knowledge link`、`knowledge graph`、`knowledge export`；experience 子命令 `experience add`、`experience show`、`experience delete`；pack lifecycle `pack install`、`pack ls`、`pack uninstall`、`pack update`、`pack publish`
 - 文件优先的 runtime 数据结构在 [`.garage/`](.garage/)（sessions、含 YAML front matter 的 knowledge 条目、experience records、sync manifest、host installer manifest）
 - 每一个 cycle 的 spec / 评审 / 验收 在 [`docs/features/`](docs/features/)、[`docs/designs/`](docs/designs/)、[`docs/reviews/`](docs/reviews/)、[`docs/approvals/`](docs/approvals/)
@@ -146,8 +146,7 @@ garage knowledge export --anonymize
 
 - 灵魂文档：[`docs/soul/manifesto.md`](docs/soul/manifesto.md)、[`docs/soul/user-pact.md`](docs/soul/user-pact.md)、[`docs/soul/design-principles.md`](docs/soul/design-principles.md)、[`docs/soul/growth-strategy.md`](docs/soul/growth-strategy.md)
 - 系统规格：[`docs/features/F001-garage-agent-operating-system.md`](docs/features/F001-garage-agent-operating-system.md)
-- 用户指南：[`docs/guides/garage-os-user-guide.md`](docs/guides/garage-os-user-guide.md)
-- 开发者指南：[`docs/guides/garage-os-developer-guide.md`](docs/guides/garage-os-developer-guide.md)
+- 用户指南：[`docs/guides/garage-agent-user-guide.md`](docs/guides/garage-agent-user-guide.md)
 - Skill 写作原则（新增 / 重写 skill 必读）：[`docs/principles/skill-anatomy.md`](docs/principles/skill-anatomy.md)
 
 ## 仓库地图
@@ -160,7 +159,7 @@ garage knowledge export --anonymize
 | [`.garage/`](.garage/) | 工作区运行时状态：sessions、knowledge、experience、sync manifest、host installer manifest、contracts、config |
 | [`docs/`](docs/) | 灵魂文档、feature spec（`features/`）、design（`designs/`）、review（`reviews/`）、approval（`approvals/`）、planning（`planning/`）、guide、principle、manual smoke walkthrough |
 | [`tests/`](tests/) | 约 1045 个 unit + integration + compatibility + security + sentinel 测试，目录结构与 `src/garage_os/` 模块一一对应 |
-| [`AGENTS.md`](AGENTS.md) | 面向 Agent 的项目约定 + Garage OS 开发参考 + F009-F014 功能用法 |
+| [`AGENTS.md`](AGENTS.md) | 面向 Agent 的项目约定 + garage-agent 开发参考 + F009-F014 功能用法 |
 | [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | 每个 cycle 的用户可见变化（F001 → F014） |
 
 ### `.agents/skills/` 挂载点
