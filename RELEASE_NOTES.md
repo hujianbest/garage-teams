@@ -111,6 +111,9 @@ uv pip install -e .   # 或 poetry install
 
 PyPI 首发暂未启用，待维护者首次 `poetry publish` / `twine upload` 后会在本节追加 `pip install garage-os` 路径。
 
+> **维护者发布步骤**: 见 [`docs/releases/HOW-TO-PUBLISH-v0.1.0.md`](docs/releases/HOW-TO-PUBLISH-v0.1.0.md)（merge PR #41 → tag → build → `gh release create` → 可选 `twine upload`）。
+> **GitHub Release body**: [`docs/releases/v0.1.0.md`](docs/releases/v0.1.0.md)（已英文化，可直接 `--notes-file` 喂给 `gh release create`）。
+
 ---
 
 ## F014 — Workflow Recall 信号 (hf-workflow-router 历史路径建议)
