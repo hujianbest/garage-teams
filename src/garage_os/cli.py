@@ -1452,6 +1452,9 @@ def _now_default() -> datetime:
     seconds, which is required to deterministically exercise the FR-508 ID
     collision branch (same topic + content + same second → second `add` is
     rejected, not silently overwritten).
+
+    ``_knowledge_add`` / ``_experience_add`` resolve the clock at call time via
+    ``_now_default`` (not as a default-argument binding) so monkeypatch applies.
     """
     return datetime.now()
 
@@ -1546,7 +1549,7 @@ def _knowledge_add(
     from_file: Optional[Path],
     tags_raw: Optional[str],
     explicit_id: Optional[str],
-    now_provider: Callable[[], datetime] = _now_default,
+    now_provider: Optional[Callable[[], datetime]] = None,
 ) -> int:
     """Implement ``garage knowledge add`` (FR-501 / FR-502 / FR-508 / FR-509)."""
     garage_dir = _require_garage(garage_root)
@@ -1561,7 +1564,8 @@ def _knowledge_add(
     assert content is not None
 
     ktype = KnowledgeType(knowledge_type)
-    now = now_provider()
+    clock = _now_default if now_provider is None else now_provider
+    now = clock()
     eid = explicit_id or _generate_entry_id(ktype, topic, content, now)
 
     storage = FileStorage(garage_dir)
@@ -1721,7 +1725,7 @@ def _experience_add(
     problem_domain: Optional[str],
     tech: Optional[list[str]],
     tags_raw: Optional[str],
-    now_provider: Callable[[], datetime] = _now_default,
+    now_provider: Optional[Callable[[], datetime]] = None,
 ) -> int:
     """Implement ``garage experience add`` (FR-506 / FR-508 experience / FR-509)."""
     garage_dir = _require_garage(garage_root)
@@ -1729,7 +1733,8 @@ def _experience_add(
         print(ERR_NO_GARAGE, file=sys.stderr)
         return 1
 
-    now = now_provider()
+    clock = _now_default if now_provider is None else now_provider
+    now = clock()
     rid = explicit_id or _generate_experience_id(task_type, summary, now)
 
     storage = FileStorage(garage_dir)
