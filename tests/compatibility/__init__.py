@@ -1,1 +1,1 @@
-"""Compatibility and migration tests for Garage Agent OS."""
+"""Compatibility and migration tests for garage-agent."""

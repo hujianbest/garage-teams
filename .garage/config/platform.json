@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "platform_name": "Garage Agent OS",
+  "platform_name": "garage-agent",
   "stage": 1,
   "storage_mode": "artifact-first",
   "host_type": "claude-code",

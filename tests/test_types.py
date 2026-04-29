@@ -1,7 +1,7 @@
 """
 Unit tests for core type definitions.
 
-These tests validate the data structures and enums used across Garage OS.
+These tests validate the data structures and enums used across garage-agent.
 """
 
 import pytest

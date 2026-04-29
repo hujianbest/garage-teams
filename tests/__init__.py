@@ -1,3 +1,1 @@
-"""
-Test suite for Garage Agent OS.
-"""
+"""Test suite for garage-agent."""

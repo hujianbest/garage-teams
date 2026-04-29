@@ -1,9 +1,9 @@
 """
-Garage Agent Operating System - Phase 1 Implementation
+garage-agent core package - Phase 1 implementation
 
 A file-first, host-agnostic agent runtime with knowledge management.
 
-This package provides the core runtime for Garage Agent OS, including:
+This package provides the core runtime for garage-agent, including:
 - Session management and state machine
 - Knowledge storage and experience indexing
 - Tool registry and gateway

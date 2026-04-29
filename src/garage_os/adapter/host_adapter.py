@@ -1,5 +1,5 @@
 """
-Host Adapter Protocol for Garage Agent OS.
+Host Adapter Protocol for garage-agent.
 
 Defines the abstract interface that all host adapters must implement.
 This protocol enables host-agnostic operation — the runtime depends on
@@ -14,7 +14,7 @@ from typing import Any, Protocol, runtime_checkable
 
 @runtime_checkable
 class HostAdapterProtocol(Protocol):
-    """Protocol defining the contract between Garage OS and its host environment.
+    """Protocol defining the contract between garage-agent and its host environment.
 
     Every host adapter must implement these four core operations:
     - invoke_skill: Execute a named skill with parameters

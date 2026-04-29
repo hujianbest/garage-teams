@@ -1,4 +1,4 @@
-"""Skill Executor for Garage Agent OS.
+"""Skill Executor for garage-agent.
 
 This module implements the SkillExecutor class, which is responsible for
 executing AHE workflow skills, managing execution context, integrating

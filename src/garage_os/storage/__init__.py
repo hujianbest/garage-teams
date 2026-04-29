@@ -1,5 +1,5 @@
 """
-Storage infrastructure for Garage Agent OS.
+Storage infrastructure for garage-agent.
 
 This module provides file storage, atomic writes, and file locking capabilities.
 """

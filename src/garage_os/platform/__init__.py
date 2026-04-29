@@ -1,5 +1,5 @@
 """
-Platform contract and version management for Garage Agent OS.
+Platform contract and version management for garage-agent.
 
 This module provides version detection, compatibility checking,
 and schema migration for platform contracts and configuration files.

@@ -1,4 +1,4 @@
-"""Command-line interface for Garage OS."""
+"""Command-line interface for garage-agent."""
 
 import argparse
 import hashlib
@@ -156,9 +156,9 @@ GARAGE_DIRS = [
     "sessions/archived",
 ]
 
-GARAGE_README = """# .garage/ — Garage OS Runtime Data
+GARAGE_README = """# .garage/ — garage-agent runtime data
 
-This directory contains all runtime data for Garage OS.
+This directory contains local-first runtime data for garage-agent.
 
 - **config/**: Platform and adapter configurations
 - **contracts/**: Interface contracts
@@ -170,7 +170,7 @@ This directory contains all runtime data for Garage OS.
 
 DEFAULT_PLATFORM_CONFIG = {
     "schema_version": 1,
-    "platform_name": "Garage Agent OS",
+    "platform_name": "garage-agent",
     "stage": 1,
     "storage_mode": "artifact-first",
     "host_type": "claude-code",
@@ -222,8 +222,7 @@ def _init(
 
     F002 contract preserved: when called without any host installer args
     (no ``hosts_arg`` / ``yes`` / TTY prompt → empty hosts) and no packs/
-    present, output is byte-equal to the legacy ``Initialized Garage OS in
-    <path>`` line (CON-702).
+    present, only the initialization marker is printed.
 
     F007 extension: when ``hosts_arg`` is provided OR a TTY user selects
     one or more hosts, also installs ``packs/<pack-id>/`` content into the
@@ -258,7 +257,7 @@ def _init(
             encoding="utf-8",
         )
 
-    print(f"Initialized Garage OS in {garage_dir}")
+    print(f"Initialized garage-agent in {garage_dir}")
 
     # F007: optional host installer step. Returns early without touching any
     # host directory when the resolved host list is empty (CON-702).
@@ -2260,7 +2259,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
         prog="garage",
-        description="Garage OS — Agent Operating System CLI",
+        description="garage-agent — local-first agent capability home",
     )
     subparsers = parser.add_subparsers(dest="command")
 
@@ -2315,7 +2314,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # status
     status_parser = subparsers.add_parser(
-        "status", help="Show Garage OS status", parents=[path_parser]
+        "status", help="Show garage-agent status", parents=[path_parser]
     )
 
     # F010 sync (FR-1001/2/3/8 + ADR-D10-12/13)
@@ -2918,7 +2917,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    """Entry point for the Garage OS CLI."""
+    """Entry point for the garage-agent CLI."""
     parser = build_parser()
     args = parser.parse_args(argv)
 

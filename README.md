@@ -46,13 +46,13 @@ The goal is not to hide the work behind a black box. The goal is to give your ag
 - **Transparent and auditable behavior**: files, artifacts, and conventions explain what the system knows and why
 - **Human in charge**: the system can assist and automate, but people keep the steering wheel — destructive / shareable operations are opt-in (`--yes` / `--anonymize` / `--force` are explicit)
 
-## What works today (cycles F001 through F012)
+## What works today (cycles F001 through F014)
 
-Through 12 closed delivery cycles the repository now provides:
+Through 14 closed delivery cycles the repository now provides:
 
 | Cycle | Capability |
 |---|---|
-| F001 | Garage Agent Operating System foundation (`garage init` / `status` / `run` / contracts / VersionManager) |
+| F001 | garage-agent foundation (`garage init` / `status` / `run` / contracts / VersionManager) |
 | F002 | Session manager + StateMachine + ErrorHandler |
 | F003 | Memory auto-extraction (signals → candidates → review queue) |
 | F004 | Memory v1.1 (KnowledgeStore + ExperienceIndex consolidation) |
@@ -64,14 +64,16 @@ Through 12 closed delivery cycles the repository now provides:
 | F010 | Memory Sync (`garage sync`) + Host Session Ingest (`garage session import --from <host>`) |
 | F011 | `KnowledgeType.STYLE` + production agents (`code-review-agent` / `blog-writing-agent`) + `garage pack install <git-url>` + `pack ls` |
 | F012 | Pack lifecycle completion (`pack uninstall` / `pack update` / `pack publish`) + `knowledge export --anonymize` + F009 carry-forward (VersionManager registry) |
+| F013-A | Skill Mining Push (`garage skill suggest` / `garage skill promote`) |
+| F014 | Workflow Recall (`garage recall workflow`) + `hf-workflow-router` step 3.5 historical advisory |
 
 Concrete deliverables:
 
 - **AHE / HF workflow skills** under [`packs/coding/skills/`](packs/coding/skills/) (24 `hf-*` skills + `using-hf-workflow`) and [`packs/writing/skills/`](packs/writing/skills/) (5 writing skills)
 - **Production agents** under [`packs/garage/agents/`](packs/garage/agents/): `code-review-agent`, `blog-writing-agent`, `garage-sample-agent`
-- A **Python runtime** package `garage-os` under [`src/garage_os/`](src/garage_os/) with `~930` passing tests
-- A **`garage` CLI** covering: `init`, `status`, `run`, `recommend`, `sync`, `session import`, `memory review`; knowledge subcommands `knowledge search`, `knowledge list`, `knowledge add`, `knowledge edit`, `knowledge show`, `knowledge delete`, `knowledge link`, `knowledge graph`, `knowledge export`; experience subcommands `experience add`, `experience show`, `experience delete`; pack lifecycle `pack install`, `pack ls`, `pack uninstall`, `pack update`, `pack publish`
-- File-first runtime data under [`.garage/`](.garage/) (sessions, knowledge entries with YAML front matter, experience records, sync manifest, host installer manifest)
+- A **Python runtime** package `garage-os` under [`src/garage_os/`](src/garage_os/) with ~1045 passing tests
+- A **`garage` CLI** covering: `init`, `status`, `run`, `recommend`, `recall workflow`, `sync`, `session import`, `memory review`, `skill suggest`, `skill promote`; knowledge subcommands `knowledge search`, `knowledge list`, `knowledge add`, `knowledge edit`, `knowledge show`, `knowledge delete`, `knowledge link`, `knowledge graph`, `knowledge export`; experience subcommands `experience add`, `experience show`, `experience delete`; pack lifecycle `pack install`, `pack ls`, `pack uninstall`, `pack update`, `pack publish`
+- File-first runtime data under [`.garage/`](.garage/) (sessions, knowledge entries with YAML front matter, experience records, sync manifest, host installer manifest, skill suggestions, workflow recall cache)
 - Specs and reviews for every cycle under [`docs/features/`](docs/features/), [`docs/designs/`](docs/designs/), [`docs/reviews/`](docs/reviews/), [`docs/approvals/`](docs/approvals/)
 
 ## Quick Start Paths
@@ -106,6 +108,12 @@ garage sync --hosts claude,cursor
 
 # Pull host conversation history back into Garage sessions for memory extraction
 garage session import --from claude --all
+
+# Review repeated patterns that Garage can turn into skill drafts
+garage skill suggest --rescan
+
+# Ask for historically successful workflow paths for similar work
+garage recall workflow --problem-domain cli-design
 ```
 
 For first-time contributors who need the cloud-agent skill mount, also run:
@@ -142,8 +150,7 @@ garage knowledge export --anonymize
 
 - Soul: [`docs/soul/manifesto.md`](docs/soul/manifesto.md), [`docs/soul/user-pact.md`](docs/soul/user-pact.md), [`docs/soul/design-principles.md`](docs/soul/design-principles.md), [`docs/soul/growth-strategy.md`](docs/soul/growth-strategy.md)
 - System spec: [`docs/features/F001-garage-agent-operating-system.md`](docs/features/F001-garage-agent-operating-system.md)
-- User guide: [`docs/guides/garage-os-user-guide.md`](docs/guides/garage-os-user-guide.md)
-- Developer guide: [`docs/guides/garage-os-developer-guide.md`](docs/guides/garage-os-developer-guide.md)
+- User guide: [`docs/guides/garage-agent-user-guide.md`](docs/guides/garage-agent-user-guide.md)
 - Skill anatomy (mandatory for any new skill): [`docs/principles/skill-anatomy.md`](docs/principles/skill-anatomy.md)
 
 ## Repository Map
@@ -155,9 +162,9 @@ garage knowledge export --anonymize
 | [`.agents/skills/`](#agents-skills-mount) | Cloud-agent skill mount (relative symlinks into `packs/`; not committed — regenerate via `scripts/setup-agent-skills.sh`) |
 | [`.garage/`](.garage/) | Workspace runtime state for sessions, knowledge, experience, sync manifest, host installer manifest, contracts, config |
 | [`docs/`](docs/) | Soul docs, feature specs (`features/`), designs (`designs/`), reviews (`reviews/`), approvals (`approvals/`), planning (`planning/`), guides, principles, manual smoke walkthroughs |
-| [`tests/`](tests/) | ~930 unit + integration + compatibility + security + sentinel tests; mirrors `src/garage_os/` module layout |
-| [`AGENTS.md`](AGENTS.md) | Agent-facing conventions, Garage OS developer reference, F009-F012 feature usage |
-| [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | Per-cycle user-visible changes (F001 → F012) |
+| [`tests/`](tests/) | ~1045 unit + integration + compatibility + security + sentinel tests; mirrors `src/garage_os/` module layout |
+| [`AGENTS.md`](AGENTS.md) | Agent-facing conventions + garage-agent development notes + F009-F014 feature usage |
+| [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | Per-cycle user-visible changes (F001 → F014) |
 
 ### `.agents/skills/` mount
 
@@ -218,7 +225,7 @@ Stage 4 Ecosystem  ████████              40%   ← F012 lifecycl
 
 With Beliefs 1-5 and Promises ①-⑤ all at 5/5 after F012, the highest-leverage next push is **Stage 3 skill mining** — turn the existing extraction pipeline into a "the system suggests a new skill from your patterns" signal. After that, **Stage 4 community / supply-chain** (D-1214 pack search + D-1212 signature) opens the door to a public pack ecosystem.
 
-Scoring rationale: see [`docs/soul/manifesto.md`](docs/soul/manifesto.md), [`docs/soul/growth-strategy.md`](docs/soul/growth-strategy.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md) (F001-F012), and [`docs/planning/`](docs/planning/).
+Scoring rationale: see [`docs/soul/manifesto.md`](docs/soul/manifesto.md), [`docs/soul/growth-strategy.md`](docs/soul/growth-strategy.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md) (F001-F014), and [`docs/planning/`](docs/planning/).
 
 ## Open Source
 
@@ -231,6 +238,6 @@ Scoring rationale: see [`docs/soul/manifesto.md`](docs/soul/manifesto.md), [`doc
 - **Contributing**: read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a non-trivial PR
 - **Code of Conduct**: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) (Contributor Covenant 2.1)
 - **Security**: report vulnerabilities via [`SECURITY.md`](SECURITY.md) — please do not open public issues for security bugs
-- **CI**: GitHub Actions runs the full `pytest` suite (1044 tests) on Python 3.11 + 3.12 for every push and PR
+- **CI**: GitHub Actions runs the full `pytest` suite (~1045 tests) on Python 3.11 + 3.12 for every push and PR
 
 The most useful contributions right now are workflow quality, host portability, docs clarity, runtime hardening, and real-world examples.

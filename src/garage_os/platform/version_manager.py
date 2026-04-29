@@ -1,5 +1,5 @@
 """
-Version Manager for Garage Agent OS platform contracts.
+Version Manager for garage-agent platform contracts.
 
 Handles schema version detection, backward compatibility checks,
 and migration paths for platform configuration and contract files.
@@ -268,7 +268,7 @@ class VersionManager:
                 target_version=platform_version,
                 issues=[
                     f"Schema v{file_major} is newer than maximum supported "
-                    f"v{max_supported}. Please upgrade Garage Agent OS."
+                    f"v{max_supported}. Please upgrade garage-agent."
                 ],
             )
 

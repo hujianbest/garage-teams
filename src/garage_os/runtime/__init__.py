@@ -1,5 +1,5 @@
 """
-Runtime core for Garage Agent OS.
+Runtime core for garage-agent.
 
 This module provides session management, state machine, error handling,
 and skill execution capabilities.

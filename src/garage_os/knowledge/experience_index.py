@@ -1,5 +1,5 @@
 """
-Experience Index for Garage Agent OS.
+Experience Index for garage-agent.
 
 Stores experience records as JSON files with a central index.
 Directory structure:

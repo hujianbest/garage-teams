@@ -1,16 +1,15 @@
-"""Documentation lint checks for F004 v1.1.
+"""Documentation lint checks for garage-agent user-facing docs.
 
-Keeps user-guide and developer-guide content in sync with the publisher /
-SessionManager / CLI behavior contracts described in the F004 spec and
-design. Tests are deliberately lightweight token-based checks; if the
-guides are restructured, update the expected tokens here too.
+Keeps the user guide and README content in sync with the CLI behavior
+contracts described by delivered feature cycles. Tests are deliberately
+lightweight token-based checks; if the guide is restructured, update the
+expected tokens here too.
 """
 
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-USER_GUIDE = REPO_ROOT / "docs" / "guides" / "garage-os-user-guide.md"
-DEVELOPER_GUIDE = REPO_ROOT / "docs" / "guides" / "garage-os-developer-guide.md"
+USER_GUIDE = REPO_ROOT / "docs" / "guides" / "garage-agent-user-guide.md"
 
 
 def test_user_guide_memory_review_documents_both_abandon_paths() -> None:
@@ -29,37 +28,14 @@ def test_user_guide_memory_review_documents_both_abandon_paths() -> None:
         )
 
 
-def test_developer_guide_documents_publication_identity_generator() -> None:
-    """Developer guide must describe PublicationIdentityGenerator + version semantics (NFR-401)."""
-    content = DEVELOPER_GUIDE.read_text(encoding="utf-8")
-    for token in (
-        "PublicationIdentityGenerator",
-        "derive_knowledge_id",
-        "derive_experience_id",
-        "version",
-        "update",
-        "PRESERVED_FRONT_MATTER_KEYS",
-        "self-conflict",
-    ):
-        assert token in content, (
-            f"expected developer guide to mention '{token}'; not found"
-        )
-
-
-def test_developer_guide_documents_memory_extraction_error_json_schema() -> None:
-    """Developer guide must describe memory-extraction-error.json schema (CON-404)."""
-    content = DEVELOPER_GUIDE.read_text(encoding="utf-8")
-    for token in (
-        "memory-extraction-error.json",
-        "schema_version",
-        "phase",
-        "orchestrator_init",
-        "enablement_check",
-        "extraction",
-    ):
-        assert token in content, (
-            f"expected developer guide to mention '{token}'; not found"
-        )
+def test_developer_guide_has_been_retired() -> None:
+    """garage-agent now keeps one user guide and no separate developer guide."""
+    retired_paths = (
+        REPO_ROOT / "docs" / "guides" / "garage-os-user-guide.md",
+        REPO_ROOT / "docs" / "guides" / "garage-os-developer-guide.md",
+    )
+    for path in retired_paths:
+        assert not path.exists(), f"retired guide path should not exist: {path}"
 
 
 # F005 / NFR-505: user guide must document the new knowledge / experience CRUD
@@ -86,6 +62,24 @@ def test_user_guide_documents_knowledge_authoring_cli() -> None:
         "cli:experience-add",
     ):
         assert token in content, f"expected user guide to mention '{token}'; not found"
+
+
+def test_user_guide_uses_garage_agent_branding() -> None:
+    """User-facing guide must use garage-agent as the product name."""
+    content = USER_GUIDE.read_text(encoding="utf-8")
+    for token in (
+        "# garage-agent 使用手册",
+        "本地优先的 Agent 能力之家",
+        "Python package",
+        "garage-os",
+        "CLI 命令",
+        "garage",
+    ):
+        assert token in content, (
+            f"expected user guide to mention branding token '{token}'; not found"
+        )
+    assert "Garage OS 用户指南" not in content
+    assert "Garage OS 是什么" not in content
 
 
 def test_readmes_list_new_cli_subcommands() -> None:
@@ -155,6 +149,75 @@ def test_agents_md_mentions_workflow_recall_cli() -> None:
         assert token in content, (
             f"expected AGENTS.md to mention F014 token '{token}'; not found"
         )
+
+
+def test_user_guide_documents_f013_f014_user_flows() -> None:
+    """User guide must cover the F013-A and F014 user-facing commands."""
+    content = USER_GUIDE.read_text(encoding="utf-8")
+    for token in (
+        "Skill Mining",
+        "garage skill suggest",
+        "garage skill promote",
+        "garage status",
+        "Workflow Recall",
+        "garage recall workflow",
+        "--json",
+        "--rebuild-cache",
+    ):
+        assert token in content, (
+            f"expected user guide to mention F013/F014 token '{token}'; not found"
+        )
+
+
+def test_user_guide_documents_pack_lifecycle_and_anonymize_export() -> None:
+    """User guide must cover F011/F012 pack lifecycle and anonymized export commands."""
+    content = USER_GUIDE.read_text(encoding="utf-8")
+    for token in (
+        "Pack Lifecycle",
+        "garage pack install",
+        "garage pack ls",
+        "garage pack update",
+        "garage pack uninstall",
+        "garage pack publish",
+        "garage knowledge export --anonymize",
+        "~/.garage/anonymize-patterns.txt",
+    ):
+        assert token in content, (
+            f"expected user guide to mention lifecycle token '{token}'; not found"
+        )
+
+
+def test_user_guide_documents_skill_mining_and_workflow_recall() -> None:
+    """User guide must cover current F013-A and F014 user-facing commands."""
+    content = USER_GUIDE.read_text(encoding="utf-8")
+    for token in (
+        "pattern → skill",
+        "garage skill suggest",
+        "garage skill promote",
+        "skill-mining-config",
+        "Workflow Recall",
+        "garage recall workflow",
+        "--rebuild-cache",
+        "workflow-recall",
+    ):
+        assert token in content, (
+            f"expected user guide to mention current CLI token '{token}'; not found"
+        )
+
+
+def test_readmes_are_synced_to_f014_cli_surface() -> None:
+    """Both READMEs must reflect F013-A/F014 in the quick user-facing surface."""
+    for readme in (README_EN, README_ZH):
+        content = readme.read_text(encoding="utf-8")
+        for token in (
+            "F014",
+            "skill suggest",
+            "skill promote",
+            "recall workflow",
+        ):
+            assert token in content, (
+                f"expected {readme.name} to mention F014-era token '{token}'; not found"
+            )
 
 
 # F007 / FR-710: user guide must document the Pack & Host Installer.

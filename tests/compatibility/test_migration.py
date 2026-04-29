@@ -1,5 +1,5 @@
 """
-Migration & compatibility tests – Garage Agent OS T20.
+Migration & compatibility tests for garage-agent.
 
 Covers four migration-critical dimensions:
   1. Simulated new environment  – tmp_path clone scenario
@@ -68,7 +68,7 @@ _GARAGE_FILES: dict[str, str | dict] = {
     "README.md": "# Garage Internal Surface\n",
     "config/platform.json": {
         "schema_version": 1,
-        "platform_name": "Garage Agent OS",
+        "platform_name": "garage-agent",
         "stage": 1,
         "storage_mode": "artifact-first",
         "host_type": "claude-code",
@@ -100,7 +100,7 @@ _GARAGE_FILES: dict[str, str | dict] = {
 
 class TestSimulatedNewEnvironment:
     """Simulate cloning the repo to a fresh environment (tmp_path) and
-    verify that all Garage OS functionality works correctly."""
+    verify that all garage-agent functionality works correctly."""
 
     def test_file_storage_in_fresh_root(self, tmp_path: Path):
         """FileStorage should work in a brand-new tmp directory."""
@@ -122,7 +122,7 @@ class TestSimulatedNewEnvironment:
 
         data, result = vm.load_with_compatibility(config_dir / "platform.json")
         assert result.status == CompatibilityStatus.COMPATIBLE
-        assert data["platform_name"] == "Garage Agent OS"
+        assert data["platform_name"] == "garage-agent"
 
     def test_atomic_write_in_fresh_env(self, tmp_path: Path):
         """AtomicWriter should function correctly in a temp directory."""
@@ -287,7 +287,7 @@ class TestLegacyDataLoading:
         """Load a v1 platform.json and verify all fields."""
         config = {
             "schema_version": 1,
-            "platform_name": "Garage Agent OS",
+            "platform_name": "garage-agent",
             "stage": 1,
             "storage_mode": "artifact-first",
             "host_type": "claude-code",
@@ -298,7 +298,7 @@ class TestLegacyDataLoading:
         fp = _write_json(tmp_path / "platform.json", config)
         data, result = vm.load_with_compatibility(fp)
         assert result.status == CompatibilityStatus.COMPATIBLE
-        assert data["platform_name"] == "Garage Agent OS"
+        assert data["platform_name"] == "garage-agent"
         assert data["schema_version"] == 1
 
     def test_load_v1_host_adapter(self, vm: VersionManager, tmp_path: Path):

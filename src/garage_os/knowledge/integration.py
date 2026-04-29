@@ -1,5 +1,5 @@
 """
-Knowledge Integration for Garage Agent OS.
+Knowledge Integration for garage-agent.
 
 Integrates KnowledgeStore and ExperienceIndex to support cross-module
 retrieval, manual knowledge extraction, and data consistency maintenance.

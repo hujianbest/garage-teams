@@ -1,5 +1,5 @@
 """
-Core type definitions for Garage Agent OS.
+Core type definitions for garage-agent.
 
 This module defines the primary data structures used across the runtime,
 including sessions, artifacts, knowledge entries, and experience records.

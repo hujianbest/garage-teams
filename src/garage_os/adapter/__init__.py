@@ -1,8 +1,8 @@
 """
-Host Adapter abstraction layer for Garage Agent OS.
+Host adapter abstraction layer for garage-agent.
 
 This module provides the protocol interface and concrete implementations
-for host environment adapters. The adapter pattern decouples Garage OS
+for host environment adapters. The adapter pattern decouples garage-agent
 from specific host environments (e.g., Claude Code, Cursor, etc.),
 allowing the runtime to remain host-agnostic.
 """

@@ -1,5 +1,5 @@
 """
-Knowledge management for Garage Agent OS.
+Knowledge management for garage-agent.
 
 This module provides knowledge storage and experience indexing capabilities.
 """
