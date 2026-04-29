@@ -4,6 +4,60 @@
 
 ---
 
+## packs/coding v0.3.0 → v0.4.0 — Reverse-sync from harness-flow v0.1.0
+
+- 状态: 🟢 已落地 (branch `cursor/coding-pack-sync-harness-flow-v0.1.0-7558`)
+- 范围: 跟随 [`hujianbest/harness-flow v0.1.0`](https://github.com/hujianbest/harness-flow/releases/tag/v0.1.0)（2026-04-29 pre-release）的 per-skill self-contained 重组
+- 测试: 1045 passed in 148.63s（baseline +1：`test_skill_anatomy_drift` 重写后净增 1 个 case）
+
+### 用户可见变化
+
+**A. SKILL.md 全量内容更新（24 个）**: host-neutral 措辞替换（`AGENTS.md` 引用 → "项目级路径约定"），templates 路径从 family-level 改为各 skill `references/` 内。
+
+**B. References 重组（16 文件搬家）**: 把原 family-level shared docs / templates 分发到各 skill 自己的 `references/`：
+- `review-record-template.md` → 6 个 review skill（`hf-spec-review` / `hf-design-review` / `hf-discovery-review` / `hf-tasks-review` / `hf-test-review` / `hf-code-review` / `hf-traceability-review`）各自副本
+- `verification-record-template.md` → `hf-completion-gate` + `hf-regression-gate` 各自副本
+- `finalize-closeout-pack-template.md` → `hf-finalize/references/`
+- `feature-readme-template.md` + `task-progress-template.md` → `hf-specify/references/`
+- `task-board-template.md` → `hf-tasks/references/`
+- `worktree-isolation.md` → `hf-test-driven-dev/references/`
+- `workflow-shared-conventions.md` → `hf-workflow-router/references/`
+
+**C. 删除 family-level 共享目录**:
+- `packs/coding/skills/docs/`（4 文件，内容已分发）
+- `packs/coding/skills/templates/`（6 文件，内容已分发）
+- `packs/coding/principles/`（6 文件，整体删除；upstream ADR-001 D11："`docs/principles/` is design reference only, not a runtime dependency"）
+
+**D. Garage 第一方增量保留**: `hf-workflow-router/SKILL.md` step 3.5 (F014 Workflow Recall) 与 `references/recall-integration.md` 不变（in step 3 与 step 4 之间重新 patch 落地，host-neutral 措辞同步刷新）。
+
+**E. Sentinel 测试更新**:
+- `tests/adapter/installer/test_skill_anatomy_drift.py`: 从"docs/principles/skill-anatomy.md ↔ packs/coding/principles/skill-anatomy.md 字节相等"改写为 docs/principles/skill-anatomy.md 存在性检查（双源 invariant 因 packs 侧删除而失效；garage-repo 内 `docs/principles/skill-anatomy.md` 仍是 AGENTS.md 强制声明的 authoring spec）
+- `tests/adapter/installer/test_full_packs_install.py`: `FAMILY_ASSET_BASENAMES_AND_PATHS` 从 16 entries 收到 1（仅余 `packs/writing/prompts/横纵分析法.md`）
+
+**F. pack 元数据**:
+- `packs/coding/pack.json`: `version` `0.3.0` → `0.4.0` + description 改写
+- `packs/coding/README.md`: 全段重写（"Per-Skill Self-Contained 布局" 段 + "Garage 第一方增量" 段 + v0.4.0 sync 历史）
+- `AGENTS.md` packs 表 packs/coding 行更新
+
+**G. dogfood SHA baseline 刷新**: `tests/adapter/installer/dogfood_baseline/skill_md_sha256.json` 全量重生成（48 entries 改 SHA，对应 24 SKILL.md × 2 hosts）
+
+### 与 v0.1.0 garage release 的关系
+
+本次 sync 与 garage-agent v0.1.0 release（PR #41 已合并）**完全独立**：
+- v0.1.0 release 内容物只增加发布门槛文件（LICENSE / CI / pyproject metadata 等），未改 packs/
+- 本次 sync 不改任何 garage runtime 代码 / CLI / 测试基础设施，只换 packs/coding 内容
+- 二者可独立合并，互不阻塞
+
+未来 garage-agent v0.1.1+ 或 v0.2.0 的 release 可以把本次 packs/coding v0.4.0 升级一并带出去。
+
+### 不在本次范围
+
+- packs/writing 跟随 harness-flow upstream（writing pack 与 harness-flow 无对应关系）
+- F015+ 任意 garage runtime cycle
+- harness-flow upstream 自身 v0.2+ 的 release / ops / pluggable host adapter 路径（upstream ADR-001 D1：`hf-finalize` 是终点）
+
+---
+
 ## v0.1.0 — 首个对外发布版本 (release-prep)
 
 - 状态: 🟢 准备中 (release-prep branch `cursor/v0.1-release-prep-7558`)

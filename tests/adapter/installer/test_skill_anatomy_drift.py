@@ -1,61 +1,52 @@
-"""Sentinel test: root-level vs packs/coding/principles/ skill-anatomy.md byte equality.
+"""Sentinel test: docs/principles/skill-anatomy.md exists and is well-formed.
 
-Implements F008 spec § 4.2 红线 3 (drift collapse) + design ADR-D8-3 (reverse-sync
-strategy) + INV-3 (drift collapse hard gate).
+History:
+    F008 ADR-D8-3 (reverse-sync from harness-flow upstream) initially created
+    two byte-equal copies of skill-anatomy.md (one at docs/principles/, one at
+    packs/coding/principles/), and this sentinel guarded their byte equality.
 
-Background:
-    Before F008 the repo had two divergent copies of skill-anatomy.md:
-    - root: ``docs/principles/skill-anatomy.md`` (early "AHE" terminology)
-    - HF family: ``.agents/skills/harness-flow/docs/principles/skill-anatomy.md``
-      (current "HF" terminology, 70 byte diff)
+    The post-PR#41 reverse-sync from harness-flow v0.1.0 dropped the bundled
+    HF principles tree entirely (per upstream ADR-001 D11: 'docs/principles/
+    is design reference only, not a runtime dependency, not a release gate').
+    packs/coding/principles/ no longer exists as a result.
 
-    F008 ADR-D8-3 chose **reverse-sync**:
-    - HF family copy (HF terminology, 2026-04-18) is the authoritative source
-    - copied to ``packs/coding/principles/skill-anatomy.md`` (T1b)
-    - root file is overwritten with the same byte content (T1c)
+    docs/principles/skill-anatomy.md remains as garage's own authoring spec
+    referenced from AGENTS.md ('新增或重写任何 skill 时，必须遵循此文档'),
+    so we still need a sentinel that catches accidental deletion of the root
+    file. The cross-copy drift check is gone because there is no second copy
+    to drift against.
 
-    This sentinel test guards against future drift: any commit that modifies
-    ONE of the two files without the other will turn this test RED.
-
-Note (per F008 task plan T1c Files spec):
-    This test does NOT use ``tmp_path`` or any ``.garage/`` fixture. It directly
-    reads two fixed paths in the repo. That is the defining characteristic of a
-    sentinel test - it asserts repo-state invariants, not behaviour.
+Note:
+    This test does NOT use ``tmp_path`` or any ``.garage/`` fixture. It
+    directly reads a fixed path in the repo. That is the defining
+    characteristic of a sentinel test — it asserts repo-state invariants,
+    not behaviour.
 """
 
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ROOT_PRINCIPLE_PATH = REPO_ROOT / "docs" / "principles" / "skill-anatomy.md"
-PACKS_PRINCIPLE_PATH = (
-    REPO_ROOT / "packs" / "coding" / "principles" / "skill-anatomy.md"
-)
 
 
-class TestSkillAnatomyDriftCollapse:
-    def test_root_and_packs_principles_byte_equal(self) -> None:
-        """Both copies of skill-anatomy.md MUST be byte-level equal (INV-3)."""
+class TestSkillAnatomyExists:
+    """Garage-side authoring spec must exist (referenced from AGENTS.md)."""
+
+    def test_root_principle_present(self) -> None:
         assert ROOT_PRINCIPLE_PATH.is_file(), (
-            f"Expected root principle at {ROOT_PRINCIPLE_PATH} (F008 ADR-D8-3 keeps "
-            "this file as the AGENTS.md cold-read entrypoint)."
-        )
-        assert PACKS_PRINCIPLE_PATH.is_file(), (
-            f"Expected packs principle at {PACKS_PRINCIPLE_PATH} (F008 T1b "
-            "should have copied the HF authoritative source here)."
+            f"Expected garage authoring spec at {ROOT_PRINCIPLE_PATH}. "
+            "AGENTS.md (## Skill 写作原则 section) declares this file as the "
+            "mandatory authoring spec for any new garage skill. If you "
+            "intentionally moved or removed it, update AGENTS.md and this "
+            "sentinel together."
         )
 
-        root_hash = hashlib.sha256(ROOT_PRINCIPLE_PATH.read_bytes()).hexdigest()
-        packs_hash = hashlib.sha256(PACKS_PRINCIPLE_PATH.read_bytes()).hexdigest()
-
-        assert root_hash == packs_hash, (
-            "skill-anatomy.md drift detected!\n"
-            f"  {ROOT_PRINCIPLE_PATH.relative_to(REPO_ROOT)} sha256={root_hash}\n"
-            f"  {PACKS_PRINCIPLE_PATH.relative_to(REPO_ROOT)} sha256={packs_hash}\n"
-            "F008 ADR-D8-3 requires both copies to be byte-equal. If you "
-            "intentionally modified one, run "
-            "`cp packs/coding/principles/skill-anatomy.md docs/principles/skill-anatomy.md` "
-            "(or vice-versa) to restore parity."
+    def test_root_principle_non_empty(self) -> None:
+        size = ROOT_PRINCIPLE_PATH.stat().st_size
+        assert size > 0, (
+            f"{ROOT_PRINCIPLE_PATH} is empty. The authoring spec must contain "
+            "at least the 7 core principles + directory anatomy + section "
+            "skeleton sections that AGENTS.md cites."
         )

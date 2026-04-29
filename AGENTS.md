@@ -45,7 +45,7 @@ Garage 自带的可分发 skills + agents 沉淀在仓库 `packs/<pack-id>/` 下
 | Pack | version | skills | agents | 用途 |
 |---|---|---|---|---|
 | `packs/garage/` | `0.3.0` | 3 | 3 | Getting-started 三件套（garage-hello / find-skills / writing-skills）+ 3 agent（garage-sample-agent + code-review-agent + blog-writing-agent，F011 落地）|
-| `packs/coding/` | `0.3.0` | 24 | 0 | HarnessFlow 工程工作流 family（23 hf-* + using-hf-workflow + 16 个 family-level 共享资产 docs/templates/principles；reverse-sync 自 hujianbest/harness-flow upstream，v0.3.0 新增 hf-doc-freshness-gate）|
+| `packs/coding/` | `0.4.0` | 24 | 0 | HarnessFlow 工程工作流 family（23 hf-* + using-hf-workflow；per-skill self-contained 布局，每个 skill 自带 references/；reverse-sync 自 hujianbest/harness-flow upstream v0.1.0 pre-release；garage-side 第一方增量 = hf-workflow-router step 3.5 F014 Workflow Recall）|
 | `packs/search/` | `0.1.0` | 1 | 0 | 信息聚合 / curation family：ai-weekly（X/Twitter 周报，Priority 1/2/3 中文报告）|
 | `packs/writing/` | `0.2.0` | 5 | 0 | 内容创作 family：blog-writing / humanizer-zh / hv-analysis / khazix-writer / magazine-web-ppt + family-level prompts/横纵分析法.md |
 
