@@ -145,9 +145,11 @@ garage knowledge export --anonymize
 | `garage sync` | 把 top-N 记忆推到宿主 context surface |
 | `garage session import` | 把宿主对话历史回流给系统提取 |
 | `garage memory review` | 审通 / 拒绝提炼出的 knowledge 候选 |
-| `garage knowledge ...` | `add` / `edit` / `show` / `delete` / `search` / `list` / `link` / `graph` / `export` |
-| `garage experience ...` | `add` / `show` / `delete` |
-| `garage pack ...` | `install` / `ls` / `uninstall` / `update` / `publish` |
+| `garage knowledge add` / `knowledge edit` / `knowledge show` / `knowledge delete` | 写作 / 编辑 / 查看 / 删除 knowledge 条目 |
+| `garage knowledge search` / `knowledge list` / `knowledge link` / `knowledge graph` | 召回、列出、连接 knowledge 条目（F006 图） |
+| `garage knowledge export` | 匿名化 tarball 导出 |
+| `garage experience add` / `experience show` / `experience delete` | 写作 experience 记录 |
+| `garage pack install` / `pack ls` / `pack uninstall` / `pack update` / `pack publish` | 完整 pack 生命周期 |
 | `garage skill suggest` | 列出系统建议的 skill 草稿 |
 | `garage skill promote` | 把草稿提升成正式 pack skill |
 | `garage recall workflow` | 基于历史 experience 推荐 skill 链路 |

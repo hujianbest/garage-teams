@@ -145,9 +145,11 @@ garage knowledge export --anonymize
 | `garage sync` | Push top-N memory into host context surfaces |
 | `garage session import` | Pull host conversation history back for extraction |
 | `garage memory review` | Approve / reject extracted knowledge candidates |
-| `garage knowledge ...` | `add` / `edit` / `show` / `delete` / `search` / `list` / `link` / `graph` / `export` |
-| `garage experience ...` | `add` / `show` / `delete` |
-| `garage pack ...` | `install` / `ls` / `uninstall` / `update` / `publish` |
+| `garage knowledge add` / `knowledge edit` / `knowledge show` / `knowledge delete` | Author and curate knowledge entries |
+| `garage knowledge search` / `knowledge list` / `knowledge link` / `knowledge graph` | Recall, list, and link knowledge entries (F006 graph) |
+| `garage knowledge export` | Anonymized tarball export |
+| `garage experience add` / `experience show` / `experience delete` | Author experience records |
+| `garage pack install` / `pack ls` / `pack uninstall` / `pack update` / `pack publish` | Full pack lifecycle |
 | `garage skill suggest` | List system-proposed skill drafts |
 | `garage skill promote` | Promote a draft into a pack |
 | `garage recall workflow` | Recommend skill chains based on historical experience |
