@@ -81,7 +81,7 @@
 - `keywords` (agent / ai / skills / knowledge-management / claude-code / cursor / opencode / local-first / solo-creator)
 - `classifiers` (Development Status :: 4 - Beta + OSI Apache + Python 3.11/3.12 + Typing :: Typed)
 - `include = [LICENSE, AGENTS.md, RELEASE_NOTES.md]`（确保 sdist/wheel 内含）
-- 包名 `garage-os` 与 CLI `garage` 不变（v0.1 保稳，避免破坏既有 import）
+- 发布包名 `garage-agent`（PyPI: `pip install garage-agent`） + CLI `garage`；Python import 路径仍为 `import garage_os`（与 Pillow / `import PIL` 同 pattern，避免破坏 200+ 既有 import）
 
 **D. README 双语刷新**:
 - 顶部 4 个 badge: Tests / License / Python / Code of Conduct
@@ -109,7 +109,7 @@ cd garage-agent
 uv pip install -e .   # 或 poetry install
 ```
 
-PyPI 首发暂未启用，待维护者首次 `poetry publish` / `twine upload` 后会在本节追加 `pip install garage-os` 路径。
+PyPI 首发暂未启用，待维护者首次 `poetry publish` / `twine upload` 后会在本节追加 `pip install garage-agent` 路径。
 
 > **维护者发布步骤**: 见 [`docs/releases/HOW-TO-PUBLISH-v0.1.0.md`](docs/releases/HOW-TO-PUBLISH-v0.1.0.md)（merge PR #41 → tag → build → `gh release create` → 可选 `twine upload`）。
 > **GitHub Release body**: [`docs/releases/v0.1.0.md`](docs/releases/v0.1.0.md)（已英文化，可直接 `--notes-file` 喂给 `gh release create`）。
