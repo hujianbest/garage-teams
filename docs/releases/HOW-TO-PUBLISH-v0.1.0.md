@@ -98,6 +98,16 @@ If you'd rather avoid the force-tag and bump to v0.1.1 instead, replace `v0.1.0`
 
 ## Step 3 — Build release artifacts
 
+> **Prerequisite:** Step 1 (`uv sync`) must have been run first — that's what creates the project-local `.venv/` that `uv pip install` writes into. If you see `error: No virtual environment found; run `uv venv` to create an environment, or pass `--system` to install into a non-virtual environment`, you skipped `uv sync`. Either go back and run it, or run `uv venv` once to bootstrap an empty `.venv/`.
+>
+> **Faster alternative:** uv 0.3+ ships a built-in PEP 517 build frontend, so you can skip the `uv pip install build` + `uv run python -m build` two-step entirely:
+>
+> ```bash
+> uv build --out-dir dist
+> ```
+>
+> This produces the same two files as `python -m build` and works whether or not `.venv/` exists (uv builds in its own isolated environment). The two-step flow below is kept for parity with the upstream `python -m build` documentation.
+
 Install the `build` frontend into the same `uv`-managed `.venv` you used in Step 1, then run it via `uv run` so the isolated build environment uses `uv`'s own venv backend (not the system-Python `venv` module — Ubuntu 24.04 doesn't ship `python3.12-venv` by default and `uvx --from build pyproject-build` will fail with a `python3.12-venv missing` apt hint):
 
 ```bash
