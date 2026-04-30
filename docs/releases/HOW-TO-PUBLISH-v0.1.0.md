@@ -106,30 +106,32 @@ uv run python -m build --outdir dist
 
 ls dist/
 # expected:
-#   garage_os-0.1.0-py3-none-any.whl
-#   garage_os-0.1.0.tar.gz
+#   garage_agent-0.1.0-py3-none-any.whl
+#   garage_agent-0.1.0.tar.gz
 
-sha256sum dist/garage_os-0.1.0*
+sha256sum dist/garage_agent-0.1.0*
 ```
 
-Reference SHAs (from a clean build at `main` HEAD, commit `84a7591`):
+> **Note on naming:** the distribution / project name is `garage-agent` (PyPI: `pip install garage-agent`), but the Python import path is still `import garage_os`. Same pattern as Pillow (`pip install Pillow` / `import PIL`). PEP 427 normalizes the dist name `garage-agent` to the wheel filename prefix `garage_agent-0.1.0-...` (hyphen → underscore).
+
+Reference SHAs (from a clean build at the rename branch `cursor/runbook-wsl-ubuntu-fix-df36`, `uv sync` + `uv run python -m build` on WSL Ubuntu 24.04 / Python 3.12):
 
 | File | Size | SHA-256 |
 |---|---|---|
-| `garage_os-0.1.0-py3-none-any.whl` | ~189 KB | `ee001cf3f6a820316ff024321ccb343c9d7a1d661777de4d0a63ec27e0bb787d` |
-| `garage_os-0.1.0.tar.gz` | ~199 KB | `e7f4bb3f36cb082c527a2d5670a46ba206e9b00f448dd7b1fd77d50bd467092d` |
+| `garage_agent-0.1.0-py3-none-any.whl` | ~189 KB | `aaa925341392f1dc18e241073c758096d605dda43b21c944637176ad2501f8d0` |
+| `garage_agent-0.1.0.tar.gz` | ~199 KB | `8dfb5fbc60085e45f2ada510d00e72bdb8a9706647f9994265136e68dde4245f` |
 
-> **Why these SHAs may not byte-match yours:**
-> - The wheel SHA is **stable** as long as `src/garage_os/**` content is unchanged. PRs #44–#48 only added a `[project]` table to `pyproject.toml` and edited tests/ — they don't touch `src/garage_os/**` content semantically, but `pyproject.toml` is included in wheel metadata so the wheel SHA shifted from the pre-#44 value (`ec7b9a13...`) to `ee001cf3...`.
-> - The sdist SHA changes whenever any included file (`pyproject.toml`, `LICENSE`, `AGENTS.md`, `RELEASE_NOTES.md`, `README.md`, `src/`, `tests/`) changes. Just confirm `python -m build` produced both files without errors and that `pip install dist/garage_os-0.1.0-py3-none-any.whl` works in a fresh venv (Step 5 below); exact SHA equality across machines requires identical filesystem timestamps and is not a publishing precondition.
+> **Why these SHAs are different from the pre-rename ones (`ee001cf3...` / `e7f4bb3f...`):**
+> - The `garage-os → garage-agent` distribution rename changed `pyproject.toml` (`name = "garage-agent"`), `uv.lock`, the wheel filename prefix (PEP 427: `garage-agent → garage_agent-0.1.0-...`), and the sdist root directory (`garage_agent-0.1.0/`). Both artifacts are bit-for-bit different from the pre-rename build.
+> - Exact SHA equality across machines requires identical filesystem timestamps and `pyproject.toml` byte-content; the values above are a sanity check, not a publishing precondition. The smoke test below is the real gate.
 
 Verify the sdist metadata:
 
 ```bash
-tar xzf dist/garage_os-0.1.0.tar.gz -O garage_os-0.1.0/PKG-INFO | head -10
+tar xzf dist/garage_agent-0.1.0.tar.gz -O garage_agent-0.1.0/PKG-INFO | head -10
 # Should show:
 #   Metadata-Version: 2.4
-#   Name: garage-os
+#   Name: garage-agent
 #   Version: 0.1.0
 #   License: Apache-2.0
 #   ...
@@ -138,7 +140,7 @@ tar xzf dist/garage_os-0.1.0.tar.gz -O garage_os-0.1.0/PKG-INFO | head -10
 Smoke-test the wheel in a throwaway venv:
 
 ```bash
-uv run --with ./dist/garage_os-0.1.0-py3-none-any.whl --no-project --refresh garage --help
+uv run --with ./dist/garage_agent-0.1.0-py3-none-any.whl --no-project --refresh garage --help
 # Should print the garage CLI help text (no "command not found", no import errors)
 ```
 
@@ -151,8 +153,8 @@ gh release create v0.1.0 \
   --title "garage-agent v0.1.0 — first public release" \
   --notes-file docs/releases/v0.1.0.md \
   --prerelease \
-  dist/garage_os-0.1.0-py3-none-any.whl \
-  dist/garage_os-0.1.0.tar.gz
+  dist/garage_agent-0.1.0-py3-none-any.whl \
+  dist/garage_agent-0.1.0.tar.gz
 ```
 
 Flag rationale:
@@ -172,7 +174,7 @@ If you'd rather use the GitHub web UI:
 
 ## Step 5 — (optional) Publish to PyPI
 
-This step only matters if you want `pip install garage-os` to work directly. Skip for v0.1.0 if you want to wait for community feedback first.
+This step only matters if you want `pip install garage-agent` to work directly. Skip for v0.1.0 if you want to wait for community feedback first.
 
 Prerequisites:
 
@@ -192,11 +194,11 @@ After upload, verify in a fresh venv:
 
 ```bash
 uv venv /tmp/garage-test
-/tmp/garage-test/bin/pip install garage-os==0.1.0
+/tmp/garage-test/bin/pip install garage-agent==0.1.0
 /tmp/garage-test/bin/garage --help     # CLI installed
 ```
 
-If `pip install garage-os` works, edit the published release body via:
+If `pip install garage-agent` works, edit the published release body via:
 
 ```bash
 gh release edit v0.1.0 --notes-file docs/releases/v0.1.0.md
@@ -210,7 +212,7 @@ gh release edit v0.1.0 --notes-file docs/releases/v0.1.0.md
 - Pin to GitHub profile if relevant
 - If PyPI upload succeeded, open a small follow-up PR to:
   - Replace "PyPI release prepared but not yet published" in `docs/releases/v0.1.0.md`
-  - Replace the "PyPI 首发暂未启用" sentence in `RELEASE_NOTES.md` with `pip install garage-os`
+  - Replace the "PyPI 首发暂未启用" sentence in `RELEASE_NOTES.md` with `pip install garage-agent`
 - Whatever channels you prefer (X / blog / mailing list)
 
 ## Rollback
@@ -254,7 +256,7 @@ After PyPI upload: **PyPI does not allow re-using a version number**. Bump to v0
 - [ ] Local main pulled at HEAD ≥ `84a7591`
 - [ ] `uv sync && uv run pytest tests/ -q` green (expect 1045 passed)
 - [ ] `v0.1.0` tag re-created at current `main` HEAD and force-pushed to origin
-- [ ] `dist/garage_os-0.1.0-py3-none-any.whl` and `dist/garage_os-0.1.0.tar.gz` rebuilt locally with `python -m build`
+- [ ] `dist/garage_agent-0.1.0-py3-none-any.whl` and `dist/garage_agent-0.1.0.tar.gz` rebuilt locally with `python -m build`
 - [ ] Wheel smoke-test: `uv run --with ./dist/...whl --no-project garage --help` works
 - [ ] `gh release create v0.1.0 --prerelease --notes-file docs/releases/v0.1.0.md dist/*.whl dist/*.tar.gz` succeeded
 - [ ] Release visible at https://github.com/hujianbest/garage-agent/releases/tag/v0.1.0

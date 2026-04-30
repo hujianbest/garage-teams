@@ -69,7 +69,7 @@ Concrete deliverables:
 
 - **AHE / HF workflow skills** under [`packs/coding/skills/`](packs/coding/skills/) (24 `hf-*` skills + `using-hf-workflow`) and [`packs/writing/skills/`](packs/writing/skills/) (5 writing skills)
 - **Production agents** under [`packs/garage/agents/`](packs/garage/agents/): `code-review-agent`, `blog-writing-agent`, `garage-sample-agent`
-- A **Python runtime** package `garage-os` under [`src/garage_os/`](src/garage_os/) with `~930` passing tests
+- A **Python runtime** package `garage-agent` (import path: `garage_os`) under [`src/garage_os/`](src/garage_os/) with `~930` passing tests
 - A **`garage` CLI** covering: `init`, `status`, `run`, `recommend`, `sync`, `session import`, `memory review`; knowledge subcommands `knowledge search`, `knowledge list`, `knowledge add`, `knowledge edit`, `knowledge show`, `knowledge delete`, `knowledge link`, `knowledge graph`, `knowledge export`; experience subcommands `experience add`, `experience show`, `experience delete`; pack lifecycle `pack install`, `pack ls`, `pack uninstall`, `pack update`, `pack publish`
 - File-first runtime data under [`.garage/`](.garage/) (sessions, knowledge entries with YAML front matter, experience records, sync manifest, host installer manifest)
 - Specs and reviews for every cycle under [`docs/features/`](docs/features/), [`docs/designs/`](docs/designs/), [`docs/reviews/`](docs/reviews/), [`docs/approvals/`](docs/approvals/)
@@ -225,7 +225,8 @@ Scoring rationale: see [`docs/soul/manifesto.md`](docs/soul/manifesto.md), [`doc
 `garage-agent` is open source under the [Apache 2.0 License](LICENSE).
 
 - **Public project name**: `garage-agent`
-- **Python package + import path**: `garage-os` (kept stable to avoid breaking existing imports)
+- **PyPI distribution name**: `garage-agent` (`pip install garage-agent`)
+- **Python import path**: `import garage_os` (kept stable — same pattern as Pillow / `import PIL`)
 - **CLI binary**: `garage`
 - **License**: [Apache-2.0](LICENSE) — chosen for explicit patent grant + downstream-friendliness
 - **Contributing**: read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a non-trivial PR
