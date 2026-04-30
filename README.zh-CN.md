@@ -71,7 +71,7 @@
 
 - **AHE / HF workflow skills** 在 [`packs/coding/skills/`](packs/coding/skills/)（24 个 `hf-*` skill + `using-hf-workflow`）和 [`packs/writing/skills/`](packs/writing/skills/)（5 个写作 skill）
 - **生产 agents** 在 [`packs/garage/agents/`](packs/garage/agents/)：`code-review-agent`、`blog-writing-agent`、`garage-sample-agent`
-- 一个 **Python runtime** package `garage-os`（[`src/garage_os/`](src/garage_os/)；兼容名保留），约 1045 个测试通过
+- 一个 **Python runtime** package `garage-agent`（import 路径仍为 `garage_os`，源码在 [`src/garage_os/`](src/garage_os/)），约 1045 个测试通过
 - 一个 **`garage` CLI**，覆盖：`init`、`status`、`run`、`recommend`、`recall workflow`、`sync`、`session import`、`memory review`、`skill suggest`、`skill promote`；knowledge 子命令 `knowledge search`、`knowledge list`、`knowledge add`、`knowledge edit`、`knowledge show`、`knowledge delete`、`knowledge link`、`knowledge graph`、`knowledge export`；experience 子命令 `experience add`、`experience show`、`experience delete`；pack lifecycle `pack install`、`pack ls`、`pack uninstall`、`pack update`、`pack publish`
 - 文件优先的 runtime 数据结构在 [`.garage/`](.garage/)（sessions、含 YAML front matter 的 knowledge 条目、experience records、sync manifest、host installer manifest）
 - 每一个 cycle 的 spec / 评审 / 验收 在 [`docs/features/`](docs/features/)、[`docs/designs/`](docs/designs/)、[`docs/reviews/`](docs/reviews/)、[`docs/approvals/`](docs/approvals/)
@@ -228,7 +228,8 @@ F012 后信念 1-5 + 承诺 ①-⑤ 都达 5/5，下一阶段杠杆最大的是 
 `garage-agent` 已采用 [Apache 2.0 License](LICENSE) 公开开源。
 
 - **对外项目名**: `garage-agent`
-- **Python package + import 路径**: `garage-os`（保持稳定，避免破坏既有 import）
+- **PyPI 发布包名**: `garage-agent`（`pip install garage-agent`）
+- **Python import 路径**: `import garage_os`（保持稳定，与 Pillow / `import PIL` 同 pattern）
 - **CLI 命令**: `garage`
 - **License**: [Apache-2.0](LICENSE)，明确含专利授权，对下游友好
 - **贡献指南**: 提非琐碎 PR 前请先读 [`CONTRIBUTING.md`](CONTRIBUTING.md)
